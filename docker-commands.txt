@@ -1,0 +1,71 @@
+# Development Environment Commands
+# ------------------------------
+# Start services in development (detached mode)
+docker-compose --env-file .env.development up -d
+
+# Stop services in development
+docker-compose --env-file .env.development down
+
+# Stop services and remove volumes in development
+docker-compose --env-file .env.development down -v
+
+
+# Production Environment Commands
+# -----------------------------
+# Start services in production (detached mode)
+docker-compose --env-file .env.production up -d
+
+# Stop services in production
+docker-compose --env-file .env.production down
+
+# Stop services and remove volumes in production
+docker-compose --env-file .env.production down -v
+
+
+# Useful Additional Commands
+# ------------------------
+# View all logs
+docker-compose logs -f
+
+# View specific service logs
+docker-compose logs -f postgres
+docker-compose logs -f redis
+
+# Check running services status
+docker-compose ps
+
+
+# PostgreSQL Connection Commands
+# ----------------------------
+# Connect to PostgreSQL using docker exec (from container)
+docker exec -it ais_postgres psql -U ais_dev -d ais_dev_db
+
+# Connect to PostgreSQL using psql (from host machine)
+psql -h localhost -p 5432 -U ais_dev -d ais_dev_db
+
+# PostgreSQL Database Commands
+# --------------------------
+# List all databases (after connecting)
+\l
+
+# List all databases (direct command)
+docker exec -it ais_postgres psql -U ais_dev -c "\l"
+
+# Switch database (after connecting)
+\c ais_dev
+
+# List all tables in current database
+\dt
+
+# List all tables with direct command
+docker exec -it ais_postgres psql -U ais_dev -d ais_dev_db -c "\dt"
+
+# Note: 
+# - The -d flag runs containers in detached mode (background)
+# - The -f flag follows the log output in real-time
+# - The -v flag removes named volumes declared in the volumes section
+# - Replace ais_dev and ais_dev_db with your actual username and database name
+# - You will be prompted for the password defined in your .env file
+# - \l is a psql command to list databases
+# - \c is a psql command to switch databases
+# - \dt is a psql command to list all tables
