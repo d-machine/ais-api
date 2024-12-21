@@ -1,0 +1,78 @@
+const formConfig = [{
+    section: 'Metadata',
+    sectionType: ESectionType.FIELDS,
+    fields: [
+        {
+            name: 'party',
+            type: EInputType.SELECT,
+            label: 'Party Name',
+            required: true
+        },
+        {
+            name: 'godown',
+            type: EInputType.SELECT,
+            label: 'Godown Name',
+            required: true,
+            dependencies: [{
+                dependency: 'party',
+                section: 'Metadata',
+                fields: [{as: 'partyId', key: 'id'}]
+            }]
+        },
+    ]
+}, {
+    section: 'TableFormat',
+    sectionType: ESectionType.TABLE,
+    caption: {
+        name: 'tableFormat',
+        label: 'Table Format',
+        fields: [
+            {
+                name: 'addNew',
+                type: EInputType.BUTTON,
+                label: 'Add New'
+            }
+        ]
+    },
+    columns: [
+            {
+                name: 'columnName',
+                type: EInputType.TEXT,
+                label: 'Column Name',
+                required: true
+            }
+        ]
+}, {
+    section: 'New Section',
+    fields: [
+        ...
+    ]
+}]
+
+
+store = {
+    abc: {
+        metadata: {
+            formId: '123',
+            party: {partyId, partyName, ...},
+        },
+        tableFormat: [{
+            def: 'value',
+            rowId: '234',
+        }, ...]
+    },
+    bcd: {
+
+    }
+}
+
+
+create a tabstore to store the open tabs information
+- currently active tab
+- all open tabs
+
+flow -
+1. User selects a menu item
+2. The menu item is added to the tabstore
+3. Based on tabstore new tab is open
+4. While adding the new tab in tabstore, create a tab id - `{formName}-{randomId}`

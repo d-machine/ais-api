@@ -4,7 +4,15 @@ import { cors } from 'hono/cors'
 import { logger } from 'hono/logger'
 import { prettyJSON } from 'hono/pretty-json'
 import { timing } from 'hono/timing'
-import { initializeDatabase } from './db/postgres'
+import { dbClient } from './db/dbClient.js'
+import { createUserRouter } from './routes/user.routes.js'
+import { createRoleRouter } from './routes/role.routes.js'
+import { createAccessTypeRouter } from './routes/access-type.routes.js'
+import { createResourceRouter } from './routes/resource.routes.js'
+import { createUserRoleRouter } from './routes/user-role.routes.js'
+import { createAccessGrantsRouter } from './routes/access-grants.routes.js'
+import { createResourceAccessRoleRouter } from './routes/resource-access-role.routes.js'
+import dbRoutes from './routes/db.routes.js'
 
 const app = new Hono()
 
@@ -16,7 +24,7 @@ app.use('*', cors({
   origin: ['http://localhost:3000', 'http://localhost:5173'],
   credentials: true,
   allowMethods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowHeaders: ['Content-Type', 'Authorization'],
+  allowHeaders: ['Content-Type', 'Authorization', 'X-User-ID'],
   exposeHeaders: ['Content-Length', 'X-Request-Id'],
   maxAge: 3600,
 }))
@@ -48,28 +56,63 @@ app.get('/', (c) => c.json({ message: 'Hello Hono!' }))
 // Health check endpoint
 app.get('/health', async (c) => {
   try {
-    // Test database connection
-    await initializeDatabase()
-    return c.json({ status: 'ok', database: 'connected' })
+    const postgres = dbClient.getPostgresClient();
+    const redis = dbClient.getRedisClient();
+    
+    // Test PostgreSQL connection
+    await postgres.getPool().query('SELECT 1');
+    
+    // Test Redis connection
+    await redis.getClient().ping();
+    
+    return c.json({ 
+      status: 'ok',
+      postgres: 'connected',
+      redis: 'connected'
+    });
   } catch (error) {
-    return c.json({ status: 'error', database: 'disconnected' }, 503)
+    return c.json({ 
+      status: 'error',
+      message: error instanceof Error ? error.message : 'Unknown error'
+    }, 503);
   }
-})
+});
 
-const port = process.env.PORT || 3000
+// Mount API routes
+const postgresPool = dbClient.getPostgresClient().getPool();
+app.route('/api/users', createUserRouter(postgresPool))
+app.route('/api/roles', createRoleRouter(postgresPool))
+app.route('/api/access-types', createAccessTypeRouter(postgresPool))
+app.route('/api/resources', createResourceRouter(postgresPool))
+app.route('/api/user-roles', createUserRoleRouter(postgresPool))
+app.route('/api/access-grants', createAccessGrantsRouter(postgresPool))
+app.route('/api/resource-access-roles', createResourceAccessRoleRouter(postgresPool))
+app.route('/api/db', dbRoutes)
+
+const port = Number(process.env.PORT) || 3000
 
 // Initialize database before starting server
 async function startServer() {
   try {
-    await initializeDatabase()
-    console.log('Database initialized')
+    // Connect to databases
+    await dbClient.connect();
+    console.log('All database connections established');
     
+    // Start server only after successful database connections
     serve({
       fetch: app.fetch,
       port
     })
     
     console.log(`Server is running on port ${port}`)
+
+    // Handle shutdown
+    process.on('SIGTERM', async () => {
+      console.log('SIGTERM received. Shutting down gracefully...');
+      await dbClient.disconnect();
+      process.exit(0);
+    });
+
   } catch (error) {
     console.error('Failed to start server:', error)
     process.exit(1)

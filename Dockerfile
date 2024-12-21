@@ -1,27 +1,46 @@
-FROM node:20-alpine AS base
+FROM node:20-alpine AS builder
 
-FROM base AS builder
+# Install build dependencies
+RUN apk add --no-cache python3 make g++
 
-RUN apk add --no-cache gcompat
 WORKDIR /app
 
-COPY package*json tsconfig.json src ./
+# Copy package files
+COPY package*.json ./
 
-RUN npm ci && \
-    npm run build && \
-    npm prune --production
+RUN npm ci
 
-FROM base AS runner
+# Copy source files
+COPY . .
+
+# Build the application
+RUN npm run build
+
+# Copy SQL files to dist directory
+RUN mkdir -p dist/db && \
+    cp -r src/db/tables dist/db/
+
+# Production image
+FROM node:20-alpine
+
 WORKDIR /app
 
-RUN addgroup --system --gid 1001 nodejs
-RUN adduser --system --uid 1001 hono
+# Copy built files and package files
+COPY --from=builder /app/dist ./dist
+COPY --from=builder /app/package*.json ./
+COPY --from=builder /app/.env.development ./
 
-COPY --from=builder --chown=hono:nodejs /app/node_modules /app/node_modules
-COPY --from=builder --chown=hono:nodejs /app/dist /app/dist
-COPY --from=builder --chown=hono:nodejs /app/package.json /app/package.json
+# Install production dependencies only
+RUN npm ci --only=production && \
+    npm cache clean --force
+
+# Create non-root user
+RUN addgroup --system --gid 1001 nodejs && \
+    adduser --system --uid 1001 hono && \
+    chown -R hono:nodejs /app
 
 USER hono
+
 EXPOSE 3000
 
-CMD ["node", "/app/dist/index.js"] 
+CMD ["npm", "start"] 

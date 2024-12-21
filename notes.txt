@@ -1,0 +1,117 @@
+Development Setup Notes
+======================
+
+Environment Variables
+-------------------
+- NODE_ENV determines which .env file to use
+  * development -> .env.development
+  * production -> .env.production
+
+Starting the Server
+-----------------
+1. Local Development:
+   - npm run dev (uses tsx for hot reloading)
+   - Requires PostgreSQL running locally
+   - Uses .env.development by default
+
+2. Production:
+   - npm start
+   - Uses compiled JavaScript from dist/
+   - Uses .env.production
+
+Database Connection
+-----------------
+- Uses pg (node-postgres) for PostgreSQL connection
+- Connection pool with max 20 clients
+- Server waits for database connection before starting
+- Health check endpoint tests database connection
+
+Project Structure
+---------------
+/src
+  /db
+    postgres.ts    - Database connection and pool
+  index.ts        - Main application entry point
+
+Dependencies
+-----------
+- @hono/node-server - HTTP server
+- hono             - Web framework
+- pg               - PostgreSQL client
+- dotenv           - Environment configuration
+- typescript       - Type support
+- tsx              - Development runtime
+
+Environment Files
+---------------
+.env.development  - Development settings
+.env.production   - Production settings
+.env.example      - Template for environment variables
+
+auth flow -
+db structure -
+    1. Metadata table -
+    - Columns:
+        - id
+        - table_type
+        - table_name
+    
+    2. User table -
+    - Columns:
+        - id
+        - username
+        - email
+        - phone_number
+        - password
+
+    3. Role table -
+    - Columns:
+        - id
+        - role_name
+        - department
+        - city
+
+    4. User_role table -
+    - Columns:
+        - id
+        - user_id
+        - role_id
+    
+    5. Role_permission table -
+    - Columns:
+        - id
+        - role_id
+        - permission_id
+
+    6. Permission table -
+    - Columns:
+        - id
+        - permission_name
+    
+    7. Entity table -
+    - Columns:
+        - id
+        - entity_name
+        - entity_type
+
+
+Entity metadata flow -
+    - in table -
+        - entity_id
+        - 
+ 
+
+Select Field Flow -
+    {
+        caption: "Parties",
+        query: "SELECT * FROM parties",
+        columns: [{id: "column_id", name: "column_name", type: "column_type"}]
+        columnToPick: "column_id",
+        dependencies: [{field_id: "field_id", column_id: "column_id", name_for_field: "name_for_field"}]
+    }
+
+Prefill/readonly Field Flow:
+    {
+        dependencies: [{ field_id: "field_id", column_id: "column_id" }]
+    }
+

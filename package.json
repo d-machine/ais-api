@@ -8,13 +8,16 @@
   },
   "dependencies": {
     "@hono/node-server": "^1.13.7",
+    "bcrypt": "^5.1.1",
     "hono": "^4.6.11",
-    "pg": "^8.11.3"
+    "pg": "^8.11.3",
+    "redis": "^4.7.0"
   },
   "devDependencies": {
+    "@types/bcrypt": "^5.0.2",
     "@types/node": "^20.11.17",
-    "tsx": "^4.7.1",
     "@types/pg": "^8.10.9",
+    "tsx": "^4.7.1",
     "typescript": "^5.1.6"
   }
 }
