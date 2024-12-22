@@ -74,6 +74,15 @@ export interface HierarchyClosure {
   last_updated_by: number;
 }
 
+export interface ResourceHierarchyClosure {
+  id: number;
+  ancestor_id: number;
+  descendant_id: number;
+  depth: number;
+  last_updated_at: Date;
+  last_updated_by: number;
+}
+
 export interface RefreshToken {
   id: number;
   user_id: number;
