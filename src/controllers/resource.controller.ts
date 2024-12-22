@@ -1,7 +1,7 @@
 import { Context } from 'hono';
 import { ResourceService } from '../services/resource.service.js';
 import { Pool } from 'pg';
-import { toNumberOrThrow } from '../utils/id-converter.js';
+import { _isNil } from '../utils/aisLodash.js';
 
 export class ResourceController {
   private resourceService: ResourceService;
@@ -22,19 +22,16 @@ export class ResourceController {
 
   getResourceById = async (c: Context) => {
     try {
-      const id = toNumberOrThrow(c.req.param('id'), 'resourceId');
+      const id = parseInt(c.req.param('id'), 10);
       const resource = await this.resourceService.findById(id);
       
-      if (!resource) {
+      if (_isNil(resource)) {
         return c.json({ error: 'Resource not found' }, 404);
       }
       
       return c.json(resource);
     } catch (error) {
       console.error('Error getting resource:', error);
-      if (error instanceof Error && error.message.startsWith('Invalid resourceId')) {
-        return c.json({ error: error.message }, 400);
-      }
       return c.json({ error: 'Failed to get resource' }, 500);
     }
   };
@@ -44,7 +41,7 @@ export class ResourceController {
       const name = c.req.param('name');
       const resource = await this.resourceService.findByName(name);
       
-      if (!resource) {
+      if (_isNil(resource)) {
         return c.json({ error: 'Resource not found' }, 404);
       }
       
@@ -57,59 +54,46 @@ export class ResourceController {
 
   createResource = async (c: Context) => {
     try {
-      const userId = toNumberOrThrow(c.req.header('X-User-ID'), 'X-User-ID');
+      const userId = c.get('userId');
       const body = await c.req.json();
       if (body.parent_id) {
-        body.parent_id = toNumberOrThrow(body.parent_id.toString(), 'parentId');
+        body.parent_id = parseInt(body.parent_id.toString(), 10);
       }
       body.last_updated_by = userId;
       const resource = await this.resourceService.create(body);
       return c.json(resource, 201);
     } catch (error) {
       console.error('Error creating resource:', error);
-      if (error instanceof Error && (
-        error.message.startsWith('Invalid X-User-ID') ||
-        error.message.startsWith('Invalid parentId')
-      )) {
-        return c.json({ error: error.message }, 400);
-      }
       return c.json({ error: 'Failed to create resource' }, 500);
     }
   };
 
   updateResource = async (c: Context) => {
     try {
-      const id = toNumberOrThrow(c.req.param('id'), 'resourceId');
-      const userId = toNumberOrThrow(c.req.header('X-User-ID'), 'X-User-ID');
+      const id = parseInt(c.req.param('id'), 10);
+      const userId = c.get('userId');
       const body = await c.req.json();
       if (body.parent_id) {
-        body.parent_id = toNumberOrThrow(body.parent_id.toString(), 'parentId');
+        body.parent_id = parseInt(body.parent_id.toString(), 10);
       }
       body.last_updated_by = userId;
       const resource = await this.resourceService.update(id, body);
       
-      if (!resource) {
+      if (_isNil(resource)) {
         return c.json({ error: 'Resource not found' }, 404);
       }
       
       return c.json(resource);
     } catch (error) {
       console.error('Error updating resource:', error);
-      if (error instanceof Error && (
-        error.message.startsWith('Invalid resourceId') ||
-        error.message.startsWith('Invalid X-User-ID') ||
-        error.message.startsWith('Invalid parentId')
-      )) {
-        return c.json({ error: error.message }, 400);
-      }
       return c.json({ error: 'Failed to update resource' }, 500);
     }
   };
 
   deleteResource = async (c: Context) => {
     try {
-      const id = toNumberOrThrow(c.req.param('id'), 'resourceId');
-      const userId = toNumberOrThrow(c.req.header('X-User-ID'), 'X-User-ID');
+      const id = parseInt(c.req.param('id'), 10);
+      const userId = c.get('userId');
 
       const success = await this.resourceService.delete(id, userId);
       
@@ -120,12 +104,6 @@ export class ResourceController {
       return c.json({ message: 'Resource deleted successfully' });
     } catch (error) {
       console.error('Error deleting resource:', error);
-      if (error instanceof Error && (
-        error.message.startsWith('Invalid resourceId') ||
-        error.message.startsWith('Invalid X-User-ID')
-      )) {
-        return c.json({ error: error.message }, 400);
-      }
       return c.json({ error: 'Failed to delete resource' }, 500);
     }
   };

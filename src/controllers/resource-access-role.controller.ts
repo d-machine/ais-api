@@ -1,7 +1,7 @@
 import { Context } from 'hono';
 import { ResourceAccessRoleService } from '../services/resource-access-role.service.js';
 import { Pool } from 'pg';
-import { toNumberOrThrow } from '../utils/id-converter.js';
+import { _isNil } from '../utils/aisLodash.js';
 
 export class ResourceAccessRoleController {
   private resourceAccessRoleService: ResourceAccessRoleService;
@@ -22,148 +22,113 @@ export class ResourceAccessRoleController {
 
   getResourceAccessRoleById = async (c: Context) => {
     try {
-      const id = toNumberOrThrow(c.req.param('id'), 'resourceAccessRoleId');
+      const id = parseInt(c.req.param('id'), 10);
       const resourceAccessRole = await this.resourceAccessRoleService.findById(id);
       
-      if (!resourceAccessRole) {
+      if (_isNil(resourceAccessRole)) {
         return c.json({ error: 'Resource access role not found' }, 404);
       }
       
       return c.json(resourceAccessRole);
     } catch (error) {
       console.error('Error getting resource access role:', error);
-      if (error instanceof Error && error.message.startsWith('Invalid resourceAccessRoleId')) {
-        return c.json({ error: error.message }, 400);
-      }
       return c.json({ error: 'Failed to get resource access role' }, 500);
     }
   };
 
   getResourceAccessRolesByResourceId = async (c: Context) => {
     try {
-      const resourceId = toNumberOrThrow(c.req.param('resourceId'), 'resourceId');
+      const resourceId = parseInt(c.req.param('resourceId'), 10);
       const resourceAccessRoles = await this.resourceAccessRoleService.findByResourceId(resourceId);
       return c.json(resourceAccessRoles);
     } catch (error) {
       console.error('Error getting resource access roles:', error);
-      if (error instanceof Error && error.message.startsWith('Invalid resourceId')) {
-        return c.json({ error: error.message }, 400);
-      }
       return c.json({ error: 'Failed to get resource access roles' }, 500);
     }
   };
 
   getResourceAccessRolesByRoleId = async (c: Context) => {
     try {
-      const roleId = toNumberOrThrow(c.req.param('roleId'), 'roleId');
+      const roleId = parseInt(c.req.param('roleId'), 10);
       const resourceAccessRoles = await this.resourceAccessRoleService.findByRoleId(roleId);
       return c.json(resourceAccessRoles);
     } catch (error) {
       console.error('Error getting resource access roles:', error);
-      if (error instanceof Error && error.message.startsWith('Invalid roleId')) {
-        return c.json({ error: error.message }, 400);
-      }
       return c.json({ error: 'Failed to get resource access roles' }, 500);
     }
   };
 
   getResourceAccessRolesByAccessTypeId = async (c: Context) => {
     try {
-      const accessTypeId = toNumberOrThrow(c.req.param('accessTypeId'), 'accessTypeId');
+      const accessTypeId = parseInt(c.req.param('accessTypeId'), 10);
       const resourceAccessRoles = await this.resourceAccessRoleService.findByAccessTypeId(accessTypeId);
       return c.json(resourceAccessRoles);
     } catch (error) {
       console.error('Error getting resource access roles:', error);
-      if (error instanceof Error && error.message.startsWith('Invalid accessTypeId')) {
-        return c.json({ error: error.message }, 400);
-      }
       return c.json({ error: 'Failed to get resource access roles' }, 500);
     }
   };
 
   getResourceAccessRolesByResourceAndRole = async (c: Context) => {
     try {
-      const resourceId = toNumberOrThrow(c.req.param('resourceId'), 'resourceId');
-      const roleId = toNumberOrThrow(c.req.param('roleId'), 'roleId');
+      const resourceId = parseInt(c.req.param('resourceId'), 10);
+      const roleId = parseInt(c.req.param('roleId'), 10);
       const resourceAccessRoles = await this.resourceAccessRoleService.findByResourceAndRole(resourceId, roleId);
       return c.json(resourceAccessRoles);
     } catch (error) {
       console.error('Error getting resource access roles:', error);
-      if (error instanceof Error && (
-        error.message.startsWith('Invalid resourceId') ||
-        error.message.startsWith('Invalid roleId')
-      )) {
-        return c.json({ error: error.message }, 400);
-      }
       return c.json({ error: 'Failed to get resource access roles' }, 500);
     }
   };
 
   createResourceAccessRole = async (c: Context) => {
     try {
-      const userId = toNumberOrThrow(c.req.header('X-User-ID'), 'X-User-ID');
+      const userId = c.get('userId');
       const body = await c.req.json();
-      body.resource_id = toNumberOrThrow(body.resource_id.toString(), 'resourceId');
-      body.role_id = toNumberOrThrow(body.role_id.toString(), 'roleId');
-      body.access_type_id = toNumberOrThrow(body.access_type_id.toString(), 'accessTypeId');
+      body.resource_id = parseInt(body.resource_id.toString(), 10);
+      body.role_id = parseInt(body.role_id.toString(), 10);
+      body.access_type_id = parseInt(body.access_type_id.toString(), 10);
       body.last_updated_by = userId;
       const resourceAccessRole = await this.resourceAccessRoleService.create(body);
       return c.json(resourceAccessRole, 201);
     } catch (error) {
       console.error('Error creating resource access role:', error);
-      if (error instanceof Error && (
-        error.message.startsWith('Invalid X-User-ID') ||
-        error.message.startsWith('Invalid resourceId') ||
-        error.message.startsWith('Invalid roleId') ||
-        error.message.startsWith('Invalid accessTypeId')
-      )) {
-        return c.json({ error: error.message }, 400);
-      }
       return c.json({ error: 'Failed to create resource access role' }, 500);
     }
   };
 
   updateResourceAccessRole = async (c: Context) => {
     try {
-      const id = toNumberOrThrow(c.req.param('id'), 'resourceAccessRoleId');
-      const userId = toNumberOrThrow(c.req.header('X-User-ID'), 'X-User-ID');
+      const id = parseInt(c.req.param('id'), 10);
+      const userId = c.get('userId');
       const body = await c.req.json();
       if (body.resource_id) {
-        body.resource_id = toNumberOrThrow(body.resource_id.toString(), 'resourceId');
+        body.resource_id = parseInt(body.resource_id.toString(), 10);
       }
       if (body.role_id) {
-        body.role_id = toNumberOrThrow(body.role_id.toString(), 'roleId');
+        body.role_id = parseInt(body.role_id.toString(), 10);
       }
       if (body.access_type_id) {
-        body.access_type_id = toNumberOrThrow(body.access_type_id.toString(), 'accessTypeId');
+        body.access_type_id = parseInt(body.access_type_id.toString(), 10);
       }
       body.last_updated_by = userId;
       const resourceAccessRole = await this.resourceAccessRoleService.update(id, body);
       
-      if (!resourceAccessRole) {
+      if (_isNil(resourceAccessRole)) {
         return c.json({ error: 'Resource access role not found' }, 404);
       }
       
       return c.json(resourceAccessRole);
     } catch (error) {
       console.error('Error updating resource access role:', error);
-      if (error instanceof Error && (
-        error.message.startsWith('Invalid resourceAccessRoleId') ||
-        error.message.startsWith('Invalid X-User-ID') ||
-        error.message.startsWith('Invalid resourceId') ||
-        error.message.startsWith('Invalid roleId') ||
-        error.message.startsWith('Invalid accessTypeId')
-      )) {
-        return c.json({ error: error.message }, 400);
-      }
       return c.json({ error: 'Failed to update resource access role' }, 500);
     }
   };
 
   deleteResourceAccessRole = async (c: Context) => {
     try {
-      const id = toNumberOrThrow(c.req.param('id'), 'resourceAccessRoleId');
-      const userId = toNumberOrThrow(c.req.header('X-User-ID'), 'X-User-ID');
+      const id = parseInt(c.req.param('id'), 10);
+      const userId = c.get('userId');
 
       const success = await this.resourceAccessRoleService.delete(id, userId);
       
@@ -174,12 +139,6 @@ export class ResourceAccessRoleController {
       return c.json({ message: 'Resource access role deleted successfully' });
     } catch (error) {
       console.error('Error deleting resource access role:', error);
-      if (error instanceof Error && (
-        error.message.startsWith('Invalid resourceAccessRoleId') ||
-        error.message.startsWith('Invalid X-User-ID')
-      )) {
-        return c.json({ error: error.message }, 400);
-      }
       return c.json({ error: 'Failed to delete resource access role' }, 500);
     }
   };

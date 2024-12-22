@@ -1,3 +1,4 @@
+import { _isNil } from '../utils/aisLodash.js';
 import { BaseService } from './base.service.js';
 import { Pool } from 'pg';
 
@@ -83,7 +84,7 @@ export class HierarchyClosureService extends BaseService<any> {
       `, [userId]);
 
       // If new manager is provided, create new relationships
-      if (newManagerId) {
+      if (!_isNil(newManagerId)) {
         // Create direct relationship with new manager
         await client.query(`
           INSERT INTO ${this.schema}.${this.tableName}

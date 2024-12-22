@@ -3,6 +3,7 @@ import { Pool } from 'pg';
 import jwt from 'jsonwebtoken';
 import { RefreshToken, User } from '../types/models.js';
 import { UserService } from './user.service.js';
+import { _get, _isNil } from '../utils/aisLodash.js';
 
 export class AuthService extends BaseService<RefreshToken> {
   protected tableName = 'refresh_token';
@@ -22,12 +23,33 @@ export class AuthService extends BaseService<RefreshToken> {
   }
 
   /**
+   * Override create method to prevent direct creation
+   */
+  async create(data: Partial<RefreshToken>): Promise<RefreshToken> {
+    throw new Error('Use login or refresh methods to create tokens');
+  }
+
+  /**
+   * Override update method to prevent direct updates
+   */
+  async update(id: number, data: Partial<RefreshToken>): Promise<RefreshToken | null> {
+    throw new Error('Refresh tokens cannot be updated');
+  }
+
+  /**
+   * Override delete method to use custom logout logic
+   */
+  async delete(id: number, userId: number): Promise<boolean> {
+    throw new Error('Use logout method to delete refresh tokens');
+  }
+
+  /**
    * Authenticate user and generate tokens
    */
   async login(username: string, password: string): Promise<{ accessToken: string; refreshToken: string } | null> {
     // Find user by username
     const user = await this.userService.findByUsername(username);
-    if (!user) {
+    if (_isNil(user)) {
       return null;
     }
 
@@ -51,13 +73,13 @@ export class AuthService extends BaseService<RefreshToken> {
       
       // Check if refresh token exists in database and is valid
       const storedToken = await this.findValidRefreshToken(decoded.userId, refreshToken);
-      if (!storedToken) {
+      if (_isNil(storedToken)) {
         return null;
       }
 
       // Get user
       const user = await this.userService.findById(decoded.userId);
-      if (!user) {
+      if (_isNil(user)) {
         return null;
       }
 
@@ -79,7 +101,7 @@ export class AuthService extends BaseService<RefreshToken> {
         RETURNING id
       `;
       const result = await this.executeQuery(query, [userId, refreshToken]);
-      return result.rowCount > 0;
+      return result.rowCount ? result.rowCount > 0 : false;
     } catch (error) {
       console.error('Error during logout:', error);
       return false;
@@ -148,6 +170,6 @@ export class AuthService extends BaseService<RefreshToken> {
         AND expires_at > CURRENT_TIMESTAMP
     `;
     const result = await this.executeQuery<RefreshToken>(query, [userId, token]);
-    return result.rows[0] || null;
+    return _get(result, 'rows[0]', null);
   }
 } 

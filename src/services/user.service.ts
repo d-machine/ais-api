@@ -3,6 +3,7 @@ import { User } from '../types/models.js';
 import { Pool } from 'pg';
 import bcrypt from 'bcrypt';
 import { HierarchyClosureService } from './hierarchy-closure.service.js';
+import { _get, _isEmpty, _isNil } from '../utils/aisLodash.js';
 
 export class UserService extends BaseService<User> {
   protected tableName = 'user';
@@ -19,7 +20,7 @@ export class UserService extends BaseService<User> {
       await client.query('BEGIN');
 
       // Hash password if provided
-      if (data.password) {
+      if (!_isNil(data.password)) {
         data.password = await bcrypt.hash(data.password, 10);
       }
 
@@ -31,7 +32,7 @@ export class UserService extends BaseService<User> {
         await this.hierarchyClosureService.createSelfReference(result.id, data.last_updated_by);
 
         // If reporting manager is provided in the request body, create hierarchy relationships
-        if (data.reporting_manager_id) {
+        if (!_isNil(data.reporting_manager_id)) {
           await this.hierarchyClosureService.createManagerHierarchy(
             result.id,
             data.reporting_manager_id,
@@ -55,22 +56,28 @@ export class UserService extends BaseService<User> {
     try {
       await client.query('BEGIN');
 
-      // Get current user data to check if reporting manager has changed
-      const currentUser = await this.findById(id);
-      const reportingManagerChanged = currentUser && 
-        currentUser.reporting_manager_id !== data.reporting_manager_id &&
-        data.reporting_manager_id !== undefined;
+      // Get current reporting manager from hierarchy closure
+      const query = `
+        SELECT ancestor_id as reporting_manager_id
+        FROM ${this.schema}.hierarchy_closure
+        WHERE descendant_id = $1 AND depth = 1
+      `;
+      const result = await this.executeQuery<{ reporting_manager_id: number }>(query, [id]);
+      const currentReportingManagerId = _get(result, 'rows[0].reporting_manager_id', null);
+
+      const reportingManagerChanged = !_isNil(data.reporting_manager_id) &&
+        currentReportingManagerId !== data.reporting_manager_id;
 
       // Hash password if provided
-      if (data.password) {
+      if (!_isNil(data.password)) {
         data.password = await bcrypt.hash(data.password, 10);
       }
 
       // Update user data
-      const result = await super.update(id, data);
+      const updatedUser = await super.update(id, data);
 
       // If reporting manager has changed and last_updated_by is provided, update hierarchy
-      if (reportingManagerChanged && result && typeof data.last_updated_by === 'number') {
+      if (reportingManagerChanged && updatedUser && typeof data.last_updated_by === 'number') {
         await this.hierarchyClosureService.updateManagerHierarchy(
           id,
           data.reporting_manager_id || null,
@@ -79,7 +86,7 @@ export class UserService extends BaseService<User> {
       }
 
       await client.query('COMMIT');
-      return result;
+      return updatedUser;
     } catch (error) {
       await client.query('ROLLBACK');
       throw error;

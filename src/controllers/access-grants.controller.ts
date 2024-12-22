@@ -1,7 +1,7 @@
 import { Context } from 'hono';
 import { AccessGrantsService } from '../services/access-grants.service.js';
 import { Pool } from 'pg';
-import { toNumberOrThrow } from '../utils/id-converter.js';
+import { _isNil } from '../utils/aisLodash.js';
 
 export class AccessGrantsController {
   private accessGrantsService: AccessGrantsService;
@@ -22,149 +22,114 @@ export class AccessGrantsController {
 
   getAccessGrantById = async (c: Context) => {
     try {
-      const id = toNumberOrThrow(c.req.param('id'), 'accessGrantId');
+      const id = parseInt(c.req.param('id'), 10);
       const accessGrant = await this.accessGrantsService.findById(id);
       
-      if (!accessGrant) {
+      if (_isNil(accessGrant)) {
         return c.json({ error: 'Access grant not found' }, 404);
       }
       
       return c.json(accessGrant);
     } catch (error) {
       console.error('Error getting access grant:', error);
-      if (error instanceof Error && error.message.startsWith('Invalid accessGrantId')) {
-        return c.json({ error: error.message }, 400);
-      }
       return c.json({ error: 'Failed to get access grant' }, 500);
     }
   };
 
   getAccessGrantsByUserId = async (c: Context) => {
     try {
-      const userId = toNumberOrThrow(c.req.param('userId'), 'userId');
+      const userId = parseInt(c.req.param('userId'), 10);
       const accessGrants = await this.accessGrantsService.findByUserId(userId);
       return c.json(accessGrants);
     } catch (error) {
       console.error('Error getting access grants:', error);
-      if (error instanceof Error && error.message.startsWith('Invalid userId')) {
-        return c.json({ error: error.message }, 400);
-      }
       return c.json({ error: 'Failed to get access grants' }, 500);
     }
   };
 
   getAccessGrantsByTargetId = async (c: Context) => {
     try {
-      const targetId = toNumberOrThrow(c.req.param('targetId'), 'targetId');
+      const targetId = parseInt(c.req.param('targetId'), 10);
       const accessGrants = await this.accessGrantsService.findByTargetId(targetId);
       return c.json(accessGrants);
     } catch (error) {
       console.error('Error getting access grants:', error);
-      if (error instanceof Error && error.message.startsWith('Invalid targetId')) {
-        return c.json({ error: error.message }, 400);
-      }
       return c.json({ error: 'Failed to get access grants' }, 500);
     }
   };
 
   getAccessGrantsByAccessTypeId = async (c: Context) => {
     try {
-      const accessTypeId = toNumberOrThrow(c.req.param('accessTypeId'), 'accessTypeId');
+      const accessTypeId = parseInt(c.req.param('accessTypeId'), 10);
       const accessGrants = await this.accessGrantsService.findByAccessTypeId(accessTypeId);
       return c.json(accessGrants);
     } catch (error) {
       console.error('Error getting access grants:', error);
-      if (error instanceof Error && error.message.startsWith('Invalid accessTypeId')) {
-        return c.json({ error: error.message }, 400);
-      }
       return c.json({ error: 'Failed to get access grants' }, 500);
     }
   };
 
   getAccessGrantsByUserAndTarget = async (c: Context) => {
     try {
-      const userId = toNumberOrThrow(c.req.param('userId'), 'userId');
-      const targetId = toNumberOrThrow(c.req.param('targetId'), 'targetId');
+      const userId = parseInt(c.req.param('userId'), 10);
+      const targetId = parseInt(c.req.param('targetId'), 10);
       const accessGrants = await this.accessGrantsService.findByUserAndTarget(userId, targetId);
       return c.json(accessGrants);
     } catch (error) {
       console.error('Error getting access grants:', error);
-      if (error instanceof Error && (
-        error.message.startsWith('Invalid userId') ||
-        error.message.startsWith('Invalid targetId')
-      )) {
-        return c.json({ error: error.message }, 400);
-      }
       return c.json({ error: 'Failed to get access grants' }, 500);
     }
   };
 
   createAccessGrant = async (c: Context) => {
     try {
-      const userId = toNumberOrThrow(c.req.header('X-User-ID'), 'X-User-ID');
+      const userId = c.get('userId');
       const body = await c.req.json();
-      body.user_id = toNumberOrThrow(body.user_id.toString(), 'userId');
-      body.access_type_id = toNumberOrThrow(body.access_type_id.toString(), 'accessTypeId');
-      body.resource_id = toNumberOrThrow(body.resource_id.toString(), 'resourceId');
+      body.user_id = parseInt(body.user_id.toString(), 10);
+      body.target_id = parseInt(body.target_id.toString(), 10);
+      body.access_type_id = parseInt(body.access_type_id.toString(), 10);
       body.last_updated_by = userId;
       const accessGrant = await this.accessGrantsService.create(body);
       return c.json(accessGrant, 201);
     } catch (error) {
       console.error('Error creating access grant:', error);
-      if (error instanceof Error && (
-        error.message.startsWith('Invalid X-User-ID') ||
-        error.message.startsWith('Invalid userId') ||
-        error.message.startsWith('Invalid accessTypeId') ||
-        error.message.startsWith('Invalid resourceId')
-      )) {
-        return c.json({ error: error.message }, 400);
-      }
       return c.json({ error: 'Failed to create access grant' }, 500);
     }
   };
 
   updateAccessGrant = async (c: Context) => {
     try {
-      const id = toNumberOrThrow(c.req.param('id'), 'accessGrantId');
-      const userId = toNumberOrThrow(c.req.header('X-User-ID'), 'X-User-ID');
+      const id = parseInt(c.req.param('id'), 10);
+      const userId = c.get('userId');
       const body = await c.req.json();
       if (body.user_id) {
-        body.user_id = toNumberOrThrow(body.user_id.toString(), 'userId');
+        body.user_id = parseInt(body.user_id.toString(), 10);
+      }
+      if (body.target_id) {
+        body.target_id = parseInt(body.target_id.toString(), 10);
       }
       if (body.access_type_id) {
-        body.access_type_id = toNumberOrThrow(body.access_type_id.toString(), 'accessTypeId');
-      }
-      if (body.resource_id) {
-        body.resource_id = toNumberOrThrow(body.resource_id.toString(), 'resourceId');
+        body.access_type_id = parseInt(body.access_type_id.toString(), 10);
       }
       body.last_updated_by = userId;
       const accessGrant = await this.accessGrantsService.update(id, body);
       
-      if (!accessGrant) {
+      if (_isNil(accessGrant)) {
         return c.json({ error: 'Access grant not found' }, 404);
       }
       
       return c.json(accessGrant);
     } catch (error) {
       console.error('Error updating access grant:', error);
-      if (error instanceof Error && (
-        error.message.startsWith('Invalid accessGrantId') ||
-        error.message.startsWith('Invalid X-User-ID') ||
-        error.message.startsWith('Invalid userId') ||
-        error.message.startsWith('Invalid accessTypeId') ||
-        error.message.startsWith('Invalid resourceId')
-      )) {
-        return c.json({ error: error.message }, 400);
-      }
       return c.json({ error: 'Failed to update access grant' }, 500);
     }
   };
 
   deleteAccessGrant = async (c: Context) => {
     try {
-      const id = toNumberOrThrow(c.req.param('id'), 'accessGrantId');
-      const userId = toNumberOrThrow(c.req.header('X-User-ID'), 'X-User-ID');
-
+      const id = parseInt(c.req.param('id'), 10);
+      const userId = c.get('userId');
+      
       const success = await this.accessGrantsService.delete(id, userId);
       
       if (!success) {
@@ -174,12 +139,6 @@ export class AccessGrantsController {
       return c.json({ message: 'Access grant deleted successfully' });
     } catch (error) {
       console.error('Error deleting access grant:', error);
-      if (error instanceof Error && (
-        error.message.startsWith('Invalid accessGrantId') ||
-        error.message.startsWith('Invalid X-User-ID')
-      )) {
-        return c.json({ error: error.message }, 400);
-      }
       return c.json({ error: 'Failed to delete access grant' }, 500);
     }
   };
