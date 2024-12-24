@@ -13,6 +13,7 @@ import { createUserRoleRouter } from './routes/user-role.routes.js'
 import { createAccessGrantsRouter } from './routes/access-grants.routes.js'
 import { createResourceAccessRoleRouter } from './routes/resource-access-role.routes.js'
 import dbRoutes from './routes/db.routes.js'
+import { serveStatic } from '@hono/node-server/serve-static';
 
 const app = new Hono()
 
@@ -52,6 +53,10 @@ app.notFound((c) => {
 
 // Routes
 app.get('/', (c) => c.json({ message: 'Hello Hono!' }))
+
+app.use('/static/*', serveStatic({ root: './dist', onNotFound(path, c) {
+    console.log(`${path} is not found, request to ${c.req.path}`)
+  } }));
 
 // Health check endpoint
 app.get('/health', async (c) => {

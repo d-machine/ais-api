@@ -20,6 +20,9 @@ RUN npm run build
 RUN mkdir -p dist/db && \
     cp -r src/db/tables dist/db/
 
+# Copy public files to dist directory
+RUN cp -r src/static dist/
+
 # Production image
 FROM node:20-alpine
 
