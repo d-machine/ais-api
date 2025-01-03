@@ -1,4 +1,5 @@
 import { Pool, QueryResult } from "pg";
+import { IFetchQuery } from "../types/general.js";
 
 export abstract class BaseService<T> {
   protected abstract tableName: string;
@@ -11,6 +12,42 @@ export abstract class BaseService<T> {
 
   async findAll(): Promise<T[]> {
     const query = `SELECT * FROM ${this.schema}.${this.tableName}`;
+    const result = await this.pool.query(query);
+    return result.rows;
+  }
+
+  async fetchDataWithSortingPaginationFiltering(
+    fetchQuery: IFetchQuery
+  ): Promise<T[]> {
+    const { sortData, paginationData, filtersData } = fetchQuery;
+
+    // Construct the WHERE clause using filtersData
+    const filterClauses =
+      filtersData
+        ?.map(
+          (filter) =>
+            `${filter.field} ${filter.operator || "LIKE"} %${filter.value}%`
+        )
+        .join(" AND ") || "";
+    const whereClause = filterClauses ? `WHERE ${filterClauses}` : "";
+
+    // Construct the ORDER BY clause using sortData
+    const orderByClause =
+      sortData?.map((sort) => `${sort.field} ${sort.order}`).join(", ") || "";
+
+    // Construct the LIMIT and OFFSET using paginationData
+    const limitClause = paginationData
+      ? `LIMIT ${paginationData.limit} OFFSET ${paginationData.offset}`
+      : "";
+
+    // Combine all clauses into the final query
+    const query = `
+        SELECT * FROM ${this.schema}.${this.tableName}
+        ${whereClause}
+        ${orderByClause ? `ORDER BY ${orderByClause}` : ""}
+        ${limitClause}
+    `;
+
     const result = await this.pool.query(query);
     return result.rows;
   }

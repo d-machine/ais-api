@@ -1,8 +1,8 @@
 import { BaseService } from './base.service.js';
-import { UserRole } from '../types/models.js';
+import { IUserRole } from '../types/models.js';
 import { Pool } from 'pg';
 
-export class UserRoleService extends BaseService<UserRole> {
+export class UserRoleService extends BaseService<IUserRole> {
   protected tableName = 'user_role';
 
   constructor(pool: Pool) {
@@ -64,7 +64,7 @@ export class UserRoleService extends BaseService<UserRole> {
     return result.rows;
   }
 
-  async findByUserAndRole(userId: number, roleId: number): Promise<UserRole | null> {
+  async findByUserAndRole(userId: number, roleId: number): Promise<IUserRole | null> {
     const query = `
       SELECT ur.*, u.username, r.name as role_name,
              ur.last_updated_at as assigned_at,
@@ -74,7 +74,18 @@ export class UserRoleService extends BaseService<UserRole> {
       JOIN ${this.schema}.role r ON ur.role_id = r.id
       WHERE ur.user_id = $1 AND ur.role_id = $2
     `;
-    const result = await this.executeQuery<UserRole>(query, [userId, roleId]);
+    const result = await this.executeQuery<IUserRole>(query, [userId, roleId]);
     return result.rows[0] || null;
   }
-} 
+
+  async isSuperAdmin(userId:number): Promise<boolean> {
+    const query = `
+      SELECT COUNT(*) as super_admin_count
+      FROM ${this.schema}.${this.tableName} ur
+      JOIN ${this.schema}.role r ON ur.role_id = r.id
+      WHERE ur.user_id = $1 AND r.name = 'super_admin'
+    `;
+    const result = await this.executeQuery<any>(query, [userId]);
+    return result.rows[0].super_admin_count > 0;
+  }
+}

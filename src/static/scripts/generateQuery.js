@@ -144,11 +144,6 @@ CREATE TRIGGER ${actualTableName}_update_trigger
     FOR EACH ROW
     EXECUTE FUNCTION ${schemaName}.${triggerFunctionName}();
 
--- Create view for current ${actualTableName}
-CREATE OR REPLACE VIEW ${schemaName}.${actualTableName}_current AS
-SELECT ${columnNames.join(', ')}
-FROM ${schemaName}.${actualTableName};
-
 -- Function to delete ${actualTableName}
 CREATE OR REPLACE FUNCTION ${schemaName}.${deleteFunctionName}(
     ${actualTableName}_id_to_delete INTEGER,

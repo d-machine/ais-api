@@ -9,7 +9,6 @@ export const createAccessGrantsRouter = (pool: Pool) => {
   app.get('/', accessGrantsController.getAccessGrants);
   app.get('/user/:userId', accessGrantsController.getAccessGrantsByUserId);
   app.get('/target/:targetId', accessGrantsController.getAccessGrantsByTargetId);
-  app.get('/access-type/:accessTypeId', accessGrantsController.getAccessGrantsByAccessTypeId);
   app.get('/user/:userId/target/:targetId', accessGrantsController.getAccessGrantsByUserAndTarget);
   app.get('/:id', accessGrantsController.getAccessGrantById);
   app.post('/', accessGrantsController.createAccessGrant);

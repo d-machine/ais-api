@@ -1,13 +1,16 @@
 import { BaseService } from './base.service.js';
 import { Pool } from 'pg';
 import jwt from 'jsonwebtoken';
-import { RefreshToken, User } from '../types/models.js';
+import { IRefreshToken, IUser } from '../types/models.js';
 import { UserService } from './user.service.js';
-import { _get, _isNil } from '../utils/aisLodash.js';
+import { _forEach, _get, _isNil } from '../utils/aisLodash.js';
+import { ResourceService } from './resource.service.js';
+// import { ResourceHierarchyService } from './resource-hierarchy.service.js';
 
-export class AuthService extends BaseService<RefreshToken> {
+export class AuthService extends BaseService<IRefreshToken> {
   protected tableName = 'refresh_token';
   private userService: UserService;
+  private resourceService: ResourceService;
   private readonly ACCESS_TOKEN_SECRET: string;
   private readonly REFRESH_TOKEN_SECRET: string;
   private readonly ACCESS_TOKEN_EXPIRY: string = '1d';  // 1 day
@@ -16,31 +19,11 @@ export class AuthService extends BaseService<RefreshToken> {
   constructor(pool: Pool) {
     super(pool);
     this.userService = new UserService(pool);
+    this.resourceService = new ResourceService(pool);
     
     // Get secrets from environment variables
     this.ACCESS_TOKEN_SECRET = process.env.ACCESS_TOKEN_SECRET || 'access_secret';
     this.REFRESH_TOKEN_SECRET = process.env.REFRESH_TOKEN_SECRET || 'refresh_secret';
-  }
-
-  /**
-   * Override create method to prevent direct creation
-   */
-  async create(data: Partial<RefreshToken>): Promise<RefreshToken> {
-    throw new Error('Use login or refresh methods to create tokens');
-  }
-
-  /**
-   * Override update method to prevent direct updates
-   */
-  async update(id: number, data: Partial<RefreshToken>): Promise<RefreshToken | null> {
-    throw new Error('Refresh tokens cannot be updated');
-  }
-
-  /**
-   * Override delete method to use custom logout logic
-   */
-  async delete(id: number, userId: number): Promise<boolean> {
-    throw new Error('Use logout method to delete refresh tokens');
   }
 
   /**
@@ -58,6 +41,8 @@ export class AuthService extends BaseService<RefreshToken> {
     if (!isValid) {
       return null;
     }
+
+    await this.resourceService.generateResourceTree(user.id);
 
     // Generate tokens
     return this.generateTokens(user);
@@ -83,6 +68,8 @@ export class AuthService extends BaseService<RefreshToken> {
         return null;
       }
 
+      await this.resourceService.generateResourceTree(user.id);
+
       // Generate new tokens
       return this.generateTokens(user);
     } catch (error) {
@@ -93,25 +80,24 @@ export class AuthService extends BaseService<RefreshToken> {
   /**
    * Revoke refresh token
    */
-  async logout(userId: number, refreshToken: string, updatedBy: number): Promise<boolean> {
-    try {
-      const query = `
-        DELETE FROM ${this.schema}.${this.tableName}
-        WHERE user_id = $1 AND token = $2
-        RETURNING id
-      `;
-      const result = await this.executeQuery(query, [userId, refreshToken]);
-      return result.rowCount ? result.rowCount > 0 : false;
-    } catch (error) {
-      console.error('Error during logout:', error);
-      return false;
+  async logout(userId: number): Promise<boolean> {
+
+    const query = `SELECT * FROM ${this.schema}.${this.tableName} WHERE userId = $1`;
+    const result = await this.pool.query<IRefreshToken>(query, [userId]);
+    
+    if (result.rowCount === 0) {
+      return true;
     }
+
+    _forEach(result.rows, row => this.delete(row.id, userId));
+
+    return true;
   }
 
   /**
    * Generate both access and refresh tokens
    */
-  private async generateTokens(user: User): Promise<{ accessToken: string; refreshToken: string }> {
+  private async generateTokens(user: IUser): Promise<{ accessToken: string; refreshToken: string }> {
     // Generate access token with numeric user ID
     const accessToken = jwt.sign(
       { userId: user.id },
@@ -134,8 +120,7 @@ export class AuthService extends BaseService<RefreshToken> {
     await this.storeRefreshToken({
       user_id: user.id,
       token: refreshToken,
-      expires_at: expiresAt,
-      last_updated_by: user.id
+      expires_at: expiresAt
     });
 
     return { accessToken, refreshToken };
@@ -144,24 +129,23 @@ export class AuthService extends BaseService<RefreshToken> {
   /**
    * Store refresh token in database
    */
-  private async storeRefreshToken(data: Partial<RefreshToken>): Promise<void> {
+  private async storeRefreshToken(data: Partial<IRefreshToken>): Promise<void> {
     const query = `
       INSERT INTO ${this.schema}.${this.tableName}
-      (user_id, token, expires_at, last_updated_by)
-      VALUES ($1, $2, $3, $4)
+      (user_id, token, expires_at)
+      VALUES ($1, $2, $3)
     `;
     await this.executeQuery(query, [
       data.user_id,
       data.token,
-      data.expires_at,
-      data.last_updated_by
+      data.expires_at
     ]);
   }
 
   /**
    * Find valid refresh token for user
    */
-  private async findValidRefreshToken(userId: number, token: string): Promise<RefreshToken | null> {
+  private async findValidRefreshToken(userId: number, token: string): Promise<IRefreshToken | null> {
     const query = `
       SELECT *
       FROM ${this.schema}.${this.tableName}
@@ -169,7 +153,7 @@ export class AuthService extends BaseService<RefreshToken> {
         AND token = $2
         AND expires_at > CURRENT_TIMESTAMP
     `;
-    const result = await this.executeQuery<RefreshToken>(query, [userId, token]);
+    const result = await this.executeQuery<IRefreshToken>(query, [userId, token]);
     return _get(result, 'rows[0]', null);
   }
 } 

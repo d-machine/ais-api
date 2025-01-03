@@ -58,17 +58,6 @@ export class AccessGrantsController {
     }
   };
 
-  getAccessGrantsByAccessTypeId = async (c: Context) => {
-    try {
-      const accessTypeId = parseInt(c.req.param('accessTypeId'), 10);
-      const accessGrants = await this.accessGrantsService.findByAccessTypeId(accessTypeId);
-      return c.json(accessGrants);
-    } catch (error) {
-      console.error('Error getting access grants:', error);
-      return c.json({ error: 'Failed to get access grants' }, 500);
-    }
-  };
-
   getAccessGrantsByUserAndTarget = async (c: Context) => {
     try {
       const userId = parseInt(c.req.param('userId'), 10);
@@ -87,7 +76,6 @@ export class AccessGrantsController {
       const body = await c.req.json();
       body.user_id = parseInt(body.user_id.toString(), 10);
       body.target_id = parseInt(body.target_id.toString(), 10);
-      body.access_type_id = parseInt(body.access_type_id.toString(), 10);
       body.last_updated_by = userId;
       const accessGrant = await this.accessGrantsService.create(body);
       return c.json(accessGrant, 201);
@@ -107,9 +95,6 @@ export class AccessGrantsController {
       }
       if (body.target_id) {
         body.target_id = parseInt(body.target_id.toString(), 10);
-      }
-      if (body.access_type_id) {
-        body.access_type_id = parseInt(body.access_type_id.toString(), 10);
       }
       body.last_updated_by = userId;
       const accessGrant = await this.accessGrantsService.update(id, body);

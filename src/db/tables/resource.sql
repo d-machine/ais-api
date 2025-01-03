@@ -11,7 +11,7 @@ CREATE TABLE IF NOT EXISTS administration.resource (
     id SERIAL PRIMARY KEY,
     name VARCHAR(255) NOT NULL UNIQUE,
     description VARCHAR(255),
-    parent_id INTEGER REFERENCES administration.resource(id),
+    parent_id int NOT NULL,
     last_updated_at TIMESTAMP NOT NULL DEFAULT NOW(),
     last_updated_by int REFERENCES administration.user(id)
 );
@@ -22,7 +22,7 @@ CREATE TABLE IF NOT EXISTS administration.resource_history (
     resource_id INT,
     name VARCHAR(255),
     description VARCHAR(255),
-    parent_id INTEGER,
+    parent_id int NOT NULL,
     operation VARCHAR(10),
     operation_at TIMESTAMP,
     operation_by int REFERENCES administration.user(id)

@@ -58,17 +58,6 @@ export class ResourceAccessRoleController {
     }
   };
 
-  getResourceAccessRolesByAccessTypeId = async (c: Context) => {
-    try {
-      const accessTypeId = parseInt(c.req.param('accessTypeId'), 10);
-      const resourceAccessRoles = await this.resourceAccessRoleService.findByAccessTypeId(accessTypeId);
-      return c.json(resourceAccessRoles);
-    } catch (error) {
-      console.error('Error getting resource access roles:', error);
-      return c.json({ error: 'Failed to get resource access roles' }, 500);
-    }
-  };
-
   getResourceAccessRolesByResourceAndRole = async (c: Context) => {
     try {
       const resourceId = parseInt(c.req.param('resourceId'), 10);
@@ -87,7 +76,6 @@ export class ResourceAccessRoleController {
       const body = await c.req.json();
       body.resource_id = parseInt(body.resource_id.toString(), 10);
       body.role_id = parseInt(body.role_id.toString(), 10);
-      body.access_type_id = parseInt(body.access_type_id.toString(), 10);
       body.last_updated_by = userId;
       const resourceAccessRole = await this.resourceAccessRoleService.create(body);
       return c.json(resourceAccessRole, 201);
@@ -107,9 +95,6 @@ export class ResourceAccessRoleController {
       }
       if (body.role_id) {
         body.role_id = parseInt(body.role_id.toString(), 10);
-      }
-      if (body.access_type_id) {
-        body.access_type_id = parseInt(body.access_type_id.toString(), 10);
       }
       body.last_updated_by = userId;
       const resourceAccessRole = await this.resourceAccessRoleService.update(id, body);

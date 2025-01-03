@@ -1,17 +1,17 @@
 import { BaseService } from './base.service.js';
-import { Role } from '../types/models.js';
+import { IRole } from '../types/models.js';
 import { Pool } from 'pg';
 
-export class RoleService extends BaseService<Role> {
+export class RoleService extends BaseService<IRole> {
   protected tableName = 'role';
 
   constructor(pool: Pool) {
     super(pool);
   }
 
-  async findByName(name: string): Promise<Role | null> {
+  async findByName(name: string): Promise<IRole | null> {
     const query = `SELECT * FROM ${this.schema}.${this.tableName} WHERE name = $1`;
-    const result = await this.executeQuery<Role>(query, [name]);
+    const result = await this.executeQuery<IRole>(query, [name]);
     return result.rows[0] || null;
   }
 

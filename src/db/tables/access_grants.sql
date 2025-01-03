@@ -11,12 +11,12 @@ CREATE TABLE IF NOT EXISTS administration.access_grants (
     id SERIAL PRIMARY KEY,
     user_id INTEGER REFERENCES administration.user(id),
     target_id INTEGER REFERENCES administration.user(id),
-    access_type_id INTEGER REFERENCES administration.access_type(id),
+    access_type access_type,
     valid_from TIMESTAMP,
     valid_until TIMESTAMP,
     last_updated_at TIMESTAMP NOT NULL DEFAULT NOW(),
     last_updated_by int REFERENCES administration.user(id),
-    UNIQUE(user_id, target_id, access_type_id)
+    UNIQUE(user_id, target_id, access_type)
 );
 
 -- Create history table
@@ -25,7 +25,7 @@ CREATE TABLE IF NOT EXISTS administration.access_grants_history (
     access_grant_id INT,
     user_id INTEGER,
     target_id INTEGER,
-    access_type_id INTEGER,
+    access_type access_type,
     valid_from TIMESTAMP,
     valid_until TIMESTAMP,
     operation VARCHAR(10),
@@ -38,23 +38,11 @@ CREATE OR REPLACE FUNCTION administration.log_access_grants_changes()
 RETURNS TRIGGER AS $$
 BEGIN
     IF TG_OP = 'INSERT' THEN
-        INSERT INTO administration.access_grants_history (
-            access_grant_id, user_id, target_id, access_type_id, 
-            valid_from, valid_until, operation, operation_at, operation_by
-        )
-        VALUES (
-            NEW.id, NEW.user_id, NEW.target_id, NEW.access_type_id,
-            NEW.valid_from, NEW.valid_until, 'INSERT', NEW.last_updated_at, NEW.last_updated_by
-        );
+        INSERT INTO administration.access_grants_history (access_grant_id, user_id, target_id, access_type, valid_from, valid_until, operation, operation_at, operation_by)
+        VALUES (NEW.id, NEW.user_id, NEW.target_id, NEW.access_type, NEW.valid_from, NEW.valid_until, 'INSERT', NEW.last_updated_at, NEW.last_updated_by);
     ELSIF TG_OP = 'UPDATE' THEN
-        INSERT INTO administration.access_grants_history (
-            access_grant_id, user_id, target_id, access_type_id,
-            valid_from, valid_until, operation, operation_at, operation_by
-        )
-        VALUES (
-            NEW.id, NEW.user_id, NEW.target_id, NEW.access_type_id,
-            NEW.valid_from, NEW.valid_until, 'UPDATE', NEW.last_updated_at, NEW.last_updated_by
-        );
+        INSERT INTO administration.access_grants_history (access_grant_id, user_id, target_id, access_type, valid_from, valid_until, operation, operation_at, operation_by)
+        VALUES (NEW.id, NEW.user_id, NEW.target_id, NEW.access_type, NEW.valid_from, NEW.valid_until, 'UPDATE', NEW.last_updated_at, NEW.last_updated_by);
     END IF;
     RETURN NEW;
 END;
@@ -82,11 +70,11 @@ RETURNS VOID AS $$
 BEGIN
     -- Insert into history before deletion
     INSERT INTO administration.access_grants_history (
-        access_grant_id, user_id, target_id, access_type_id,
+        access_grant_id, user_id, target_id, access_type,
         valid_from, valid_until, operation, operation_at, operation_by
     )
     SELECT 
-        id, user_id, target_id, access_type_id,
+        id, user_id, target_id, access_type,
         valid_from, valid_until, 'DELETE', NOW(), deleted_by_user_id
     FROM administration.access_grants
     WHERE id = access_grant_id_to_delete;

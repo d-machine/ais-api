@@ -9,7 +9,6 @@ export const createResourceAccessRoleRouter = (pool: Pool) => {
   app.get('/', resourceAccessRoleController.getResourceAccessRoles);
   app.get('/resource/:resourceId', resourceAccessRoleController.getResourceAccessRolesByResourceId);
   app.get('/role/:roleId', resourceAccessRoleController.getResourceAccessRolesByRoleId);
-  app.get('/access-type/:accessTypeId', resourceAccessRoleController.getResourceAccessRolesByAccessTypeId);
   app.get('/resource/:resourceId/role/:roleId', resourceAccessRoleController.getResourceAccessRolesByResourceAndRole);
   app.get('/:id', resourceAccessRoleController.getResourceAccessRoleById);
   app.post('/', resourceAccessRoleController.createResourceAccessRole);

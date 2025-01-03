@@ -7,13 +7,14 @@ import { timing } from 'hono/timing'
 import { dbClient } from './db/dbClient.js'
 import { createUserRouter } from './routes/user.routes.js'
 import { createRoleRouter } from './routes/role.routes.js'
-import { createAccessTypeRouter } from './routes/access-type.routes.js'
 import { createResourceRouter } from './routes/resource.routes.js'
 import { createUserRoleRouter } from './routes/user-role.routes.js'
 import { createAccessGrantsRouter } from './routes/access-grants.routes.js'
 import { createResourceAccessRoleRouter } from './routes/resource-access-role.routes.js'
 import dbRoutes from './routes/db.routes.js'
 import { serveStatic } from '@hono/node-server/serve-static';
+import { authMiddleware } from './middlewares/auth.middleware.js'
+import { createAuthRouter } from './routes/auth.routes.js'
 
 const app = new Hono()
 
@@ -85,14 +86,23 @@ app.get('/health', async (c) => {
 
 // Mount API routes
 const postgresPool = dbClient.getPostgresClient().getPool();
+
+app.route('/api/db', dbRoutes);
+
+// Auth API routes
+app.route('/api/auth', createAuthRouter(postgresPool));
+
+// Apply authMiddleware
+app.use('*', authMiddleware);
+
+
 app.route('/api/users', createUserRouter(postgresPool))
 app.route('/api/roles', createRoleRouter(postgresPool))
-app.route('/api/access-types', createAccessTypeRouter(postgresPool))
 app.route('/api/resources', createResourceRouter(postgresPool))
 app.route('/api/user-roles', createUserRoleRouter(postgresPool))
 app.route('/api/access-grants', createAccessGrantsRouter(postgresPool))
 app.route('/api/resource-access-roles', createResourceAccessRoleRouter(postgresPool))
-app.route('/api/db', dbRoutes)
+
 
 const port = Number(process.env.PORT) || 3000
 

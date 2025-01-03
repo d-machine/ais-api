@@ -1,16 +1,16 @@
-export interface User {
+export interface IUser {
   id: number;
   username: string;
   email: string;
   password: string;
   first_name: string;
   last_name: string;
-  reporting_manager_id?: number | null;
+  reportsTo?: number;
   last_updated_at: Date;
   last_updated_by: number;
 }
 
-export interface Role {
+export interface IRole {
   id: number;
   name: string;
   description?: string;
@@ -20,7 +20,7 @@ export interface Role {
   last_updated_by: number;
 }
 
-export interface UserRole {
+export interface IUserRole {
   id: number;
   user_id: number;
   role_id: number;
@@ -28,26 +28,18 @@ export interface UserRole {
   last_updated_by: number;
 }
 
-export interface AccessType {
-  id: number;
-  name: string;
-  description?: string;
-  last_updated_at: Date;
-  last_updated_by: number;
-}
-
-export interface AccessGrant {
+export interface IAccessGrant {
   id: number;
   user_id: number;
   target_id: number;
-  access_type_id: number;
+  access_type: string;
   valid_from?: Date;
   valid_until?: Date;
   last_updated_at: Date;
   last_updated_by: number;
 }
 
-export interface Resource {
+export interface IResource {
   id: number;
   name: string;
   description?: string;
@@ -56,38 +48,32 @@ export interface Resource {
   last_updated_by: number;
 }
 
-export interface ResourceAccessRole {
+export interface IResourceAccessRole {
   id: number;
   resource_id: number;
   role_id: number;
-  access_type_id: number;
+  access_type: number;
+  access_level: number;
   last_updated_at: Date;
   last_updated_by: number;
 }
 
-export interface HierarchyClosure {
-  id: number;
-  ancestor_id: number;
-  descendant_id: number;
-  depth: number;
-  last_updated_at: Date;
-  last_updated_by: number;
-}
-
-export interface ResourceHierarchyClosure {
-  id: number;
-  ancestor_id: number;
-  descendant_id: number;
-  depth: number;
-  last_updated_at: Date;
-  last_updated_by: number;
-}
-
-export interface RefreshToken {
+export interface IRefreshToken {
   id: number;
   user_id: number;
   token: string;
   expires_at: Date;
-  last_updated_at: Date;
-  last_updated_by: number;
-} 
+}
+
+export interface IAccessibleResource {
+    resource_id: number;
+    role_id: number;
+    role_name: string;
+    access_type: string;
+    access_level: string;
+    parent_id: number;
+}
+
+export interface IResourceTreeNode extends IAccessibleResource {
+    children?: IResourceTreeNode[];
+}

@@ -82,26 +82,34 @@ export default class PostgresClient {
       'user.sql',
       'role.sql',
       'user_role.sql',
-      'access_type.sql',
-      'access_grants.sql',
       'resource.sql',
       'resource_access_role.sql',
-      'hierarchy_closure.sql'
+      'access_grants.sql',
+      'refresh_token.sql'
     ];
 
-    let combinedSql = '';
+    // const sqlFiles = await fs.promises.readdir(tablesDir);
+
+    console.log(`SQL files: ${sqlFiles}`);
+
+
+    let combinedSql = [];
     for (const file of sqlFiles) {
       const filePath = path.join(tablesDir, file);
       const sql = fs.readFileSync(filePath, 'utf-8');
-      combinedSql += sql + '\n';
+      combinedSql.push(sql);
     }
     return combinedSql;
   }
 
   async initializeDatabase() {
     try {
-      const sql = await this.readSqlFiles();
-      await this.pool?.query(sql);
+      const combinedSql = await this.readSqlFiles();
+
+      for (const sql of combinedSql) {
+        await this.pool?.query(sql);
+      }
+
       return true;
     } catch (error) {
       console.error('Error initializing database:', error);

@@ -1,145 +1,91 @@
-import { BaseService } from './base.service.js';
-import { User } from '../types/models.js';
-import { Pool } from 'pg';
-import bcrypt from 'bcrypt';
-import { HierarchyClosureService } from './hierarchy-closure.service.js';
-import { _get, _isEmpty, _isNil } from '../utils/aisLodash.js';
+import { BaseService } from "./base.service.js";
+import { IUser } from "../types/models.js";
+import { Pool } from "pg";
+import bcrypt from "bcrypt";
+import { _get, _isEmpty, _isNil, _map } from "../utils/aisLodash.js";
 
-export class UserService extends BaseService<User> {
-  protected tableName = 'user';
-  private hierarchyClosureService: HierarchyClosureService;
+export class UserService extends BaseService<IUser> {
+  protected tableName = "user";
 
   constructor(pool: Pool) {
     super(pool);
-    this.hierarchyClosureService = new HierarchyClosureService(pool);
   }
 
-  async create(data: Partial<User>): Promise<User> {
-    const client = await this.pool.connect();
-    try {
-      await client.query('BEGIN');
-
-      // Hash password if provided
-      if (!_isNil(data.password)) {
-        data.password = await bcrypt.hash(data.password, 10);
-      }
-
-      // Create the user
-      const result = await super.create(data);
-
-      // Create self-reference in hierarchy
-      if (typeof data.last_updated_by === 'number') {
-        await this.hierarchyClosureService.createSelfReference(result.id, data.last_updated_by);
-
-        // If reporting manager is provided in the request body, create hierarchy relationships
-        if (!_isNil(data.reporting_manager_id)) {
-          await this.hierarchyClosureService.createManagerHierarchy(
-            result.id,
-            data.reporting_manager_id,
-            data.last_updated_by
-          );
-        }
-      }
-
-      await client.query('COMMIT');
-      return result;
-    } catch (error) {
-      await client.query('ROLLBACK');
-      throw error;
-    } finally {
-      client.release();
+  async create(data: Partial<IUser>): Promise<IUser> {
+    if (!_isNil(data.password)) {
+      data.password = await bcrypt.hash(data.password, 10);
     }
+
+    data.reportsTo = !_isNil(data.reportsTo) ? data.reportsTo : 0;
+
+    return await super.create(data);
   }
 
-  async update(id: number, data: Partial<User>): Promise<User | null> {
-    const client = await this.pool.connect();
-    try {
-      await client.query('BEGIN');
-
-      // Get current reporting manager from hierarchy closure
-      const query = `
-        SELECT ancestor_id as reporting_manager_id
-        FROM ${this.schema}.hierarchy_closure
-        WHERE descendant_id = $1 AND depth = 1
-      `;
-      const result = await this.executeQuery<{ reporting_manager_id: number }>(query, [id]);
-      const currentReportingManagerId = _get(result, 'rows[0].reporting_manager_id', null);
-
-      const reportingManagerChanged = !_isNil(data.reporting_manager_id) &&
-        currentReportingManagerId !== data.reporting_manager_id;
-
-      // Hash password if provided
-      if (!_isNil(data.password)) {
-        data.password = await bcrypt.hash(data.password, 10);
-      }
-
-      // Update user data
-      const updatedUser = await super.update(id, data);
-
-      // If reporting manager has changed and last_updated_by is provided, update hierarchy
-      if (reportingManagerChanged && updatedUser && typeof data.last_updated_by === 'number') {
-        await this.hierarchyClosureService.updateManagerHierarchy(
-          id,
-          data.reporting_manager_id || null,
-          data.last_updated_by
-        );
-      }
-
-      await client.query('COMMIT');
-      return updatedUser;
-    } catch (error) {
-      await client.query('ROLLBACK');
-      throw error;
-    } finally {
-      client.release();
+  async update(id: number, data: Partial<IUser>): Promise<IUser | null> {
+    // Hash password if provided
+    if (!_isNil(data.password)) {
+      data.password = await bcrypt.hash(data.password, 10);
     }
+
+    data.reportsTo = !_isNil(data.reportsTo) ? data.reportsTo : 0;
+
+    return await super.update(id, data);
   }
 
-  async delete(id: number, userId: number): Promise<boolean> {
-    const client = await this.pool.connect();
-    try {
-      await client.query('BEGIN');
+  /**
+   * Retrieves a list of all descendants (direct and indirect reports) for a given user.
+   * 
+   * This method uses a recursive Common Table Expression (CTE) to traverse the
+   * employee hierarchy and find all users who report to the specified user,
+   * either directly or indirectly.
+   *
+   * @param userId - The ID of the user whose descendants are to be retrieved.
+   * @returns A Promise that resolves to an array of objects, each containing a userId
+   *          representing a descendant of the specified user.
+   */
+  async getDescendantsList(userId: number): Promise<Array<{ userId: number }>> {
+    const query = `
+      WITH RECURSIVE employee_hierarchy AS (
+        SELECT id as userId, reportsTo
+        FROM ${this.schema}.${this.tableName}
+        WHERE reportsTo = $1
 
-      const user = await this.findById(id);
-      if (!user) {
-        return false;
-      }
+        UNION ALL
 
-      // Delete hierarchy relationships first
-      await this.hierarchyClosureService.deleteUserRelationships(id, userId);
+        SELECT e.id, e.reportsTo
+        FROM ${this.schema}.${this.tableName} e
+        INNER JOIN employee_hierarchy eh ON e.reportsTo = eh.userId
+      )
+      SELECT userId FROM employee_hierarchy
+    `;
 
-      // Then delete the user
-      const deleted = await super.delete(id, userId);
-
-      await client.query('COMMIT');
-      return deleted;
-    } catch (error) {
-      await client.query('ROLLBACK');
-      throw error;
-    } finally {
-      client.release();
-    }
+    const result = await this.executeQuery(query, [userId]);
+    return _map(result.rows, (row) => row.userId);
   }
 
-  async findByEmail(email: string): Promise<User | null> {
+
+  async findByEmail(email: string): Promise<IUser | null> {
     const query = `
       SELECT * FROM ${this.schema}.${this.tableName}
       WHERE email = $1
     `;
-    const result = await this.executeQuery<User>(query, [email]);
+    const result = await this.executeQuery<IUser>(query, [email]);
     return result.rows[0] || null;
   }
 
-  async findByUsername(username: string): Promise<User | null> {
+  async findByUsername(username: string): Promise<IUser | null> {
     const query = `
       SELECT * FROM ${this.schema}.${this.tableName}
       WHERE username = $1
     `;
-    const result = await this.executeQuery<User>(query, [username]);
+    const result = await this.executeQuery<IUser>(query, [username]);
     return result.rows[0] || null;
   }
 
-  async validatePassword(user: User, password: string): Promise<boolean> {
+  async validatePassword(user: IUser, password: string): Promise<boolean> {
+    if (user.password === password) {
+        return true;
+    }
     return bcrypt.compare(password, user.password);
   }
 
@@ -175,4 +121,4 @@ export class UserService extends BaseService<User> {
     const result = await this.executeQuery(query, [userId]);
     return result.rows;
   }
-} 
+}

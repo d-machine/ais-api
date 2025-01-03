@@ -55,13 +55,8 @@ export class AuthController {
   logout = async (c: Context) => {
     try {
       const userId = c.get('userId');
-      const refreshToken = c.req.header('X-Refresh-Token');
-      
-      if (_isNil(refreshToken)) {
-        return c.json({ error: 'Refresh token is required' }, 400);
-      }
 
-      const success = await this.authService.logout(userId, refreshToken, userId);
+      const success = await this.authService.logout(userId);
       
       if (!success) {
         return c.json({ error: 'Failed to logout' }, 400);

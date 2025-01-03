@@ -8,7 +8,7 @@ declare module 'hono' {
   }
 }
 
-export const verifyAccessToken = async (c: Context, next: Next) => {
+export const authMiddleware = async (c: Context, next: Next) => {
   try {
     const accessToken = c.req.header('Authorization')?.replace('Bearer ', '');
     
