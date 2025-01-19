@@ -1,0 +1,109 @@
+actionType: EXECUTE_QUERY
+queryInfo:
+  returnType: MULTIPLE_ROWS
+  query: |
+    SELECT
+    user_id, username, email, full_name, reports_to, roles,
+    last_updated_by, last_updated_at 
+    FROM
+      (
+        SELECT
+          u.id as user_id, u.username as username,
+          u.email as email, u.first_name as first_name, u.last_name as last_name,
+          TRIM(CONCAT(u.first_name, ' ', u.last_name)) as full_name,
+          string_agg(r.name, ', ') as roles, string_agg(r.role_id::text, ', ') as role_ids,
+          string_agg(ur.id::text, ', ') as user_role_ids,
+          TRIM(CONCAT(rt.first_name, ' ', rt.last_name)) as reports_to,
+          u.last_updated_by as last_updated_by, u.last_updated_at as last_updated_at
+        FROM
+          administration.user u
+          LEFT JOIN administration.user rt ON u.reports_to = rt.id
+          LEFT JOIN administration.user_role ur ON u.id = ur.user_id
+          LEFT JOIN administration.role r ON ur.role_id = r.id
+        GROUP BY
+          u.id, u.username, u.email, u.first_name, u.last_name,
+          rt.first_name, rt.last_name,
+          u.last_updated_by, u.last_updated_at
+      ) as user_list_view
+  options:
+    applyAccessLevelRestrictions: false
+    pagenation: true
+    filterable: true
+    sortable: true
+    onSuccess: refresh
+    onFailure: showErrorPage
+applicableActions:
+  - add
+  - edit
+  - changePassword
+  - delete
+actionConfig:
+  add:
+    label: Add New User
+    actionType: DISPLAY_FORM
+    formConfig: add-user
+    onSuccess: refresh
+    accessTypeRequired: 6-ADD
+  edit:
+    label: Edit User
+    actionType: DISPLAY_FORM
+    payload:
+      - user_id
+    formConfig: edit-user
+    onSuccess: refresh
+    accessTypeRequired: 6-EDIT
+  changePassword:
+    label: Change Password
+    actionType: DISPLAY_FORM
+    payload:
+      - user_id
+    formConfig: change-password
+    onSuccess: refresh
+    accessTypeRequired: 6-EDIT
+  delete:
+    label: Delete User
+    actionType: EXECUTE_QUERY
+    queryInfo:
+      returnType: SINGLE_ROW
+      query: Select delete_user($1, $2) as id;
+      payload:
+        - user_id
+    onSuccess: refresh
+    onFailure: showErrorSnackbar
+    accessTypeRequired: 6-DELETE
+columns:
+  - name: username
+    label: Username
+    width: 200
+    sortable: true
+    filterType: string
+  - name: email
+    label: Email
+    width: 200
+    sortable: true
+    filterType: string
+  - name: full_name
+    label: Full Name
+    width: 200
+    sortable: true
+    filterType: string
+  - name: reports_to
+    label: Reports To
+    width: 200
+    sortable: true
+    filterType: string
+  - name: roles
+    label: Roles
+    width: 200
+    sortable: true
+    filterType: string
+  - name: last_updated_by
+    label: Last Updated By
+    width: 200
+    sortable: true
+    filterType: string
+  - name: last_updated_at
+    label: Last Updated At
+    width: 200
+    sortable: true
+    filterType: string

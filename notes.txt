@@ -115,3 +115,44 @@ Prefill/readonly Field Flow:
         dependencies: [{ field_id: "field_id", column_id: "column_id" }]
     }
 
+
+
+entry -> will first show a list - non editable
+actions:
+    - add new -> form open
+    - edit -> form open
+    - delete -> delete entry
+
+
+roles ->
+ -> role name
+ -> role related information
+ -> table -> resource, access_level, access_types
+
+formStore ->
+    key = formId -> resource+ (randomid | dbid)
+    value = formData
+
+Edit Example -
+ -> fieldname -> currentValue, updatedValue
+ -> fieldname -> currentValue, updatedValue
+
+ -> table ->
+    rowOrder -> Array
+    rows -> object
+      -> key -> rowId
+      -> value -> currentValue, updatedValue
+
+      {rowId: {currentValue: "", updatedValue: ""}}
+
+
+saveRow(id, data) {
+    edit -> post(id, data), add -> post(data)
+
+    if (success) {
+        in case of edit -> fetch row for id, and remove all updated values, and add/update all current values
+        in case of add -> perform additional step -> change the key to dbid and make the same change in rowOrder
+    }
+}
+
+

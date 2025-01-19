@@ -1,0 +1,138 @@
+sections:
+  - sectionType: FIELDS
+    sectionName: Role Details
+    queryReturnType: SINGLE_ROW
+    query: |
+      SELECT
+        id as role_id, name as role_name, description
+      FROM
+        administration.role
+      WHERE
+        id = $1
+    payload:
+      - role_id
+    applicableActions:
+      - SAVE
+      - CANCEL
+    actionConfig:
+      SAVE:
+        label: Create Role
+        actionType: EXECUTE_QUERY
+        query: SELECT administration.insert_role($1, $2, $3) as id;
+        queryReturnType: SCALAR
+        payload:
+          - role_name
+          - description
+        contextParams:
+          - current_user_id
+        onSuccess: saveResponseAndGoToNextSection
+        onFailure: showErrorSnackbar
+      CANCEL:
+        label: Discard Changes
+    fields:
+      - name: role_name
+        label: Role Name
+        type: TEXT
+        required: true
+      - name: description
+        label: Description
+        type: TEXTAREA
+  - sectionType: TABLE
+    sectionName: Claims
+    queryReturnType: MULTIPLE_ROWS
+    query: |
+      SELECT
+        c.role_id as role_id, c.id as claim_id, r.name as resource_name,
+        r.id as resource_id, c.access_type_ids, c.access_level_id
+      FROM
+        administration.claim c
+        JOIN administration.resource r ON c.resource_id = r.id
+      WHERE
+        c.role_id = $1
+    payload:
+      - role_id
+    applicableActions:
+      - ADD
+      - SAVE
+      - DELETE
+    actionConfig:
+      ADD:
+        label: Add New Claim
+        actionType: FUNCTION_CALL
+        functionName: insertNewRow
+        onFailure: showErrorSnackbar
+      SAVE:
+        label: Save Changes
+        actionType: EXECUTE_QUERY
+        query: SELECT administration.insert_or_update_role_claim($1, $2, $3, $4, $5) as id;
+        queryReturnType: SCALAR
+        payload:
+          - role_id
+          - resource_id
+          - access_type_ids
+          - access_level_id
+          - claim_id
+        onSuccess: saveChanges
+        onFailure: showErrorSnackbar
+      DELETE:
+        label: Delete Claim
+        actionType: EXECUTE_QUERY
+        query: Select delete_claim($1, $2) as id;
+        queryReturnType: SCALAR
+        payload:
+          - claim_id
+        onFailure: showErrorSnackbar
+    columns:
+      - name: resource
+        label: Resource
+        type: TEXT
+      - name: access_types
+        label: Access Types
+        type: SELECT
+        multi: true
+        selectConfig:
+          selectHandler: concatinator
+          currentSelection:
+            - key: access_type_ids
+              as: id
+          selectParser: splitter
+          options:
+            - id: READ
+              name: READ
+            - id: ADD
+              name: ADD
+            - id: EDIT
+              name: EDIT
+            - id: DELETE
+              name: DELETE
+          fields_to_extract:
+            - key: id
+              as: access_type_ids
+            - key: name
+              as: access_type_names
+          columns:
+            - name: name
+              label: Access Type
+      - name: access_level
+        label: Access Level
+        type: SELECT
+        multi: false
+        selectConfig:
+          selectHandler: converter
+          currentSelection:
+            - key: access_level_id
+              as: id
+          selectParser: converter
+          fields_to_extract:
+            - key: id
+              as: access_level_id
+            - key: name
+              as: access_level_name
+          options:
+            - id: PERSONAL
+              name: PERSONAL
+            - id: GLOBAL
+              name: GLOBAL
+          columns:
+            - name: name
+              label: Access Level

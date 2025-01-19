@@ -1,0 +1,10 @@
+init.sql
+user.sql
+role.sql
+user_role.sql
+resource.sql
+claim.sql
+access_grants.sql
+refresh_token.sql
+query_functions.sql
+initial_data.sql

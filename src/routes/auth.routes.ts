@@ -1,14 +1,13 @@
 import { Hono } from 'hono';
-import { AuthController } from '../controllers/auth.controller.js';
-import { Pool } from 'pg';
+import AuthController from '../controllers/auth.controller.js';
 
-export const createAuthRouter = (pool: Pool) => {
+export const createAuthRouter = () => {
   const app = new Hono();
-  const authController = new AuthController(pool);
+  const authController = new AuthController();
 
   app.post('/login', authController.login);
   app.post('/refresh', authController.refresh);
   app.post('/logout', authController.logout);
 
   return app;
-}; 
+};

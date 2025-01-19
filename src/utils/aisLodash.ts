@@ -12,3 +12,6 @@ export { default as _findIndex } from 'lodash/findIndex.js';
 export { default as _map } from 'lodash/map.js';
 export { default as _forEach } from 'lodash/forEach.js';
 export { default as _filter } from 'lodash/filter.js';
+
+// String operations
+export { default as _split } from 'lodash/split.js';

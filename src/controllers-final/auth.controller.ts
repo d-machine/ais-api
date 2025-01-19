@@ -1,11 +1,11 @@
 import { Context } from 'hono';
 import AuthService from '../services/auth.service.js';
 
-export default class AuthController {
+export class AuthController {
   protected authService: AuthService;
 
-  constructor() {
-    this.authService = new AuthService();
+  constructor(authService: AuthService) {
+    this.authService = authService;
   }
 
   async login(c: Context) {

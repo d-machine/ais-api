@@ -1,0 +1,82 @@
+sections:
+  - sectionType: FIELDS
+    sectionName: User Details
+    applicableActions:
+      - SAVE
+      - CANCEL
+    actionConfig:
+      save:
+        label: Create User
+        actionType: EXECUTE_QUERY
+        query: SELECT administration.insert_user($1, $2, $3, $4, $5, $6, $7, $8) as id;
+        queryReturnType: SCALAR
+        payload:
+          - username
+          - password
+          - email
+          - first_name
+          - last_name
+          - reports_to
+          - role_ids
+        contextParams:
+          - current_user_id
+        onSuccess: exitAndComplete
+        onFailure: showErrorSnackbar
+      cancel:
+        label: Discard Changes
+    fields:
+      - name: username
+        label: Username
+        type: TEXT
+        required: true
+      - name: password
+        label: Password
+        type: PASSWORD
+        required: true
+      - name: email
+        label: Email
+        type: text
+        required: false
+      - name: first_name
+        label: First Name
+        type: text
+        required: false
+      - name: last_name
+        label: Last Name
+        type: TEXT
+        required: false
+      - name: reports_to
+        label: Reports To
+        type: SELECT
+        required: true
+        multi: false
+        selectConfig:
+          resource: user
+          selectHandler: converter
+          currentSelection:
+            - key: reports_to_id
+              as: user_id
+          selectParser: converter
+          fields_to_extract:
+            - key: user_id
+              as: reports_to_id
+            - key: full_name
+              as: reports_to_name
+      - name: roles
+        label: Roles
+        type: SELECT
+        required: true
+        multi: true
+        selectConfig:
+          resource: role
+          currentSelection:
+            - key: role_ids
+              as: role_id
+          selectParser: splitter
+          selectHandler: concatinator
+          fields_to_extract:
+            - key: role_id
+              as: role_ids
+            - key: name
+              as: roles
+ 

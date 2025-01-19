@@ -20,6 +20,10 @@ RUN npm run build
 RUN mkdir -p dist/db && \
     cp -r src/db/tables dist/db/
 
+# Copy data to dist directory
+RUN mkdir -p dist/data && \
+    cp -r ./data dist/data/
+
 # Copy public files to dist directory
 RUN cp -r src/static dist/
 

@@ -1,0 +1,60 @@
+queryReturnType: MULTIPLE_ROWS
+query: |
+  SELECT
+  role_id, role_name, description, last_updated_by, last_updated_at 
+  FROM
+    (
+      Select 
+        id as role_id, name as role_name, description, 
+        last_updated_by, last_updated_at
+      from
+        administration.role
+    ) as role_list_view
+applyAccessLevelRestrictions: false
+pagenation: true
+filterable: true
+sortable: true
+onSuccess: refresh
+onFailure: showErrorPage
+applicableActions:
+  - add
+  - edit
+  - delete
+actionConfig:
+  add:
+    label: Add New Role
+    actionType: DISPLAY_FORM
+    formConfig: add-role
+    onSuccess: refresh
+    accessTypeRequired: 7-ADD
+  edit:
+    label: Edit Role
+    actionType: DISPLAY_FORM
+    payload:
+      - role_id
+    formConfig: edit-role
+    onSuccess: refresh
+    accessTypeRequired: 7-EDIT
+  delete:
+    label: Delete Role
+    actionType: EXECUTE_QUERY
+    query: Select delete_role($1, $2) as id;
+    queryReturnType: SCALAR
+    payload:
+      - role_id
+    contextParams:
+      - current_user_id
+    onSuccess: refresh
+    onFailure: showErrorSnackbar
+    accessTypeRequired: 7-DELETE
+columns:
+  - name: name
+    label: Role Name
+    width: 200
+    sortable: true
+    filterType: string
+  - name: description
+    label: Description
+    width: 600
+    sortable: true
+    filterType: string

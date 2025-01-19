@@ -1,0 +1,33 @@
+applyAccessLevelRestrictions: true
+onLoad: executeQuery
+queryFile: user-list
+pagenation: true
+filterable: true
+sortable: true
+applicableActions: [add, edit, changePassword, delete]
+actionConfig:
+  add:
+    label: Add New User
+    onPress: DISPLAY_FORM
+    formConfig: add-user
+    onComplete: refresh
+  edit:
+    label: Edit User
+    onPress: DISPLAY_FORM
+    payload: [user_id]
+    formConfig: edit-user
+    onComplete: refresh
+  changePassword:
+    label: Change Password
+    onPress: DISPLAY_FORM
+    payload: [user_id]
+    formConfig: change-password
+    onComplete: refresh
+  delete:
+    label: Delete User
+    onPress: DISPLAY_FORM
+    payload: [user_id]
+    formConfig: delete-user
+    onComplete: refresh
+columns:
+  - name: username
