@@ -10,7 +10,7 @@ services:
       - "${POSTGRES_PORT}:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
-      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
+      - ./data/fs/setup-queries/init.sql:/docker-entrypoint-initdb.d/init.sql
     networks:
       - ais_network
     restart: unless-stopped
@@ -52,6 +52,11 @@ services:
       REDIS_HOST: redis
       REDIS_PORT: 6379
       REDIS_PASSWORD: ${REDIS_PASSWORD}
+      JWT_SECRET: ${JWT_SECRET}
+      JWT_EXPIRATION_IN_HOURS: ${JWT_EXPIRATION_IN_HOURS}
+      JWT_REFRESH_EXPIRATION_IN_DAYS: ${JWT_REFRESH_EXPIRATION_IN_DAYS}
+      ADMIN_USERNAME: ${ADMIN_USERNAME}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD}
     ports:
       - "${API_PORT}:3000"
     volumes:

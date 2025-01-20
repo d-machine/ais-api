@@ -8,16 +8,21 @@ declare module 'hono' {
   }
 }
 
-export const authMiddleware = async (c: Context, next: Next) => {
+async function authMiddleware(c: Context, next: Next) {
   try {
     const accessToken = c.req.header('Authorization')?.replace('Bearer ', '');
-    
+
+    console.log(`Access token: ${accessToken}`);
+
     if (_isNil(accessToken)) {
       return c.json({ error: 'Access token is required' }, 401);
     }
 
-    const secret = process.env.ACCESS_TOKEN_SECRET || 'access_secret';
-    const decoded = jwt.verify(accessToken, secret);
+    const secret = process.env.JWT_SECRET;
+    console.log(`JWT secret: ${secret}`);
+    const decoded = jwt.verify(accessToken, secret || 'ais_dev_secret');
+
+    console.log(`Decoded access token: ${JSON.stringify(decoded)}`);
 
     // Check if decoded is an object and has userId
     if (_isNil(decoded) || !_has(decoded, 'userId') || typeof decoded.userId !== 'number') {
@@ -38,4 +43,6 @@ export const authMiddleware = async (c: Context, next: Next) => {
     console.error('Error verifying access token:', error);
     return c.json({ error: 'Failed to verify access token' }, 500);
   }
-}; 
+};
+
+export default authMiddleware;

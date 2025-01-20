@@ -33,6 +33,13 @@ export default class CacheClient {
     console.log("Redis connected successfully");
   }
 
+  public async ping() {
+    if (!this.client) {
+      throw new Error("Redis client not initialized");
+    }
+    return await this.client.ping();
+  }
+
   public async saveData(key: string, data: string) {
     if (!this.client) {
       throw new Error("Redis client not initialized");
@@ -44,6 +51,7 @@ export default class CacheClient {
     if (!this.client) {
       throw new Error("Redis client not initialized");
     }
+    console.log(await this.client.keys("*"));
     return await this.client.get(key);
   }
 

@@ -12,6 +12,10 @@ import { DEFAULT_PAGE_SIZE } from "../constants/config.js";
 export default class QueryService extends BaseService {
   constructor() {
     super();
+    this.buildWhereClause = this.buildWhereClause.bind(this);
+    this.buildOrderByClause = this.buildOrderByClause.bind(this);
+    this.buildPaginationClause = this.buildPaginationClause.bind(this);
+    this.buildQuery = this.buildQuery.bind(this);
   }
 
   private buildWhereClause(filters: Array<IFilterInfo>): string {

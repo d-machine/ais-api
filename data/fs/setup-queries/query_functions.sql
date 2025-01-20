@@ -10,12 +10,12 @@ CREATE OR REPLACE FUNCTION administration.insert_user(
     current_user_id INT,
     role_ids TEXT
 ) RETURNS INT AS $$
+    DECLARE new_user_id INT;
 BEGIN
 
-    DECLARE new_user_id INT;
     INSERT INTO administration.user (username, password, email, first_name, last_name,
                       reports_to, last_updated_by)
-    VALUES (username, password, email, first_name, last_name, reports_to, current_user_id);
+    VALUES (username, password, email, first_name, last_name, reports_to, current_user_id)
     RETURNING id INTO new_user_id;
 
     INSERT INTO administration.user_role (user_id, role_id)
@@ -122,7 +122,7 @@ CREATE OR REPLACE FUNCTION administration.insert_role(
 ) RETURNS INT AS $$
 BEGIN
     INSERT INTO administration.role (name, description, last_updated_by)
-    VALUES (name, description, current_user_id);
+    VALUES (name, description, current_user_id)
     RETURNING id;
 
 END;
@@ -153,7 +153,7 @@ CREATE OR REPLACE FUNCTION administration.insert_claim(
 ) RETURNS INT AS $$
 BEGIN
     INSERT INTO claim (role_id, resource_id, access_type_ids, access_level_id, last_updated_by)
-    VALUES (role_id, resource_id, access_type_ids, access_level_id, current_user_id);
+    VALUES (role_id, resource_id, access_type_ids, access_level_id, current_user_id)
     RETURNING id;
 END;
 $$ LANGUAGE plpgsql;
@@ -184,8 +184,9 @@ CREATE OR REPLACE FUNCTION administration.insert_or_update_role_claim(
     current_user_id INT,
     claim_id INT DEFAULT NULL
 ) RETURNS INT AS $$
-BEGIN
+
     DECLARE result_id INT;
+BEGIN
     IF claim_id IS NULL THEN
         result_id := administration.insert_claim(role_id, resource_id, access_type_ids, access_level_id, current_user_id);
     ELSE
@@ -290,7 +291,7 @@ CREATE OR REPLACE FUNCTION administration.insert_resource(
 ) RETURNS INT AS $$
 BEGIN
     INSERT INTO administration.resource (name, list_config_file, parent_id, last_updated_by)
-    VALUES (name, list_config_file, parent_id, current_user_id);
+    VALUES (name, list_config_file, parent_id, current_user_id)
     RETURNING id;
 END;
 $$ LANGUAGE plpgsql;

@@ -53,24 +53,3 @@ CREATE TRIGGER role_update_trigger
     AFTER UPDATE ON administration.role
     FOR EACH ROW
     EXECUTE FUNCTION administration.log_role_changes();
-
--- Custom delete function
-CREATE OR REPLACE FUNCTION administration.delete_role(
-    role_id_to_delete INTEGER,
-    deleted_by_user_id INTEGER
-)
-RETURNS VOID AS $$
-BEGIN
-    -- Insert into history before deletion
-    INSERT INTO administration.role_history (
-        role_id, name, description, operation, operation_at, operation_by
-    )
-    SELECT 
-        id, name, description, 'DELETE', NOW(), deleted_by_user_id
-    FROM administration.role
-    WHERE id = role_id_to_delete;
-
-    -- Delete the role
-    DELETE FROM administration.role WHERE id = role_id_to_delete;
-END;
-$$ LANGUAGE plpgsql; 

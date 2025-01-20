@@ -28,7 +28,7 @@ CREATE TABLE IF NOT EXISTS administration.user_history (
     last_name VARCHAR(255),
     username VARCHAR(255),
     password VARCHAR(255),
-    reportsTo int NOT NULL,
+    reports_to int NOT NULL,
     operation VARCHAR(10),
     operation_at TIMESTAMP,
     operation_by int not null
@@ -39,11 +39,11 @@ CREATE OR REPLACE FUNCTION administration.log_user_changes()
 RETURNS TRIGGER AS $$
 BEGIN
     IF TG_OP = 'INSERT' THEN
-        INSERT INTO administration.user_history (user_id, email, first_name, last_name, username, password, reportsTo, operation, operation_at, operation_by)
-        VALUES (NEW.id, NEW.email, NEW.first_name, NEW.last_name, NEW.username, NEW.password, NEW.reportsTo, 'INSERT', NEW.last_updated_at, NEW.last_updated_by);
+        INSERT INTO administration.user_history (user_id, email, first_name, last_name, username, password, reports_to, operation, operation_at, operation_by)
+        VALUES (NEW.id, NEW.email, NEW.first_name, NEW.last_name, NEW.username, NEW.password, NEW.reports_to, 'INSERT', NEW.last_updated_at, NEW.last_updated_by);
     ELSIF TG_OP = 'UPDATE' THEN
-        INSERT INTO administration.user_history (user_id, email, first_name, last_name, username, password, reportsTo, operation, operation_at, operation_by)
-        VALUES (NEW.id, NEW.email, NEW.first_name, NEW.last_name, NEW.username, NEW.password, NEW.reportsTo, 'UPDATE', NEW.last_updated_at, NEW.last_updated_by);
+        INSERT INTO administration.user_history (user_id, email, first_name, last_name, username, password, reports_to, operation, operation_at, operation_by)
+        VALUES (NEW.id, NEW.email, NEW.first_name, NEW.last_name, NEW.username, NEW.password, NEW.reports_to, 'UPDATE', NEW.last_updated_at, NEW.last_updated_by);
     END IF;
     RETURN NEW;
 END;

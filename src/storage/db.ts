@@ -34,20 +34,23 @@ export default class DBClient {
     this.pool.on("error", (err) => {
       console.error("Unexpected error on idle PostgreSQL client", err);
     });
+
+    await this.pool.connect();
   }
 
   public async setupDatabase() {
     try {
       // Order of SQL files to execute
       const sqlFiles = [
-        "init.sql",
+        "schema.sql",
         "user.sql",
         "role.sql",
         "resource.sql",
         "claim.sql",
         "user_role.sql",
+        "refresh_token.sql",
         "query_functions.sql",
-        "views.sql",
+        "initial_data.sql",
       ];
 
       console.log("Starting database initialization...");

@@ -16,13 +16,8 @@ COPY . .
 # Build the application
 RUN npm run build
 
-# Copy SQL files to dist directory
-RUN mkdir -p dist/db && \
-    cp -r src/db/tables dist/db/
-
 # Copy data to dist directory
-RUN mkdir -p dist/data && \
-    cp -r ./data dist/data/
+RUN cp -r ./data /
 
 # Copy public files to dist directory
 RUN cp -r src/static dist/
@@ -34,6 +29,7 @@ WORKDIR /app
 
 # Copy built files and package files
 COPY --from=builder /app/dist ./dist
+COPY --from=builder /app/data ./data
 COPY --from=builder /app/package*.json ./
 COPY --from=builder /app/.env.development ./
 

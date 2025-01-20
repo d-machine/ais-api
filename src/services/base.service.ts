@@ -10,6 +10,11 @@ export default class BaseService {
   constructor() {
     this._db = DBClient.getInstance();
     this._cache = CacheClient.getInstance();
+    this.executeMultipleRowsQuery = this.executeMultipleRowsQuery.bind(this);
+    this.executeSingleRowQuery = this.executeSingleRowQuery.bind(this);
+    this.executeScalarArrayQuery = this.executeScalarArrayQuery.bind(this);
+    this.executeScalarQuery = this.executeScalarQuery.bind(this);
+    this.executeQuery = this.executeQuery.bind(this);
   }
 
   protected async executeQuery(queryInfo: IQueryInfo, params: any[] = []) {

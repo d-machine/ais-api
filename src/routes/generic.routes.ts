@@ -1,12 +1,13 @@
 import { Hono } from 'hono';
-import { Pool } from 'pg';
-import { IFetchQuery } from '../types/general.js';
 import ApiController from '../controllers/api.controller.js';
+import authMiddleware from '../middlewares/auth.middleware.js';
 
-export const createAllRoutes = () => {
+function createGenericRoutes() {
   const app = new Hono();
 
   const apiController = new ApiController();
+  
+  app.use('*', authMiddleware);
 
   app.post('/getMenu', apiController.getMenu);
   app.post('/getConfig', apiController.getConfig);
@@ -14,3 +15,5 @@ export const createAllRoutes = () => {
 
   return app;
 };
+
+export default createGenericRoutes;

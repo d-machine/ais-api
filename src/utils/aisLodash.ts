@@ -15,3 +15,4 @@ export { default as _filter } from 'lodash/filter.js';
 
 // String operations
 export { default as _split } from 'lodash/split.js';
+export { default as _replace } from 'lodash/replace.js';
