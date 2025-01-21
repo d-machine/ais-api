@@ -65,7 +65,7 @@ actionConfig:
     actionType: EXECUTE_QUERY
     queryInfo:
       returnType: SINGLE_ROW
-      queryPath:
+      path:
         - actionConfig
         - delete
       query: Select delete_user($1, $2) as id;
