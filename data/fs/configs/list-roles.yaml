@@ -48,7 +48,7 @@ actionConfig:
     onFailure: showErrorSnackbar
     accessTypeRequired: 7-DELETE
 columns:
-  - name: name
+  - name: role_name
     label: Role Name
     width: 200
     sortable: true

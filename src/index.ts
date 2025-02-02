@@ -21,8 +21,8 @@ app.use("*", prettyJSON());
 app.use(
   "*",
   cors({
-    origin: ["http://localhost:3000", "http://localhost:5173"],
-    credentials: true,
+    origin: "*",
+    credentials: false,
     allowMethods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allowHeaders: ["Content-Type", "Authorization", "X-User-ID"],
     exposeHeaders: ["Content-Length", "X-Request-Id"],

@@ -5,7 +5,7 @@ sections:
       - SAVE
       - CANCEL
     actionConfig:
-      save:
+      SAVE:
         label: Create User
         actionType: EXECUTE_QUERY
         query: SELECT administration.insert_user($1, $2, $3, $4, $5, $6, $7, $8) as id;
@@ -22,7 +22,7 @@ sections:
           - current_user_id
         onSuccess: exitAndComplete
         onFailure: showErrorSnackbar
-      cancel:
+      CANCEL:
         label: Discard Changes
     fields:
       - name: username

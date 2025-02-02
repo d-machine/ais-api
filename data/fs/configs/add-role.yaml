@@ -15,7 +15,7 @@ sections:
       - SAVE
       - CANCEL
     actionConfig:
-      SAVE:
+      SAVE:+
         label: Create Role
         actionType: EXECUTE_QUERY
         query: SELECT administration.insert_role($1, $2, $3) as id;
