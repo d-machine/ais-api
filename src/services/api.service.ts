@@ -151,16 +151,21 @@ export default class ApiService extends BaseService {
 
   public async handleQueryExecution(
     configFileName: string,
+    userId: number,
     path?: Array<string>,
-    params?: Array<IQueryInfo>,
-    fetchQuery?: IFetchQuery
+    params?: Array<any>,
+    fetchQuery?: IFetchQuery,
   ): Promise<any> {
     const queryInfo: IQueryInfo = await this._configService.getConfigKeyFromCache(configFileName, [...(path || []), "queryInfo"]);
     if (_isNil(queryInfo)) {
       throw new Error(`Query info not found for config file ${configFileName} at path ${path}`);
     }
     const query = this._queryService.buildQuery(queryInfo, fetchQuery);
-    const result = await this.executeQuery({ returnType: queryInfo.returnType, query }, params);
+    let _params = [...(params || [])];
+    if (queryInfo.contextParams && queryInfo.contextParams.length > 0) {
+      _params = [..._params, userId];
+    }
+    const result = await this.executeQuery({ returnType: queryInfo.returnType, query }, _params);
     return result;
   }
 }
