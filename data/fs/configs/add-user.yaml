@@ -5,24 +5,30 @@ sections:
       - SAVE
       - CANCEL
     actionConfig:
-      save:
+      SAVE:
         label: Create User
         actionType: EXECUTE_QUERY
-        query: SELECT administration.insert_user($1, $2, $3, $4, $5, $6, $7, $8) as id;
-        queryReturnType: SCALAR
-        payload:
-          - username
-          - password
-          - email
-          - first_name
-          - last_name
-          - reports_to
-          - role_ids
-        contextParams:
-          - current_user_id
+        queryInfo:
+          returnType: SCALAR
+          query: SELECT administration.insert_user($1, $2, $3, $4, $5, $6, $7, $8) as id;
+          payload:
+            - username
+            - password
+            - email
+            - first_name
+            - last_name
+            - reports_to
+            - role_ids
+          contextParams:
+            - current_user_id
+          path:
+            - sections
+            - 0
+            - actionConfig
+            - SAVE
         onSuccess: exitAndComplete
         onFailure: showErrorSnackbar
-      cancel:
+      CANCEL:
         label: Discard Changes
     fields:
       - name: username
@@ -51,7 +57,7 @@ sections:
         required: true
         multi: false
         selectConfig:
-          resource: user
+          resource: list-users
           selectHandler: converter
           currentSelection:
             - key: reports_to_id
@@ -62,13 +68,13 @@ sections:
               as: reports_to_id
             - key: full_name
               as: reports_to_name
-      - name: roles
+      - name: role_ids
         label: Roles
         type: SELECT
         required: true
         multi: true
         selectConfig:
-          resource: role
+          resource: list-roles
           currentSelection:
             - key: role_ids
               as: role_id
@@ -77,6 +83,6 @@ sections:
           fields_to_extract:
             - key: role_id
               as: role_ids
-            - key: name
+            - key: role_name
               as: roles
  

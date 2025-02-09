@@ -52,6 +52,7 @@ export default class CacheClient {
       throw new Error("Redis client not initialized");
     }
     console.log(await this.client.keys("*"));
+    console.log(await this.client.get("list-roles"));
     return await this.client.get(key);
   }
 

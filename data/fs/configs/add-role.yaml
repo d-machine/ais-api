@@ -1,16 +1,17 @@
 sections:
   - sectionType: FIELDS
     sectionName: Role Details
-    queryReturnType: SINGLE_ROW
-    query: |
-      SELECT
-        id as role_id, name as role_name, description
-      FROM
-        administration.role
-      WHERE
-        id = $1
-    payload:
-      - role_id
+    queryInfo:
+      returnType: SINGLE_ROW
+      query: |
+        SELECT
+          id as role_id, name as role_name, description
+        FROM
+          administration.role
+        WHERE
+          id = $1
+      payload:
+        - role_id
     applicableActions:
       - SAVE
       - CANCEL
@@ -18,13 +19,15 @@ sections:
       SAVE:
         label: Create Role
         actionType: EXECUTE_QUERY
-        query: SELECT administration.insert_role($1, $2, $3) as id;
-        queryReturnType: SCALAR
-        payload:
-          - role_name
-          - description
-        contextParams:
-          - current_user_id
+        queryInfo:
+          returnType: SCALAR
+          query: |
+            SELECT administration.insert_role($1, $2, $3) as id;
+          payload:
+            - role_name
+            - description
+          contextParams:
+            - current_user_id
         onSuccess: saveResponseAndGoToNextSection
         onFailure: showErrorSnackbar
       CANCEL:
@@ -39,18 +42,19 @@ sections:
         type: TEXTAREA
   - sectionType: TABLE
     sectionName: Claims
-    queryReturnType: MULTIPLE_ROWS
-    query: |
-      SELECT
-        c.role_id as role_id, c.id as claim_id, r.name as resource_name,
-        r.id as resource_id, c.access_type_ids, c.access_level_id
-      FROM
-        administration.claim c
-        JOIN administration.resource r ON c.resource_id = r.id
-      WHERE
-        c.role_id = $1
-    payload:
-      - role_id
+    queryInfo:
+      returnType: MULTIPLE_ROWS
+      query: |
+        SELECT
+          c.role_id as role_id, c.id as claim_id, r.name as resource_name,
+          r.id as resource_id, c.access_type_ids, c.access_level_id
+        FROM
+          administration.claim c
+          JOIN administration.resource r ON c.resource_id = r.id
+        WHERE
+          c.role_id = $1
+      payload:
+        - role_id
     applicableActions:
       - ADD
       - SAVE
@@ -64,23 +68,27 @@ sections:
       SAVE:
         label: Save Changes
         actionType: EXECUTE_QUERY
-        query: SELECT administration.insert_or_update_role_claim($1, $2, $3, $4, $5) as id;
-        queryReturnType: SCALAR
-        payload:
-          - role_id
-          - resource_id
-          - access_type_ids
-          - access_level_id
-          - claim_id
+        queryInfo:
+          returnType: SINGLE_ROW
+          query: |
+            SELECT administration.insert_or_update_role_claim($1, $2, $3, $4, $5) as id;
+          payload:
+            - role_id
+            - resource_id
+            - access_type_ids
+            - access_level_id
+            - claim_id
         onSuccess: saveChanges
         onFailure: showErrorSnackbar
       DELETE:
         label: Delete Claim
         actionType: EXECUTE_QUERY
-        query: Select delete_claim($1, $2) as id;
-        queryReturnType: SCALAR
-        payload:
-          - claim_id
+        queryInfo:
+          returnType: SCALAR
+          query: |
+            SELECT delete_claim($1, $2) as id;
+          payload:
+            - claim_id
         onFailure: showErrorSnackbar
     columns:
       - name: resource
