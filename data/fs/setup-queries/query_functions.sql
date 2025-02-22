@@ -316,3 +316,34 @@ BEGIN
     RETURN resource_id;
 END;
 $$ LANGUAGE plpgsql;
+
+
+---------------------------** Country Master **---------------------------
+
+-- Function to delete country_master
+CREATE OR REPLACE FUNCTION wms.delete_country_master(
+    country_master_id_to_delete INTEGER,
+    deleted_by_user_id INTEGER
+)
+RETURNS VOID AS $$
+BEGIN
+    -- Insert into history before deletion
+    INSERT INTO wms.country_master_history (
+        country_master_id,
+        country_name,
+        country_code,
+        operation, operation_at, operation_by
+    )
+    SELECT 
+        id,
+        country_name,
+        country_code,
+        'DELETE', NOW(), deleted_by_user_id
+    FROM wms.country_master
+    WHERE id = country_master_id_to_delete;
+
+    -- Delete the country_master
+    DELETE FROM wms.country_master 
+    WHERE id = country_master_id_to_delete;
+END;
+$$ LANGUAGE plpgsql;
