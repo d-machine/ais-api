@@ -81,6 +81,7 @@ export interface IQueryInfo {
   returnType: EQueryReturnType;
   query: string;
   payload?: Array<string | number>;
+  contextParams?: Array<string>;
   options?: {
     applyAccessLevelRestrictions?: boolean;
     applyPagenation?: boolean;
