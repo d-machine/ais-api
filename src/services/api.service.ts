@@ -167,7 +167,6 @@ export default class ApiService extends BaseService {
     if (queryInfo.contextParams && queryInfo.contextParams.length > 0) {
       _params = [..._params, userId];
     }
-    console.log(query, _params, '<><><><>');
     const result = await this.executeQuery({ returnType: queryInfo.returnType, query }, _params);
     return result;
   }

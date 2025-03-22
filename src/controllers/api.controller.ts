@@ -35,8 +35,6 @@ export default class ApiController {
       const apiService = new ApiService();
       const body = await c.req.json();
       const userId = c.get("userId");
-      console.log(body.path);
-      
       const result = await apiService.handleQueryExecution(
         body.configFile,
         userId,
