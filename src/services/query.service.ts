@@ -8,7 +8,7 @@ import {
   ISortInfo,
 } from "../types/general.js";
 import { DEFAULT_PAGE_SIZE } from "../constants/config.js";
-import { log } from "console";
+
 
 export default class QueryService extends BaseService {
   constructor() {
@@ -84,13 +84,11 @@ export default class QueryService extends BaseService {
     let query = queryInfo.query;
 
     const { filtersData, sortData, paginationData } = fetchQuery || {};
-    console.log(filtersData, sortData, paginationData, '<><><>');
     const queryOptions = queryInfo.options || {};
 
     const { applyFiltering, applySorting, applyPagenation } = queryOptions;
 
     const filters = applyFiltering ? filtersData : [];
-    log(applyFiltering, filters, '<><><>');
     const sorts = applySorting ? sortData : [];
     const offset = applyPagenation ? paginationData?.offset || 0 : undefined;
     const limit = applyPagenation
@@ -98,10 +96,7 @@ export default class QueryService extends BaseService {
       : undefined;
 
     if (filters && filters.length > 0) {
-      console.log(1, filters, '<><><>');
-      
       query += ` ${this.buildWhereClause(filters)}`;
-      console.log(2, query, '<><><>');
     }
 
     if (sorts && sorts.length > 0) {

@@ -30,7 +30,6 @@ export default class CacheClient {
     });
 
     await this.client.connect();
-    console.log("Redis connected successfully");
   }
 
   public async ping() {
@@ -51,8 +50,6 @@ export default class CacheClient {
     if (!this.client) {
       throw new Error("Redis client not initialized");
     }
-    console.log(await this.client.keys("*"));
-    console.log(await this.client.get("list-roles"));
     return await this.client.get(key);
   }
 

@@ -65,7 +65,6 @@ app.use(
   serveStatic({
     root: "./dist",
     onNotFound(path, c) {
-      console.log(`${path} is not found, request to ${c.req.path}`);
     },
   })
 );
@@ -117,16 +116,13 @@ async function startServer() {
       DBClient.getInstance().initialize(),
       CacheClient.getInstance().initialize(),
     ]);
-    console.log("All database connections established");
 
     // Start server only after successful database connections
     serve({ fetch: app.fetch, port });
 
-    console.log(`Server is running on port ${port}`);
 
     // Handle shutdown
     process.on("SIGTERM", async () => {
-      console.log("SIGTERM received. Shutting down gracefully...");
       await DBClient.getInstance().disconnect();
       await CacheClient.getInstance().disconnect();
       process.exit(0);

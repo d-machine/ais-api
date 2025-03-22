@@ -99,10 +99,10 @@
                     .replace(/\s+/g, ' ')  // normalize whitespace
                     .trim();
 
-                console.log('Schema:', schemaName);
-                console.log('Table:', tableName);
-                console.log('Columns:', cleanColumnsString);
-                console.log(tableMatch);
+                'Schema:', schemaName);
+                'Table:', tableName);
+                'Columns:', cleanColumnsString);
+                tableMatch);
 
                 // Generate the complete query
                 const query = generateCompleteQuery(`${schemaName}.${tableName}`, cleanColumnsString);

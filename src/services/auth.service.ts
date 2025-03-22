@@ -33,7 +33,6 @@ export default class AuthService extends BaseService {
       [userId]
     );
 
-    console.log(user);
 
     return _findIndex(user, { role_id: 1 }) !== -1;
   }
@@ -41,7 +40,6 @@ export default class AuthService extends BaseService {
   private async fetchAndCacheUserClaims(userId: number) {
 
     const isSuperUser = await this.checkIfSuperUser(userId);
-    console.log("Super user updating in cache");
     await this._cache.saveData(`super_user-${userId}`, isSuperUser ? "true" : "false");
 
     if (isSuperUser) {
