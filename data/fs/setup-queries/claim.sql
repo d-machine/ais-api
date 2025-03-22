@@ -11,8 +11,8 @@ CREATE TABLE IF NOT EXISTS administration.claim (
   id SERIAL PRIMARY KEY,
   role_id INTEGER NOT NULL REFERENCES administration.role(id),
   resource_id INTEGER NOT NULL REFERENCES administration.resource(id),
-  access_level_id INTEGER NOT NULL,
-  access_type_ids INTEGER[],
+  access_level_id VARCHAR(255) NOT NULL,
+  access_type_ids varchar(255) NOT NULL,
   last_updated_at TIMESTAMP NOT NULL DEFAULT NOW(),
   last_updated_by int REFERENCES administration.user(id),
   UNIQUE (role_id, resource_id)
@@ -24,8 +24,8 @@ CREATE TABLE IF NOT EXISTS administration.claim_history (
   claim_id INT,
   role_id INTEGER NOT NULL,
   resource_id INTEGER NOT NULL,
-  access_level_id INTEGER NOT NULL,
-  access_type_ids INTEGER[],
+  access_level_id VARCHAR(255) NOT NULL,
+  access_type_ids varchar(255) NOT NULL,
   operation VARCHAR(10),
   operation_at TIMESTAMP,
   operation_by int REFERENCES administration.user(id)

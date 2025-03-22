@@ -12,6 +12,9 @@ sections:
           id = $1
       payload:
         - role_id
+      path:
+        - sections
+        - 0
     applicableActions:
       - SAVE
       - CANCEL
@@ -28,6 +31,11 @@ sections:
             - description
           contextParams:
             - current_user_id
+          path:
+            - sections
+            - 0
+            - actionConfig
+            - SAVE
         onSuccess: saveResponseAndGoToNextSection
         onFailure: showErrorSnackbar
       CANCEL:
@@ -55,6 +63,9 @@ sections:
           c.role_id = $1
       payload:
         - role_id
+      path:
+        - sections
+        - 1
     applicableActions:
       - ADD
       - SAVE
@@ -67,6 +78,7 @@ sections:
         onFailure: showErrorSnackbar
       SAVE:
         label: Save Changes
+        configFile: add-role
         actionType: EXECUTE_QUERY
         queryInfo:
           returnType: SINGLE_ROW
@@ -78,20 +90,35 @@ sections:
             - access_type_ids
             - access_level_id
             - claim_id
+          contextParams:
+            - current_user_id
+          path:
+            - sections
+            - 1 
+            - actionConfig
+            - SAVE
         onSuccess: saveChanges
         onFailure: showErrorSnackbar
       DELETE:
         label: Delete Claim
+        configFile: add-role
         actionType: EXECUTE_QUERY
         queryInfo:
           returnType: SCALAR
           query: |
-            SELECT delete_claim($1, $2) as id;
+            SELECT administration.delete_claim($1, $2) as id;
+          path:
+            - sections
+            - 1
+            - actionConfig
+            - DELETE
           payload:
             - claim_id
+          contextParams:
+            - current_user_id
         onFailure: showErrorSnackbar
     columns:
-      - name: resource
+      - name: resource_id
         label: Resource
         type: TEXT
       - name: access_types

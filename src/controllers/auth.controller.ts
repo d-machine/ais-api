@@ -23,7 +23,6 @@ export default class AuthController {
 
       return c.json(result, 200);
     } catch (error) {
-      console.log("Error logging in:", error);
       return c.json({ error: "An error occurred while logging in" }, 500);
     }
   }
@@ -40,7 +39,6 @@ export default class AuthController {
 
       return c.json(result, 200);
     } catch (error) {
-      console.log("Error refreshing token:", error);
       return c.json({ error: "An error occurred while refreshing token" }, 500);
     }
   }
@@ -53,7 +51,6 @@ export default class AuthController {
 
       return c.json({ success: true }, 200);
     } catch (error) {
-      console.log("Error logging out:", error);
       return c.json({ error: "An error occurred while logging out" }, 500);
     }
   }

@@ -14,9 +14,9 @@ queryInfo:
       ) as role_list_view
   options:
     applyAccessLevelRestrictions: false
-    pagenation: true
-    filterable: true
-    sortable: true
+    applyPagenation: true
+    applySorting: true
+    applyFiltering: true
     onSuccess: refresh
     onFailure: showErrorPage
 applicableActions:
@@ -35,7 +35,7 @@ actionConfig:
     actionType: DISPLAY_FORM
     payload:
       - role_id
-    formConfig: edit-role
+    formConfig: add-role
     onSuccess: refresh
     accessTypeRequired: 7-EDIT
   delete:
@@ -46,11 +46,12 @@ actionConfig:
       path:
         - actionConfig
         - delete
-      query: Select delete_role($1, $2) as id;
+      query: Select administration.delete_role($1, $2) as id;
       payload:
         - role_id
       contextParams:
         - current_user_id
+    formConfig: list-roles
     onSuccess: refresh
     onFailure: showErrorSnackbar
     accessTypeRequired: 7-DELETE

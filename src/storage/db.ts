@@ -53,7 +53,6 @@ export default class DBClient {
         "initial_data.sql",
       ];
 
-      console.log("Starting database initialization...");
 
       // Get the base directory for SQL files
       const baseDir = path.join(process.cwd(), "data", "fs", "setup-queries");
@@ -61,19 +60,16 @@ export default class DBClient {
       // Execute each SQL file in order
       for (const file of sqlFiles) {
         const filePath = path.join(baseDir, file);
-        console.log(`Executing SQL file: ${file}`);
 
         try {
           const query = fs.readFileSync(filePath, "utf-8");
           await this.pool?.query(query);
-          console.log(`Successfully executed ${file}`);
         } catch (error) {
           console.error(`Error executing ${file}:`, error);
           throw error;
         }
       }
 
-      console.log("Database initialization completed successfully");
     } catch (error) {
       console.error("Database initialization failed:", error);
       throw error;

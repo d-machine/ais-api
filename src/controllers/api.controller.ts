@@ -8,7 +8,6 @@ export default class ApiController {
       const menu = await menuService.getMenu(c.get("userId"));
       return c.json(menu);
     } catch (error) {
-      console.log("Error getting menu:", error);
       return c.json({ error: "Failed to get menu" }, 500);
     }
   }
@@ -24,7 +23,6 @@ export default class ApiController {
 
       return c.json(config);
     } catch (error) {
-      console.log("Error getting config:", error);
       return c.json({ error: "Failed to get config" }, 500);
     }
   }
@@ -43,7 +41,6 @@ export default class ApiController {
       );
       return c.json(result);
     } catch (error) {
-      console.log("Error executing query:", error);
       return c.json({ error: "Failed to execute query" }, 500);
     }
   }

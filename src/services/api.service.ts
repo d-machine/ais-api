@@ -62,9 +62,6 @@ export default class ApiService extends BaseService {
     if (_isNil(config)) {
       throw new Error(`Config file ${configFileName} not found!`);
     }
-
-    console.log(config, '<><><><>');
-
     let configToReturn = {};
 
     if (_has(config, "sections")) {
@@ -101,8 +98,6 @@ export default class ApiService extends BaseService {
       }
 
       const children = _filter(fullMenu, (resource) => resource.parent_id === resourceId);
-
-      console.log(resource, '->', children);
 
       if (_isEmpty(children)) {
         if (await this.checkIfUserHasAccessToAction(userId, `${resource.id}-READ`)) {

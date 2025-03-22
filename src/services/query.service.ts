@@ -9,6 +9,7 @@ import {
 } from "../types/general.js";
 import { DEFAULT_PAGE_SIZE } from "../constants/config.js";
 
+
 export default class QueryService extends BaseService {
   constructor() {
     super();
@@ -34,7 +35,7 @@ export default class QueryService extends BaseService {
         case EFilterOperator.NOT_BETWEEN:
           return `${filter.field} NOT BETWEEN ${filter.value}`;
         case EFilterOperator.CONTAINS:
-          return `${filter.field} LIKE %${filter.value}%`;
+          return `${filter.field} LIKE '%${filter.value}%'`;
         case EFilterOperator.NOT_CONTAINS:
           return `${filter.field} NOT LIKE %${filter.value}%`;
         case EFilterOperator.STARTS_WITH:
@@ -83,7 +84,6 @@ export default class QueryService extends BaseService {
     let query = queryInfo.query;
 
     const { filtersData, sortData, paginationData } = fetchQuery || {};
-
     const queryOptions = queryInfo.options || {};
 
     const { applyFiltering, applySorting, applyPagenation } = queryOptions;

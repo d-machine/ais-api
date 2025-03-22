@@ -75,23 +75,23 @@ BEGIN
     PERFORM administration.delete_all_roles_for_user(user_id, current_user_id);
 
     INSERT INTO administration.user_history (
-        user_id, email, first_name, last_name, username, password, reportsTo,
+        user_id, email, first_name, last_name, username, password, reports_to,
         operation, operation_at, operation_by
     )
     SELECT 
-        id, email, first_name, last_name, username, password, reportsTo,
+        id, email, first_name, last_name, username, password, reports_to,
         'DELETE', NOW(), current_user_id
     FROM administration.user
     WHERE id = user_id;
 
-    DELETE FROM administration.user WHERE id = ui;
-    RETURN ui;
+    DELETE FROM administration.user WHERE id = user_id;
+    RETURN user_id;
 END;
 $$ LANGUAGE plpgsql;
 
 -- Delete all roles for a user
 CREATE OR REPLACE FUNCTION administration.delete_all_roles_for_user(
-    user_id INTEGER,
+    p_user_id INTEGER,
     deleted_by_user_id INTEGER
 )
 RETURNS VOID AS $$
@@ -102,13 +102,13 @@ BEGIN
         operation, operation_at, operation_by
     )
     SELECT 
-        id, user_id, role_id,
+        ur.id, ur.user_id, ur.role_id,
         'DELETE', NOW(), deleted_by_user_id
-    FROM administration.user_role
-    WHERE user_id = user_id;
+    FROM administration.user_role ur
+    WHERE ur.user_id = p_user_id;
 
     -- Delete the user_role
-    DELETE FROM administration.user_role WHERE user_id = user_id;
+    DELETE FROM administration.user_role ur WHERE ur.user_id = p_user_id;
 END;
 $$ LANGUAGE plpgsql;
 
@@ -120,11 +120,12 @@ CREATE OR REPLACE FUNCTION administration.insert_role(
     description VARCHAR(255),
     current_user_id INT
 ) RETURNS INT AS $$
+DECLARE new_role_id INT;
 BEGIN
     INSERT INTO administration.role (name, description, last_updated_by)
     VALUES (name, description, current_user_id)
-    RETURNING id;
-
+    RETURNING id INTO new_role_id;
+    return new_role_id;
 END;
 $$ LANGUAGE plpgsql;
 
@@ -143,18 +144,22 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+
 -- Insert claim
 CREATE OR REPLACE FUNCTION administration.insert_claim(
     role_id INT,
     resource_id INT,
     access_type_ids TEXT,
-    access_level_id INT,
+    access_level_id TEXT,
     current_user_id INT
 ) RETURNS INT AS $$
+DECLARE new_claim_id INT;
 BEGIN
-    INSERT INTO claim (role_id, resource_id, access_type_ids, access_level_id, last_updated_by)
+    INSERT INTO administration.claim (role_id, resource_id, access_type_ids, access_level_id, last_updated_by)
     VALUES (role_id, resource_id, access_type_ids, access_level_id, current_user_id)
-    RETURNING id;
+    RETURNING id INTO new_claim_id;
+
+    RETURN new_claim_id;
 END;
 $$ LANGUAGE plpgsql;
 
@@ -164,7 +169,7 @@ CREATE OR REPLACE FUNCTION administration.update_claim(
     role_id INT,
     resource_id INT,
     access_type_ids TEXT,
-    access_level_id INT,
+    access_level_id TEXT,
     current_user_id INT
 ) RETURNS INT AS $$
 BEGIN
@@ -180,7 +185,7 @@ CREATE OR REPLACE FUNCTION administration.insert_or_update_role_claim(
     role_id INT,
     resource_id INT,
     access_type_ids TEXT,
-    access_level_id INT,
+    access_level_id TEXT,
     current_user_id INT,
     claim_id INT DEFAULT NULL
 ) RETURNS INT AS $$
@@ -214,7 +219,7 @@ $$ LANGUAGE plpgsql;
 
 -- Delete all claims for a role
 CREATE OR REPLACE FUNCTION administration.delete_all_claims_for_role(
-    role_id INTEGER,
+    p_role_id INTEGER,
     deleted_by_user_id INTEGER
 )
 RETURNS VOID AS $$
@@ -228,16 +233,16 @@ BEGIN
         id, role_id, resource_id, access_level_id, access_type_ids,
         'DELETE', NOW(), deleted_by_user_id
     FROM administration.claim
-    WHERE role_id = role_id;
+    WHERE role_id = p_role_id;
 
     -- Delete the claim
-    DELETE FROM administration.claim WHERE role_id = role_id;
+    DELETE FROM administration.claim WHERE role_id = p_role_id;
 END;
 $$ LANGUAGE plpgsql;
 
 -- Delete all users for a role
 CREATE OR REPLACE FUNCTION administration.delete_all_users_for_role(
-    role_id INTEGER,
+    p_role_id INTEGER,
     deleted_by_user_id INTEGER
 )
 RETURNS VOID AS $$
@@ -248,35 +253,35 @@ BEGIN
         operation, operation_at, operation_by
     )
     SELECT 
-        id, user_id, role_id,
+        ur.id, ur.user_id, ur.role_id,
         'DELETE', NOW(), deleted_by_user_id
-    FROM administration.user_role
-    WHERE role_id = role_id;
+    FROM administration.user_role ur
+    WHERE ur.role_id = p_role_id;
 
     -- Delete the user_role
-    DELETE FROM administration.user_role WHERE role_id = role_id;
+    DELETE FROM administration.user_role ur WHERE ur.role_id = p_role_id;
 END;
 $$ LANGUAGE plpgsql;
 
 -- Delete a role
 CREATE OR REPLACE FUNCTION administration.delete_role(
-    role_id INT,
+    p_role_id INT,
     current_user_id INT
 ) RETURNS INT AS $$
 BEGIN
     INSERT INTO administration.role_history (role_id, name, description, operation, operation_at, operation_by)
     SELECT id, name, description, 'DELETE', NOW(), current_user_id
     FROM administration.role
-    WHERE id = role_id;
+    WHERE id = p_role_id;
 
     -- Delete all users for this role
-    PERFORM administration.delete_all_users_for_role(role_id, current_user_id);
+    PERFORM administration.delete_all_users_for_role(p_role_id, current_user_id);
 
     -- Delete all claims for this role
-    PERFORM administration.delete_all_claims_for_role(role_id, current_user_id);
+    PERFORM administration.delete_all_claims_for_role(p_role_id, current_user_id);
 
-    DELETE FROM administration.role WHERE id = role_id;
-    RETURN role_id;
+    DELETE FROM administration.role WHERE id = p_role_id;
+    RETURN p_role_id;
 END;
 $$ LANGUAGE plpgsql;
 
