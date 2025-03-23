@@ -9,8 +9,9 @@ CREATE TABLE IF NOT EXISTS wms.country_master (
     id SERIAL PRIMARY KEY,
     country_name VARCHAR(255) NOT NULL,
     country_code VARCHAR(3) NOT NULL UNIQUE,
+    description VARCHAR(255),
     last_updated_at TIMESTAMP NOT NULL DEFAULT NOW(),
-    last_updated_by int NOT NULL
+    last_updated_by INTEGER REFERENCES administration.user(id)
 );
 
 -- Create temporal table for country_master
@@ -19,9 +20,10 @@ CREATE TABLE IF NOT EXISTS wms.country_master_history (
     country_master_id INTEGER,
     country_name VARCHAR(255) NOT NULL,
     country_code VARCHAR(3) NOT NULL,
+    description VARCHAR(255),
     operation VARCHAR(10),
     operation_at TIMESTAMP,
-    operation_by INTEGER REFERENCES wms.user(id)
+    operation_by INTEGER REFERENCES administration.user(id)
 );
 
 -- Create trigger function for country_master
@@ -33,12 +35,14 @@ BEGIN
             country_master_id,
             country_name,
             country_code,
+            description,
             operation, operation_at, operation_by
         )
         VALUES (
             NEW.id,
             NEW.country_name,
             NEW.country_code,
+            NEW.description,
             'INSERT', NEW.last_updated_at, NEW.last_updated_by
         );
     ELSIF TG_OP = 'UPDATE' THEN
@@ -46,12 +50,14 @@ BEGIN
             country_master_id,
             country_name,
             country_code,
+            description,
             operation, operation_at, operation_by
         )
         VALUES (
             NEW.id,
             NEW.country_name,
             NEW.country_code,
+            NEW.description,
             'UPDATE', NEW.last_updated_at, NEW.last_updated_by
         );
     END IF;
