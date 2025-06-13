@@ -1,0 +1,67 @@
+sections:
+  - sectionType: FIELDS
+    sectionName: Country Details
+    queryInfo:
+      returnType: SINGLE_ROW
+      query: |
+        SELECT
+          cm.id as country_id,
+          cm.country_name,
+          cm.country_code,
+          cm.description,
+          cm.last_updated_at,
+          TRIM(CONCAT(u.first_name, ' ', u.last_name)) as last_updated_by_name
+        FROM
+          wms.country_master cm
+          LEFT JOIN administration.user u ON cm.last_updated_by = u.id
+        WHERE
+          cm.id = $1
+      payload:
+        - country_id
+      path:
+        - sections
+        - 0
+    applicableActions:
+      - SAVE
+      - CANCEL
+    actionConfig:
+      SAVE:
+        label: Save Country
+        actionType: EXECUTE_QUERY
+        queryInfo:
+          returnType: SCALAR
+          query: |
+            INSERT INTO wms.country_master
+              (country_name, country_code, description, last_updated_by, last_updated_at)
+            VALUES
+              ($1, $2, $3, $4, NOW())
+            RETURNING id;
+          payload:
+            - country_name
+            - country_code
+            - description
+          contextParams:
+            - current_user_id
+          path:
+            - sections
+            - 0
+            - actionConfig
+            - SAVE
+            - queryInfo
+        onSuccess: exitAndComplete
+        onFailure: showErrorSnackbar
+      CANCEL:
+        label: Discard Changes
+    fields:
+      - name: country_name
+        label: Country Name
+        type: TEXT
+        required: true
+      - name: country_code
+        label: Country Code
+        type: TEXT
+        required: true
+      - name: description
+        label: Description
+        type: TEXTAREA
+        required: false 

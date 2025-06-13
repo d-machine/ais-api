@@ -347,3 +347,37 @@ BEGIN
     WHERE id = country_master_id_to_delete;
 END;
 $$ LANGUAGE plpgsql;
+
+---------------------------** State Master **---------------------------
+
+-- Function to delete state_master
+CREATE OR REPLACE FUNCTION wms.delete_state_master(
+    state_master_id_to_delete INTEGER,
+    deleted_by_user_id INTEGER
+)
+RETURNS VOID AS $$
+BEGIN
+    -- Insert into history before deletion
+    INSERT INTO wms.state_master_history (
+        state_id,
+        name,
+        description,
+        code,
+        country_id,
+        operation, operation_at, operation_by
+    )
+    SELECT 
+        id,
+        name,
+        description,
+        code,
+        country_id,
+        'DELETE', NOW(), deleted_by_user_id
+    FROM wms.state_master
+    WHERE id = state_master_id_to_delete;
+
+    -- Delete the state_master
+    DELETE FROM wms.state_master 
+    WHERE id = state_master_id_to_delete;
+END;
+$$ LANGUAGE plpgsql;
