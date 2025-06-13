@@ -15,16 +15,24 @@ export default class BaseService {
     this.executeScalarArrayQuery = this.executeScalarArrayQuery.bind(this);
     this.executeScalarQuery = this.executeScalarQuery.bind(this);
     this.executeQuery = this.executeQuery.bind(this);
+    this.executeDirectQuery = this.executeDirectQuery.bind(this);
   }
 
   protected async executeQuery(queryInfo: IQueryInfo, params: any[] = []) {
     try {
       const { returnType, query } = queryInfo;
+      console.log("Executing query:", { query, params, returnType });
       return await this._db.executeQuery(returnType, query, params);
     } catch (error) {
       console.error("Error executing query:", error);
+      console.error("Query details:", { query: queryInfo.query, params });
       throw error;
     }
+  }
+
+  // Public method for direct query execution from controller
+  public async executeDirectQuery(returnType: EQueryReturnType, query: string, params: any[] = []) {
+    return this.executeQuery({ returnType, query }, params);
   }
 
   protected async executeScalarQuery(query: string, params: any[] = []) {
