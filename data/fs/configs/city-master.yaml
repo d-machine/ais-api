@@ -1,25 +1,25 @@
 - sectionType: FIELDS
-  sectionName: State Details
+  sectionName: City Details
   queryInfo:
     returnType: SINGLE_ROW
     query: |
       SELECT
-        s.id as state_id,
-        s.state_name,
-        s.state_code,
-        s.description,
-        s.country_id,
-        c.country_name,
-        s.last_updated_at,
+        c.id as city_id,
+        c.city_name,
+        c.city_code,
+        c.description,
+        c.district_id,
+        d.district_name,
+        c.last_updated_at,
         TRIM(CONCAT(u.first_name, ' ', u.last_name)) as last_updated_by_name
       FROM
-        wms.state_master s
-        LEFT JOIN wms.country_master c ON s.country_id = c.id
-        LEFT JOIN administration.user u ON s.last_updated_by = u.id
+        wms.city_master c
+        LEFT JOIN wms.district_master d ON c.district_id = d.id
+        LEFT JOIN administration.user u ON c.last_updated_by = u.id
       WHERE
-        s.id = $1
+        c.id = $1
     payload:
-      - state_id
+      - city_id
     path:
       - sections
       - 0
@@ -28,21 +28,21 @@
     - CANCEL
   actionConfig:
     SAVE:
-      label: Save State
+      label: Save City
       actionType: EXECUTE_QUERY
       queryInfo:
         returnType: SCALAR
         query: |
-          INSERT INTO wms.state_master
-            (state_name, state_code, description, country_id, last_updated_by, last_updated_at)
+          INSERT INTO wms.city_master
+            (city_name, city_code, description, district_id, last_updated_by, last_updated_at)
           VALUES
             ($1, $2, $3, $4, $5, NOW())
           RETURNING id;
         payload:
-          - state_name
-          - state_code
+          - city_name
+          - city_code
           - description
-          - country_id
+          - district_id
         contextParams:
           - current_user_id
         path:
@@ -56,23 +56,23 @@
     CANCEL:
       label: Discard Changes
   fields:
-    - name: state_name
-      label: State Name
+    - name: city_name
+      label: City Name
       type: TEXT
       required: true
-    - name: state_code
-      label: State Code
+    - name: city_code
+      label: City Code
       type: TEXT
       required: true
     - name: description
       label: Description
       type: TEXTAREA
       required: false
-    - name: country_id
-      label: Country
+    - name: district_id
+      label: District
       type: DROPDOWN
       required: true
       dataSource:
         type: QUERY
         query: |
-          SELECT id, country_name as label FROM wms.country_master ORDER BY country_name;
+          SELECT id, district_name as label FROM wms.district_master ORDER BY district_name;
