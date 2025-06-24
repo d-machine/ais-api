@@ -15,8 +15,9 @@ CREATE TABLE IF NOT EXISTS administration.user (
     username VARCHAR(255) NOT NULL UNIQUE,
     password VARCHAR(255) NOT NULL,
     reports_to int NOT NULL,
-    last_updated_at TIMESTAMP NOT NULL DEFAULT NOW(),
-    last_updated_by int not null
+    is_active boolean not null default true,
+    lub int NOT NULL,
+    lua TIMESTAMP NOT NULL DEFAULT NOW()
 );
 
 -- Create history table
@@ -40,10 +41,15 @@ RETURNS TRIGGER AS $$
 BEGIN
     IF TG_OP = 'INSERT' THEN
         INSERT INTO administration.user_history (user_id, email, first_name, last_name, username, password, reports_to, operation, operation_at, operation_by)
-        VALUES (NEW.id, NEW.email, NEW.first_name, NEW.last_name, NEW.username, NEW.password, NEW.reports_to, 'INSERT', NEW.last_updated_at, NEW.last_updated_by);
+        VALUES (NEW.id, NEW.email, NEW.first_name, NEW.last_name, NEW.username, NEW.password, NEW.reports_to, 'INSERT', NEW.lua, NEW.lub);
     ELSIF TG_OP = 'UPDATE' THEN
-        INSERT INTO administration.user_history (user_id, email, first_name, last_name, username, password, reports_to, operation, operation_at, operation_by)
-        VALUES (NEW.id, NEW.email, NEW.first_name, NEW.last_name, NEW.username, NEW.password, NEW.reports_to, 'UPDATE', NEW.last_updated_at, NEW.last_updated_by);
+        IF (OLD.is_active = true AND NEW.is_active = false) THEN
+            INSERT INTO administration.user_history (user_id,email,first_name,last_name,username,password,reports_to, operation,operation_at,operation_by)
+            VALUES (NEW.id,NEW.email,NEW.first_name,NEW.last_name,NEW.username,NEW.password,NEW.reports_to,'DELETE',NEW.lua,NEW.lub);
+        ELSE
+            INSERT INTO administration.user_history (user_id,email,first_name,last_name,username,password,reports_to, operation,operation_at,operation_by)
+            VALUES (NEW.id,NEW.email,NEW.first_name,NEW.last_name,NEW.username,NEW.password,NEW.reports_to,'UPDATE',NEW.lua,NEW.lub);
+        END IF;
     END IF;
     RETURN NEW;
 END;

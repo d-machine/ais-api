@@ -10,8 +10,9 @@ CREATE TABLE IF NOT EXISTS wms.country_master (
     country_name VARCHAR(255) NOT NULL,
     country_code VARCHAR(3) NOT NULL UNIQUE,
     description VARCHAR(255),
-    last_updated_at TIMESTAMP NOT NULL DEFAULT NOW(),
-    last_updated_by INTEGER REFERENCES administration.user(id)
+    is_active boolean not null default true,
+    lub integer references administration.user(id),
+    lua TIMESTAMP NOT NULL DEFAULT NOW()
 );
 
 -- Create temporal table for country_master
@@ -31,35 +32,16 @@ CREATE OR REPLACE FUNCTION wms.country_master_trigger()
 RETURNS TRIGGER AS $$
 BEGIN
     IF TG_OP = 'INSERT' THEN
-        INSERT INTO wms.country_master_history (
-            country_master_id,
-            country_name,
-            country_code,
-            description,
-            operation, operation_at, operation_by
-        )
-        VALUES (
-            NEW.id,
-            NEW.country_name,
-            NEW.country_code,
-            NEW.description,
-            'INSERT', NEW.last_updated_at, NEW.last_updated_by
-        );
+        INSERT INTO wms.country_master_history (country_master_id,country_name,country_code,description,operation,operation_at,operation_by)
+        VALUES (NEW.id,NEW.country_name,NEW.country_code,NEW.description,'INSERT',NEW.lua,NEW.lub);
     ELSIF TG_OP = 'UPDATE' THEN
-        INSERT INTO wms.country_master_history (
-            country_master_id,
-            country_name,
-            country_code,
-            description,
-            operation, operation_at, operation_by
-        )
-        VALUES (
-            NEW.id,
-            NEW.country_name,
-            NEW.country_code,
-            NEW.description,
-            'UPDATE', NEW.last_updated_at, NEW.last_updated_by
-        );
+        IF (OLD.is_active = true AND NEW.is_active = false) THEN
+            INSERT INTO wms.country_master_history (country_master_id,country_name,country_code,description,operation,operation_at,operation_by)
+            VALUES (NEW.id,NEW.country_name,NEW.country_code,NEW.description,'DELETE',NEW.lua,NEW.lub);
+        ELSE
+            INSERT INTO wms.country_master_history (country_master_id,country_name,country_code,description,operation,operation_at,operation_by)
+            VALUES (NEW.id,NEW.country_name,NEW.country_code,NEW.description,'UPDATE',NEW.lua,NEW.lub);
+        END IF;
     END IF;
     RETURN NEW;
 END;

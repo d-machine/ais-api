@@ -7,12 +7,14 @@ queryInfo:
       sm.code as state_code,
       sm.description,
       cm.country_name,
-      sm.last_updated_at,
+      sm.lua,
       TRIM(CONCAT(u.first_name, ' ', u.last_name)) as last_updated_by_name
     FROM
       wms.state_master sm
       LEFT JOIN wms.country_master cm ON sm.country_id = cm.id
-      LEFT JOIN administration.user u ON sm.last_updated_by = u.id
+      LEFT JOIN administration.user u ON sm.lub = u.id
+    WHERE
+      sm.is_active = true
     ORDER BY
       sm.name
   options:
@@ -73,7 +75,7 @@ columns:
   - name: country_name
     label: Country
     visible: true
-  - name: last_updated_at
+  - name: lua
     label: Last Updated At
     visible: true
   - name: last_updated_by_name

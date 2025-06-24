@@ -6,11 +6,14 @@ queryInfo:
       dm.district_name,
       dm.district_code,
       dm.description,
-      dm.last_updated_at,
+      dm.is_active,
+      dm.lua,
       TRIM(CONCAT(u.first_name, ' ', u.last_name)) as last_updated_by_name
     FROM
       wms.district_master dm
-      LEFT JOIN administration.user u ON dm.last_updated_by = u.id
+      LEFT JOIN administration.user u ON dm.lub = u.id 
+    WHERE 
+      dm.is_active = true
     ORDER BY
       dm.district_name
   options:
@@ -68,7 +71,7 @@ columns:
   - name: description
     label: Description
     visible: true
-  - name: last_updated_at
+  - name: lua
     label: Last Updated At
     visible: true
   - name: last_updated_by_name

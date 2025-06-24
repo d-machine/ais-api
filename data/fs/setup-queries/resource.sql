@@ -12,8 +12,9 @@ CREATE TABLE IF NOT EXISTS administration.resource (
     name VARCHAR(255) NOT NULL UNIQUE,
     list_config_file VARCHAR(255),
     parent_id int NOT NULL,
-    last_updated_at TIMESTAMP NOT NULL DEFAULT NOW(),
-    last_updated_by int REFERENCES administration.user(id)
+    is_active boolean not null default true,
+    lub int REFERENCES administration.user(id),
+    lua TIMESTAMP NOT NULL DEFAULT NOW()
 );
 
 -- Create history table
@@ -34,10 +35,15 @@ RETURNS TRIGGER AS $$
 BEGIN
     IF TG_OP = 'INSERT' THEN
         INSERT INTO administration.resource_history (resource_id, name, list_config_file, parent_id, operation, operation_at, operation_by)
-        VALUES (NEW.id, NEW.name, NEW.list_config_file, NEW.parent_id, 'INSERT', NEW.last_updated_at, NEW.last_updated_by);
+        VALUES (NEW.id, NEW.name, NEW.list_config_file, NEW.parent_id, 'INSERT', NEW.lua, NEW.lub);
     ELSIF TG_OP = 'UPDATE' THEN
-        INSERT INTO administration.resource_history (resource_id, name, list_config_file, parent_id, operation, operation_at, operation_by)
-        VALUES (NEW.id, NEW.name, NEW.list_config_file, NEW.parent_id, 'UPDATE', NEW.last_updated_at, NEW.last_updated_by);
+        IF (OLD.is_active = true AND NEW.is_active = false) THEN
+            INSERT INTO administration.resource_history (resource_id, name, list_config_file, parent_id, operation, operation_at, operation_by)
+            VALUES (NEW.id, NEW.name, NEW.list_config_file, NEW.parent_id, 'DELETE', NEW.lua, NEW.lub);
+        ELSE
+            INSERT INTO administration.resource_history (resource_id, name, list_config_file, parent_id, operation, operation_at, operation_by)
+            VALUES (NEW.id, NEW.name, NEW.list_config_file, NEW.parent_id, 'UPDATE', NEW.lua, NEW.lub);
+        END IF;
     END IF;
     RETURN NEW;
 END;

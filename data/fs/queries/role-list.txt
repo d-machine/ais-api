@@ -1,5 +1,5 @@
 Select 
   id as role_id, name as role_name, description, 
-  last_updated_by, last_updated_at
+  lua, lub, is_active
 from
   administration.role

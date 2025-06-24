@@ -11,7 +11,7 @@ sections:
           string_agg(r.name, ', ') as roles, string_agg(r.id::text, ', ') as role_ids,
           string_agg(ur.id::text, ', ') as user_role_ids,
           TRIM(CONCAT(rt.first_name, ' ', rt.last_name)) as reports_to,
-          u.last_updated_by as last_updated_by, u.last_updated_at as last_updated_at
+          u.lub as lub, u.lua as lua, is_active
         FROM
           administration.user u
           LEFT JOIN administration.user rt ON u.reports_to = rt.id
@@ -19,10 +19,11 @@ sections:
           LEFT JOIN administration.role r ON ur.role_id = r.id
         WHERE
           u.id = $1
+          AND u.is_active = true
         GROUP BY
           u.id, u.username, u.email, u.first_name, u.last_name,
           rt.first_name, rt.last_name,
-          u.last_updated_by, u.last_updated_at
+          u.lub, u.lua
       payload:
         - user_id
       path:

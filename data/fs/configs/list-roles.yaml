@@ -3,14 +3,16 @@ queryInfo:
   returnType: MULTIPLE_ROWS
   query: |
     SELECT
-    role_id, role_name, description, last_updated_by, last_updated_at 
+    role_id, role_name, description, lub, lua
     FROM
       (
         Select 
           id as role_id, name as role_name, description, 
-          last_updated_by, last_updated_at
+          lub, lua
         from
           administration.role
+        where
+          is_active = true
       ) as role_list_view
   options:
     applyAccessLevelRestrictions: false

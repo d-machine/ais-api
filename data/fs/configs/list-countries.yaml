@@ -6,11 +6,13 @@ queryInfo:
       cm.country_name,
       cm.country_code,
       cm.description,
-      cm.last_updated_at,
+      cm.lua,
       TRIM(CONCAT(u.first_name, ' ', u.last_name)) as last_updated_by_name
     FROM
       wms.country_master cm
-      LEFT JOIN administration.user u ON cm.last_updated_by = u.id
+      LEFT JOIN administration.user u ON cm.luv = u.id
+    WHERE
+      cm.is_active = true
     ORDER BY
       cm.country_name
   options:
@@ -68,7 +70,7 @@ columns:
   - name: description
     label: Description
     visible: true
-  - name: last_updated_at
+  - name: lua
     label: Last Updated At
     visible: true
   - name: last_updated_by_name
