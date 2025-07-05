@@ -11,14 +11,16 @@ sections:
           d.description,
           d.state_id,
           s.state_name,
-          d.last_updated_at,
+          d.is_active,
+          d.lua,
           TRIM(CONCAT(u.first_name, ' ', u.last_name)) as last_updated_by_name
         FROM
           wms.district_master d
           LEFT JOIN wms.state_master s ON d.state_id = s.id
-          LEFT JOIN administration.user u ON d.last_updated_by = u.id
+          LEFT JOIN administration.user u ON d.lub = u.id
         WHERE
           d.id = $1
+          AND d.is_active = true
       payload:
         - district_id
       path:
@@ -35,7 +37,7 @@ sections:
           returnType: SCALAR
           query: |
             INSERT INTO wms.district_master
-              (district_name, district_code, description, state_id, last_updated_by, last_updated_at)
+              (district_name, district_code, description, state_id, lub, lua)
             VALUES
               ($1, $2, $3, $4, $5, NOW())
             RETURNING id;

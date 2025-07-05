@@ -10,14 +10,16 @@
         c.description,
         c.district_id,
         d.district_name,
-        c.last_updated_at,
+        c.is_active,
+        c.lua,
         TRIM(CONCAT(u.first_name, ' ', u.last_name)) as last_updated_by_name
       FROM
         wms.city_master c
         LEFT JOIN wms.district_master d ON c.district_id = d.id
-        LEFT JOIN administration.user u ON c.last_updated_by = u.id
+        LEFT JOIN administration.user u ON c.lub = u.id
       WHERE
         c.id = $1
+        AND c.is_active = true
     payload:
       - city_id
     path:
@@ -34,7 +36,7 @@
         returnType: SCALAR
         query: |
           INSERT INTO wms.city_master
-            (city_name, city_code, description, district_id, last_updated_by, last_updated_at)
+            (city_name, city_code, description, district_id, lub, lua)
           VALUES
             ($1, $2, $3, $4, $5, NOW())
           RETURNING id;

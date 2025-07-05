@@ -1,13 +1,13 @@
-INSERT INTO administration.user (username, email, first_name, last_name, password, reports_to, last_updated_by) VALUES
+INSERT INTO administration.user (username, email, first_name, last_name, password, reports_to, lub) VALUES
 ('admin', 'LQrGq@example.com', 'Admin', 'Admin', 'admin', 0, 1);
 
-INSERT INTO administration.role (name, description, last_updated_by) VALUES
+INSERT INTO administration.role (name, description, lub) VALUES
 ('super_admin', 'desc', 1);
 
-INSERT INTO administration.user_role (user_id, role_id, last_updated_by) VALUES
+INSERT INTO administration.user_role (user_id, role_id, lub) VALUES
 (1, 1, 1);
 
-INSERT INTO administration.resource (name, list_config_file, parent_id, last_updated_by) VALUES
+INSERT INTO administration.resource (name, list_config_file, parent_id, lub) VALUES
 ('Main Menu', NULL, 0, 1),
 ('Administration', NULL, 1, 1),
 ('Master Data', NULL, 1, 1),

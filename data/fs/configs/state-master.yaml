@@ -10,14 +10,16 @@
         s.description,
         s.country_id,
         c.country_name,
-        s.last_updated_at,
+        is_active,
+        s.lua,
         TRIM(CONCAT(u.first_name, ' ', u.last_name)) as last_updated_by_name
       FROM
         wms.state_master s
         LEFT JOIN wms.country_master c ON s.country_id = c.id
-        LEFT JOIN administration.user u ON s.last_updated_by = u.id
+        LEFT JOIN administration.user u ON s.lub = u.id
       WHERE
         s.id = $1
+        AND s.is_active = true
     payload:
       - state_id
     path:
@@ -34,7 +36,7 @@
         returnType: SCALAR
         query: |
           INSERT INTO wms.state_master
-            (state_name, state_code, description, country_id, last_updated_by, last_updated_at)
+            (state_name, state_code, description, country_id, lub, lua)
           VALUES
             ($1, $2, $3, $4, $5, NOW())
           RETURNING id;

@@ -23,40 +23,40 @@ CREATE TABLE IF NOT EXISTS administration.resource_hierarchy_closure_history (
     operation_by INTEGER REFERENCES administration.user(id)
 );
 
-insert into administration.resource (name, description, last_updated_by) VALUES
+insert into administration.resource (name, description, lub) VALUES
 ('Main Menu', 'Main menu placeholder', 3);
 
-insert into administration.resource (name, description, last_updated_by) VALUES
+insert into administration.resource (name, description, lub) VALUES
 ('Admin Panel', 'Admin Panel', 3);
 
-insert into administration.resource (name, description, last_updated_by) VALUES
+insert into administration.resource (name, description, lub) VALUES
 ('User Panel', 'User Panel', 3);
 
-insert into administration.resource (name, description, last_updated_by) VALUES
+insert into administration.resource (name, description, lub) VALUES
 ('Role Panel', 'Role Panel', 3);
 
 
-insert into administration.user (username, password, reportsto, last_updated_by) VALUES
+insert into administration.user (username, password, reportsto, lub) VALUES
 ('sumit', 'sumit', 3, 3);
-insert into administration.user (username, password, reportsto, last_updated_by) VALUES
+insert into administration.user (username, password, reportsto, lub) VALUES
 ('sachin', 'sachin', 3, 3);
-insert into administration.user (username, password, reportsto, last_updated_by) VALUES
+insert into administration.user (username, password, reportsto, lub) VALUES
 ('shalu', 'shalu', 4, 3);
-insert into administration.user (username, password, reportsto, last_updated_by) VALUES
+insert into administration.user (username, password, reportsto, lub) VALUES
 ('jyoti', 'jyoti', 5, 3);
-insert into administration.user (username, password, reportsto, last_updated_by) VALUES
+insert into administration.user (username, password, reportsto, lub) VALUES
 ('chavi', 'chavi', 7, 3);
 
-insert into administration.role (name, description, team, department, last_updated_by) values
+insert into administration.role (name, description, team, department, lub) values
 ('super_admin', 'desc', 'ais', 'dev', 3);
-insert into administration.role (name, description, team, department, last_updated_by) values
+insert into administration.role (name, description, team, department, lub) values
 ('manager', 'desc', 'ais', 'dev', 3);
-insert into administration.role (name, description, team, department, last_updated_by) values
+insert into administration.role (name, description, team, department, lub) values
 ('assistant_manager', 'desc', 'ais', 'dev', 3);
-insert into administration.role (name, description, team, department, last_updated_by) values
+insert into administration.role (name, description, team, department, lub) values
 ('salesman', 'desc', 'ais', 'dev', 3);
 
-insert into administration.user_role (user_id, role_id, last_updated_by) VALUES
+insert into administration.user_role (user_id, role_id, lub) VALUES
 (3, 1, 3),
 (4, 2, 3),
 (5, 2, 3),
@@ -64,7 +64,7 @@ insert into administration.user_role (user_id, role_id, last_updated_by) VALUES
 (7, 3, 3),
 (8, 3, 3);
 
-insert into administration.user_role (user_id, role_id, last_updated_by) VALUES
+insert into administration.user_role (user_id, role_id, lub) VALUES
 (7, 4, 3);
 
 update administration.user_role
@@ -82,13 +82,13 @@ insert into administration.resource (name, parent_id) values
 ('r5', 3),
 ('r6', 3);
 
-insert into administration.resource_access_role (role_id, resource_id, access_type, access_level, last_updated_by) VALUES
+insert into administration.resource_access_role (role_id, resource_id, access_type, access_level, lub) VALUES
 (2, 4, 'READ', 'ALL', 3),
 (2, 5, 'READ', 'ALL', 3),
 (2, 6, 'READ', 'ALL', 3),
 (2, 7, 'READ', 'ALL', 3);
 
-insert into administration.resource_access_role (role_id, resource_id, access_type, access_level, last_updated_by) VALUES
+insert into administration.resource_access_role (role_id, resource_id, access_type, access_level, lub) VALUES
 (3, 4, 'READ', 'ALL', 3),
 (3, 5, 'READ', 'ALL', 3);
 
