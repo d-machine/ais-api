@@ -10,7 +10,7 @@ queryInfo:
       TRIM(CONCAT(u.first_name, ' ', u.last_name)) as last_updated_by_name
     FROM
       wms.country_master cm
-      LEFT JOIN administration.user u ON cm.luv = u.id
+      LEFT JOIN administration.user u ON cm.lub = u.id
     WHERE
       cm.is_active = true
     ORDER BY
