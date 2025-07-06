@@ -66,37 +66,45 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
--- Delete a user
+-- Delete a user (soft delete)
 CREATE OR REPLACE FUNCTION administration.delete_user(
     user_id INT,
     current_user_id INT
 ) RETURNS INT AS $$
 BEGIN
+    -- Remove all roles for the user
     PERFORM administration.delete_all_roles_for_user(user_id, current_user_id);
 
+    -- Log deletion in history table
     INSERT INTO administration.user_history (
         user_id, email, first_name, last_name, username, password, reports_to,
         operation, operation_at, operation_by
     )
     SELECT 
         id, email, first_name, last_name, username, password, reports_to,
-        'DELETE', NOW(), current_user_id
-    FROM administration.user
+        'DELETE', current_user_id, NOW()
+    FROM administration."user"
     WHERE id = user_id;
 
-    DELETE FROM administration.user WHERE id = user_id;
+    -- Mark user as inactive
+    UPDATE administration."user"
+    SET is_active = false,
+        lub = current_user_id
+        lua = NOW()
+    WHERE id = user_id;
+
     RETURN user_id;
 END;
 $$ LANGUAGE plpgsql;
 
--- Delete all roles for a user
+-- Soft delete all roles for a user
 CREATE OR REPLACE FUNCTION administration.delete_all_roles_for_user(
     p_user_id INTEGER,
     deleted_by_user_id INTEGER
 )
 RETURNS VOID AS $$
 BEGIN
-    -- Insert into history before deletion
+    -- Insert into history before deactivation
     INSERT INTO administration.user_role_history (
         user_role_id, user_id, role_id,
         operation, operation_at, operation_by
@@ -105,10 +113,14 @@ BEGIN
         ur.id, ur.user_id, ur.role_id,
         'DELETE', NOW(), deleted_by_user_id
     FROM administration.user_role ur
-    WHERE ur.user_id = p_user_id;
+    WHERE ur.user_id = p_user_id AND ur.is_active = true;
 
-    -- Delete the user_role
-    DELETE FROM administration.user_role ur WHERE ur.user_id = p_user_id;
+    -- Soft delete (deactivate) roles
+    UPDATE administration.user_role
+    SET is_active = false,
+        lub = deleted_by_user_id
+        lua = NOW()
+    WHERE user_id = p_user_id AND is_active = true;
 END;
 $$ LANGUAGE plpgsql;
 
