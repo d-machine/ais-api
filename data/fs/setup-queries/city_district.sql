@@ -29,13 +29,16 @@ BEGIN
     INSERT INTO wms.city_district_history (city_district_id, city_id, district_id, state_id, description, operation, operation_at, operation_by)
     VALUES (NEW.id, NEW.city_id, NEW.district_id, NEW.state_id, NEW.description, 'INSERT', NEW.lua, NEW.lub);
  ELSIF (TG_OP = 'UPDATE') THEN
-  -- Check if is_active is being set to false (soft delete)
-  IF (OLD.is_active = true AND NEW.is_active = false) THEN
-    INSERT INTO wms.city_district_history (city_district_id,city_id,district_id,state_id,description,operation,operation_at,operation_by)
-    VALUES (NEW.id,NEW.city_id,NEW.district_id,NEW.state_id,NEW.description,'DELETE',NEW.lua,NEW.lub);
-  ELSE
-    INSERT INTO wms.city_district_history (city_district_id,city_id,district_id,state_id,description,operation,operation_at,operation_by)
-    VALUES (NEW.id,NEW.city_id,NEW.district_id,NEW.state_id,NEW.description,'UPDATE',NEW.lua,NEW.lub);
+    -- Check if is_active is being set to false (soft delete)
+    IF (OLD.is_active = true AND NEW.is_active = false) THEN
+      INSERT INTO wms.city_district_history (city_district_id,city_id,district_id,state_id,description,operation,operation_at,operation_by)
+      VALUES (NEW.id,NEW.city_id,NEW.district_id,NEW.state_id,NEW.description,'DELETE',NEW.lua,NEW.lub);
+    ELSIF (OLD.is_active = false AND NEW.is_active = true) THEN
+      INSERT INTO wms.city_district_history (city_district_id,city_id,district_id,state_id,description,operation,operation_at,operation_by)
+      VALUES (NEW.id,NEW.city_id,NEW.district_id,NEW.state_id,NEW.description,'RECOVER',NEW.lua,NEW.lub);
+    ELSE
+      INSERT INTO wms.city_district_history (city_district_id,city_id,district_id,state_id,description,operation,operation_at,operation_by)
+      VALUES (NEW.id,NEW.city_id,NEW.district_id,NEW.state_id,NEW.description,'UPDATE',NEW.lua,NEW.lub);
   END IF;
 
   ELSIF (TG_OP = 'DELETE') THEN

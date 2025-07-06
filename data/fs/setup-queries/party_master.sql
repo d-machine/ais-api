@@ -175,6 +175,61 @@ BEGIN
                 NEW.manager,
                 'DELETE',NEW.lua,NEW.lub
             );
+        ELSIF (OLD.is_active = false AND NEW.is_active = true) THEN
+            INSERT INTO party_master_history (
+                id,
+                party_type,
+                name,
+                add1,
+                add2,
+                add3,
+                city,
+                pincode,
+                district,
+                state_id,
+                person_name,
+                telephone,
+                email,
+                udate,
+                salesman,
+                pan_no,
+                cr_limit,
+                cr_days,
+                gstno,
+                country_id,
+                aadhar_no,
+                sales_head,
+                director,
+                manager,
+                operation,operation_at,operation_by
+            )
+            VALUES (
+                NEW.id,
+                NEW.party_type,
+                NEW.name,
+                NEW.add1,
+                NEW.add2,
+                NEW.add3,
+                NEW.city,
+                NEW.pincode,
+                NEW.district,
+                NEW.state_id,
+                NEW.person_name,
+                NEW.telephone,
+                NEW.email,
+                NEW.udate,
+                NEW.salesman,
+                NEW.pan_no,
+                NEW.cr_limit,
+                NEW.cr_days,
+                NEW.gstno,
+                NEW.country_id,
+                NEW.aadhar_no,
+                NEW.sales_head,
+                NEW.director,
+                NEW.manager, 
+               'RECOVER',NEW.lua,NEW.lub
+            );
         ELSE
             INSERT INTO party_master_history (
                 id,

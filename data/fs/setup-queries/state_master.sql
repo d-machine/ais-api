@@ -31,6 +31,9 @@ BEGIN
         IF (OLD.is_active = true AND NEW.is_active = false) THEN
             INSERT INTO wms.state_master_history (state_id,name,country_id,code,description,operation,operation_at,operation_by)
             VALUES (NEW.id,NEW.name,NEW.country_id,NEW.code,NEW.description,'DELETE',NEW.lua,NEW.lub);
+        ELSIF (OLD.is_active = false AND NEW.is_active = true) THEN
+            INSERT INTO wms.state_master_history (state_id,name,country_id,code,description,operation,operation_at,operation_by)
+            VALUES (NEW.id,NEW.name,NEW.country_id,NEW.code,NEW.description,'RECOVER',NEW.lua,NEW.lub);
         ELSE
             INSERT INTO wms.state_master_history (state_id,name,country_id,code,description,operation,operation_at,operation_by)
             VALUES (NEW.id,NEW.name,NEW.country_id,NEW.code,NEW.description,'UPDATE',NEW.lua,NEW.lub);

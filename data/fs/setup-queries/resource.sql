@@ -40,6 +40,9 @@ BEGIN
         IF (OLD.is_active = true AND NEW.is_active = false) THEN
             INSERT INTO administration.resource_history (resource_id, name, list_config_file, parent_id, operation, operation_at, operation_by)
             VALUES (NEW.id, NEW.name, NEW.list_config_file, NEW.parent_id, 'DELETE', NEW.lua, NEW.lub);
+        ELSIF (OLD.is_active = false AND NEW.is_active = true) THEN
+            INSERT INTO administration.resource_history (resource_id, name, list_config_file, parent_id, operation, operation_at, operation_by)
+            VALUES (NEW.id, NEW.name, NEW.list_config_file, NEW.parent_id, 'RECOVER', NEW.lua, NEW.lub);
         ELSE
             INSERT INTO administration.resource_history (resource_id, name, list_config_file, parent_id, operation, operation_at, operation_by)
             VALUES (NEW.id, NEW.name, NEW.list_config_file, NEW.parent_id, 'UPDATE', NEW.lua, NEW.lub);

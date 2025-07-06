@@ -43,6 +43,9 @@ BEGIN
         IF (OLD.is_active = true AND NEW.is_active = false) THEN
             INSERT INTO administration.claim_history (claim_id,role_id,resource_id,access_level_id,access_type_ids,operation,operation_at,operation_by)
             VALUES (NEW.id,NEW.role_id,NEW.resource_id,NEW.access_level_id,NEW.access_type_ids,'DELETE',NEW.lua,NEW.lub);
+        ELSIF (OLD.is_active = false AND NEW.is_active = true) THEN
+            INSERT INTO administration.claim_history (claim_id,role_id,resource_id,access_level_id,access_type_ids,operation,operation_at,operation_by)
+            VALUES (NEW.id,NEW.role_id,NEW.resource_id,NEW.access_level_id,NEW.access_type_ids,'RECOVER',NEW.lua,NEW.lub);
         ELSE
             INSERT INTO administration.claim_history (claim_id,role_id,resource_id,access_level_id,access_type_ids,operation,operation_at,operation_by)
             VALUES (NEW.id,NEW.role_id,NEW.resource_id,NEW.access_level_id,NEW.access_type_ids,'UPDATE',NEW.lua,NEW.lub);

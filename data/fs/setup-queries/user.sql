@@ -46,6 +46,9 @@ BEGIN
         IF (OLD.is_active = true AND NEW.is_active = false) THEN
             INSERT INTO administration.user_history (user_id,email,first_name,last_name,username,password,reports_to, operation,operation_at,operation_by)
             VALUES (NEW.id,NEW.email,NEW.first_name,NEW.last_name,NEW.username,NEW.password,NEW.reports_to,'DELETE',NEW.lua,NEW.lub);
+        ELSE IF (OLD.is_active = false AND NEW.is_active = true) THEN
+            INSERT INTO administration.user_history (user_id,email,first_name,last_name,username,password,reports_to, operation,operation_at,operation_by)
+            VALUES (NEW.id,NEW.email,NEW.first_name,NEW.last_name,NEW.username,NEW.password,NEW.reports_to,'RECOVER',NEW.lua,NEW.lub);
         ELSE
             INSERT INTO administration.user_history (user_id,email,first_name,last_name,username,password,reports_to, operation,operation_at,operation_by)
             VALUES (NEW.id,NEW.email,NEW.first_name,NEW.last_name,NEW.username,NEW.password,NEW.reports_to,'UPDATE',NEW.lua,NEW.lub);

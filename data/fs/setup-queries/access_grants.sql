@@ -45,6 +45,9 @@ BEGIN
         IF (OLD.is_active = true AND NEW.is_active = false) THEN
             INSERT INTO administration.access_grants_history (access_grant_id,user_id,target_id,access_type,valid_from,valid_until,operation,operation_at,operation_by)
             VALUES (NEW.id,NEW.user_id,NEW.target_id,NEW.access_type,NEW.valid_from,NEW.valid_until,'DELETE',NEW.lua,NEW.lub);
+        ELSIF (OLD.is_active = false AND NEW.is_active = true) THEN
+            INSERT INTO administration.access_grants_history (access_grant_id,user_id,target_id,access_type,valid_from,valid_until,operation,operation_at,operation_by)
+            VALUES (NEW.id,NEW.user_id,NEW.target_id,NEW.access_type,NEW.valid_from,NEW.valid_until,'RECOVER',NEW.lua,NEW.lub);
         ELSE
             INSERT INTO administration.access_grants_history (access_grant_id,user_id,target_id,access_type,valid_from,valid_until,operation,operation_at,operation_by)
             VALUES (NEW.id,NEW.user_id,NEW.target_id,NEW.access_type,NEW.valid_from,NEW.valid_until,'UPDATE',NEW.lua,NEW.lub);

@@ -38,6 +38,9 @@ BEGIN
         IF (OLD.is_active = true AND NEW.is_active = false) THEN
             INSERT INTO wms.country_master_history (country_master_id,country_name,country_code,description,operation,operation_at,operation_by)
             VALUES (NEW.id,NEW.country_name,NEW.country_code,NEW.description,'DELETE',NEW.lua,NEW.lub);
+        ELSIF (OLD.is_active = false AND NEW.is_active = true) THEN
+            INSERT INTO wms.country_master_history (country_master_id,country_name,country_code,description,operation,operation_at,operation_by)
+            VALUES (NEW.id,NEW.country_name,NEW.country_code,NEW.description,'RECOVER',NEW.lua,NEW.lub);
         ELSE
             INSERT INTO wms.country_master_history (country_master_id,country_name,country_code,description,operation,operation_at,operation_by)
             VALUES (NEW.id,NEW.country_name,NEW.country_code,NEW.description,'UPDATE',NEW.lua,NEW.lub);
