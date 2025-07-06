@@ -5,12 +5,12 @@ SELECT u.id as user_id, u.username as username,
     string_agg(r.name, ', ') as roles, string_agg(r.role_id::text, ', ') as role_ids,
     string_agg(ur.id::text, ', ') as user_role_ids,
     TRIM(CONCAT(rt.first_name, ' ', rt.last_name)) as reports_to,
-    u.last_updated_by as last_updated_by, u.last_updated_at as last_updated_at
+    u.lub as lub, u.lua as lua
     FROM user u
     LEFT JOIN user rt ON u.reports_to = rt.id
     LEFT JOIN user_role ur ON u.id = ur.user_id
     LEFT JOIN role r ON ur.role_id = r.id
     GROUP BY u.id, u.username, u.email, u.first_name, u.last_name,
     rt.first_name, rt.last_name,
-    u.last_updated_by, u.last_updated_at;
+    u.lub, u.lua;
 

@@ -113,19 +113,32 @@ BEGIN
         VALUES (
             NEW.id,
             ${columnNames.map(name => `NEW.${name}`).join(',\n            ')},
-            'INSERT', NEW.last_updated_at, NEW.last_updated_by
+            'INSERT', NEW.lua, NEW.lub
         );
     ELSIF TG_OP = 'UPDATE' THEN
-        INSERT INTO ${schemaName}.${historyTableName} (
-            ${actualTableName}_id,
-            ${columnNames.join(',\n            ')},
-            operation, operation_at, operation_by
-        )
-        VALUES (
-            NEW.id,
-            ${columnNames.map(name => `NEW.${name}`).join(',\n            ')},
-            'UPDATE', NEW.last_updated_at, NEW.last_updated_by
-        );
+        IF (OLD.is_active = true AND NEW.is_active = false) THEN
+            INSERT INTO ${schemaName}.${historyTableName} (
+                ${actualTableName}_id,
+                ${columnNames.join(',\n        ')},
+                operation, operation_at, operation_by
+            )
+            VALUES (
+                NEW.id,
+                ${columnNames.map(name => `NEW.${name}`).join(',\n        ')},
+                'DELETE', NEW.lua, NEW.lub
+            );
+        ELSE
+            INSERT INTO ${schemaName}.${historyTableName} (
+                ${actualTableName}_id,
+                ${columnNames.join(',\n        ')},
+                operation, operation_at, operation_by
+            )
+            VALUES (
+                NEW.id,
+                ${columnNames.map(name => `NEW.${name}`).join(',\n        ')},
+                'UPDATE', NEW.lua, NEW.lub
+            );
+        END IF;
     END IF;
     RETURN NEW;
 END;

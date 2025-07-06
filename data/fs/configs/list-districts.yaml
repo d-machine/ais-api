@@ -1,0 +1,79 @@
+queryInfo:
+  returnType: MULTIPLE_ROWS
+  query: |
+    SELECT
+      dm.id as district_id,
+      dm.district_name,
+      dm.district_code,
+      dm.description,
+      dm.is_active,
+      dm.lua,
+      TRIM(CONCAT(u.first_name, ' ', u.last_name)) as last_updated_by_name
+    FROM
+      wms.district_master dm
+      LEFT JOIN administration.user u ON dm.lub = u.id 
+    WHERE 
+      dm.is_active = true
+    ORDER BY
+      dm.district_name
+  options:
+    applyFiltering: true
+    applySorting: true
+    applyPagenation: true
+  path:
+    - queryInfo
+
+applicableActions:
+  - NEW
+  - EDIT
+  - DELETE
+
+actionConfig:
+  NEW:
+    label: Add District
+    resourcePath: district-master
+    accessTypeRequired: DISTRICT-CREATE
+  EDIT:
+    label: Edit District
+    resourcePath: district-master
+    accessTypeRequired: DISTRICT-UPDATE
+    targetParams:
+      - key: district_id
+        as: district_id
+  DELETE:
+    label: Delete District
+    actionType: EXECUTE_QUERY
+    accessTypeRequired: DISTRICT-DELETE
+    queryInfo:
+      returnType: SCALAR
+      query: |
+        SELECT wms.delete_district_master($1, $2);
+      payload:
+        - district_id
+      contextParams:
+        - current_user_id
+      path:
+        - actionConfig
+        - DELETE
+    onSuccess: refreshList
+    onFailure: showErrorSnackbar
+
+columns:
+  - name: district_id
+    label: ID
+    visible: false
+  - name: district_name
+    label: District Name
+    visible: true
+  - name: district_code
+    label: District Code
+    visible: true
+  - name: description
+    label: Description
+    visible: true
+  - name: lua
+    label: Last Updated At
+    visible: true
+  - name: last_updated_by_name
+    label: Last Updated By
+    visible: true

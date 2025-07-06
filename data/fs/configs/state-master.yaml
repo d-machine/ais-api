@@ -1,0 +1,80 @@
+- sectionType: FIELDS
+  sectionName: State Details
+  queryInfo:
+    returnType: SINGLE_ROW
+    query: |
+      SELECT
+        s.id as state_id,
+        s.state_name,
+        s.state_code,
+        s.description,
+        s.country_id,
+        c.country_name,
+        is_active,
+        s.lua,
+        TRIM(CONCAT(u.first_name, ' ', u.last_name)) as last_updated_by_name
+      FROM
+        wms.state_master s
+        LEFT JOIN wms.country_master c ON s.country_id = c.id
+        LEFT JOIN administration.user u ON s.lub = u.id
+      WHERE
+        s.id = $1
+        AND s.is_active = true
+    payload:
+      - state_id
+    path:
+      - sections
+      - 0
+  applicableActions:
+    - SAVE
+    - CANCEL
+  actionConfig:
+    SAVE:
+      label: Save State
+      actionType: EXECUTE_QUERY
+      queryInfo:
+        returnType: SCALAR
+        query: |
+          INSERT INTO wms.state_master
+            (state_name, state_code, description, country_id, lub, lua)
+          VALUES
+            ($1, $2, $3, $4, $5, NOW())
+          RETURNING id;
+        payload:
+          - state_name
+          - state_code
+          - description
+          - country_id
+        contextParams:
+          - current_user_id
+        path:
+          - sections
+          - 0
+          - actionConfig
+          - SAVE
+          - queryInfo
+      onSuccess: exitAndComplete
+      onFailure: showErrorSnackbar
+    CANCEL:
+      label: Discard Changes
+  fields:
+    - name: state_name
+      label: State Name
+      type: TEXT
+      required: true
+    - name: state_code
+      label: State Code
+      type: TEXT
+      required: true
+    - name: description
+      label: Description
+      type: TEXTAREA
+      required: false
+    - name: country_id
+      label: Country
+      type: DROPDOWN
+      required: true
+      dataSource:
+        type: QUERY
+        query: |
+          SELECT id, country_name as label FROM wms.country_master ORDER BY country_name;

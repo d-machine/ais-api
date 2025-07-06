@@ -49,10 +49,10 @@ export default class DBClient {
         "claim.sql",
         "user_role.sql",
         "refresh_token.sql",
+        "country_master.sql",
         "query_functions.sql",
         "initial_data.sql",
       ];
-
 
       // Get the base directory for SQL files
       const baseDir = path.join(process.cwd(), "data", "fs", "setup-queries");
@@ -62,8 +62,10 @@ export default class DBClient {
         const filePath = path.join(baseDir, file);
 
         try {
+          console.log(`Executing SQL file: ${file}`);
           const query = fs.readFileSync(filePath, "utf-8");
           await this.pool?.query(query);
+          console.log(`Successfully executed SQL file: ${file}`);
         } catch (error) {
           console.error(`Error executing ${file}:`, error);
           throw error;
@@ -82,7 +84,15 @@ export default class DBClient {
     params: any[] = []
   ) {
     try {
-      const result = await this.pool?.query(query, params);
+      console.log("DB Client executing query:", { queryType, query, params });
+      
+      if (!this.pool) {
+        console.error("Database pool not initialized");
+        throw new Error("Database pool not initialized");
+      }
+      
+      const result = await this.pool.query(query, params);
+      console.log("Query result:", { rowCount: result.rowCount });
 
       if (_isNil(result) || result.rows.length === 0) {
         return null;
@@ -95,12 +105,18 @@ export default class DBClient {
           return result.rows;
         case EQueryReturnType.SCALAR:
         case EQueryReturnType.SCALAR_ARRAY:
-          return result.rows[0][0];
+          // Check if the first row exists and has any properties
+          if (Object.keys(result.rows[0]).length === 0) {
+            return null;
+          }
+          // Get the first column of the first row, whatever its name is
+          return result.rows[0][Object.keys(result.rows[0])[0]];
         default:
           return null;
       }
     } catch (error) {
-      console.error("Error executing query:", error);
+      console.error("Database error executing query:", error);
+      console.error("Query details:", { queryType, query, params });
       throw error;
     }
   }
