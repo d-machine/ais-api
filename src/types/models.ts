@@ -6,8 +6,9 @@ export interface IUser {
   first_name: string;
   last_name: string;
   reportsTo?: number;
-  last_updated_at: Date;
-  last_updated_by: number;
+  is_active: boolean;
+  lua: Date;
+  lub: number;
 }
 
 export interface IRole {
@@ -16,16 +17,17 @@ export interface IRole {
   description?: string;
   team?: string;
   department?: string;
-  last_updated_at: Date;
-  last_updated_by: number;
+  is_active: boolean;
+  lua: Date;
+  lub: number;
 }
 
 export interface IUserRole {
   id: number;
   user_id: number;
-  role_id: number;
-  last_updated_at: Date;
-  last_updated_by: number;
+  is_active: boolean;
+  lua: Date;
+  lub: number;
 }
 
 export interface IAccessGrant {
@@ -35,8 +37,9 @@ export interface IAccessGrant {
   access_type: string;
   valid_from?: Date;
   valid_until?: Date;
-  last_updated_at: Date;
-  last_updated_by: number;
+  is_active: boolean;
+  lua: Date;
+  lub: number;
 }
 
 export interface IResource {
@@ -44,8 +47,9 @@ export interface IResource {
   name: string;
   description?: string;
   parent_id?: number;
-  last_updated_at: Date;
-  last_updated_by: number;
+  is_active: boolean;
+  lua: Date;
+  lub: number;
 }
 
 export interface IResourceAccessRole {
@@ -54,8 +58,9 @@ export interface IResourceAccessRole {
   role_id: number;
   access_type: number;
   access_level: number;
-  last_updated_at: Date;
-  last_updated_by: number;
+  is_active: boolean;
+  lua: Date;
+  lub: number;
 }
 
 export interface IRefreshToken {

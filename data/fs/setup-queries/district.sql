@@ -2,7 +2,7 @@ create table wms.district (
   id serial primary key,
   name varchar(100) not null,
   description varchar(255),
-  is_active boolean not null default false,
+  is_active boolean not null default true,
   lub integer references administration.user(id),
   lua TIMESTAMP NOT NULL DEFAULT NOW()
 );
@@ -23,8 +23,13 @@ BEGIN
     INSERT INTO wms.district_history (district_id, name, description, operation, operation_at, operation_by)
     VALUES (NEW.id, NEW.name, NEW.description, 'INSERT', NEW.lua, NEW.lub);
   ELSIF (TG_OP = 'UPDATE') THEN
-    INSERT INTO wms.district_history (district_id, name, description, operation, operation_at, operation_by)
-    VALUES (NEW.id, NEW.name, NEW.description, 'UPDATE', NEW.lua, NEW.lub);
+    IF (OLD.is_active = true AND NEW.is_active = false) THEN
+      INSERT INTO wms.district_history (district_id, name, description, operation, operation_at, operation_by)
+      VALUES (NEW.id, NEW.name, NEW.description, 'DELETE', NEW.lua, NEW.lub);
+    ELSE
+      INSERT INTO wms.district_history (district_id, name, description, operation, operation_at, operation_by)
+      VALUES (NEW.id, NEW.name, NEW.description, 'UPDATE', NEW.lua, NEW.lub);
+    END IF;
   ELSIF (TG_OP = 'DELETE') THEN
     INSERT INTO wms.district_history (district_id, name, description, operation, operation_at, operation_by)
     VALUES (OLD.id, OLD.name, OLD.description, 'DELETE', NEW.lua, NEW.lub);

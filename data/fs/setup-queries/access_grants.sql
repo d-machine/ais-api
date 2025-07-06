@@ -14,8 +14,9 @@ CREATE TABLE IF NOT EXISTS administration.access_grants (
     access_type access_type,
     valid_from TIMESTAMP,
     valid_until TIMESTAMP,
-    last_updated_at TIMESTAMP NOT NULL DEFAULT NOW(),
-    last_updated_by int REFERENCES administration.user(id),
+    is_active boolean not null default true,
+    lub integer references administration.user(id),
+    lua TIMESTAMP NOT NULL DEFAULT NOW(),
     UNIQUE(user_id, target_id, access_type)
 );
 
@@ -39,10 +40,15 @@ RETURNS TRIGGER AS $$
 BEGIN
     IF TG_OP = 'INSERT' THEN
         INSERT INTO administration.access_grants_history (access_grant_id, user_id, target_id, access_type, valid_from, valid_until, operation, operation_at, operation_by)
-        VALUES (NEW.id, NEW.user_id, NEW.target_id, NEW.access_type, NEW.valid_from, NEW.valid_until, 'INSERT', NEW.last_updated_at, NEW.last_updated_by);
+        VALUES (NEW.id, NEW.user_id, NEW.target_id, NEW.access_type, NEW.valid_from, NEW.valid_until, 'INSERT', NEW.lua, NEW.lub);
     ELSIF TG_OP = 'UPDATE' THEN
-        INSERT INTO administration.access_grants_history (access_grant_id, user_id, target_id, access_type, valid_from, valid_until, operation, operation_at, operation_by)
-        VALUES (NEW.id, NEW.user_id, NEW.target_id, NEW.access_type, NEW.valid_from, NEW.valid_until, 'UPDATE', NEW.last_updated_at, NEW.last_updated_by);
+        IF (OLD.is_active = true AND NEW.is_active = false) THEN
+            INSERT INTO administration.access_grants_history (access_grant_id,user_id,target_id,access_type,valid_from,valid_until,operation,operation_at,operation_by)
+            VALUES (NEW.id,NEW.user_id,NEW.target_id,NEW.access_type,NEW.valid_from,NEW.valid_until,'DELETE',NEW.lua,NEW.lub);
+        ELSE
+            INSERT INTO administration.access_grants_history (access_grant_id,user_id,target_id,access_type,valid_from,valid_until,operation,operation_at,operation_by)
+            VALUES (NEW.id,NEW.user_id,NEW.target_id,NEW.access_type,NEW.valid_from,NEW.valid_until,'UPDATE',NEW.lua,NEW.lub);
+        END IF;
     END IF;
     RETURN NEW;
 END;

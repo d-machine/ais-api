@@ -4,7 +4,7 @@ city_id INTEGER REFERENCES wms.city(id),
 district_id INTEGER REFERENCES wms.district(id),
 state_id INTEGER REFERENCES wms.state_master(id),
 description VARCHAR(255),
-is_active boolean NOT NULL DEFAULT false,
+is_active boolean NOT NULL DEFAULT true,
 lub INTEGER REFERENCES administration.user(id),
 lua TIMESTAMP NOT NULL DEFAULT NOW()
 );
@@ -28,9 +28,16 @@ BEGIN
   IF (TG_OP = 'INSERT') THEN
     INSERT INTO wms.city_district_history (city_district_id, city_id, district_id, state_id, description, operation, operation_at, operation_by)
     VALUES (NEW.id, NEW.city_id, NEW.district_id, NEW.state_id, NEW.description, 'INSERT', NEW.lua, NEW.lub);
-  ELSIF (TG_OP = 'UPDATE') THEN
-    INSERT INTO wms.city_district_history (city_district_id, city_id, district_id, state_id, description, operation, operation_at, operation_by)
-    VALUES (NEW.id, NEW.city_id, NEW.district_id, NEW.state_id, NEW.description, 'UPDATE', NEW.lua, NEW.lub);
+ ELSIF (TG_OP = 'UPDATE') THEN
+  -- Check if is_active is being set to false (soft delete)
+  IF (OLD.is_active = true AND NEW.is_active = false) THEN
+    INSERT INTO wms.city_district_history (city_district_id,city_id,district_id,state_id,description,operation,operation_at,operation_by)
+    VALUES (NEW.id,NEW.city_id,NEW.district_id,NEW.state_id,NEW.description,'DELETE',NEW.lua,NEW.lub);
+  ELSE
+    INSERT INTO wms.city_district_history (city_district_id,city_id,district_id,state_id,description,operation,operation_at,operation_by)
+    VALUES (NEW.id,NEW.city_id,NEW.district_id,NEW.state_id,NEW.description,'UPDATE',NEW.lua,NEW.lub);
+  END IF;
+
   ELSIF (TG_OP = 'DELETE') THEN
     INSERT INTO wms.city_district_history (city_district_id, city_id, district_id, state_id, description, operation, operation_at, operation_by)
     VALUES (OLD.id, OLD.city_id, OLD.district_id, OLD.state_id, OLD.description, 'DELETE', NEW.lua, NEW.lub);

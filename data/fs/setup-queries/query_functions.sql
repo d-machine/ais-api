@@ -14,7 +14,7 @@ CREATE OR REPLACE FUNCTION administration.insert_user(
 BEGIN
 
     INSERT INTO administration.user (username, password, email, first_name, last_name,
-                      reports_to, last_updated_by)
+                      reports_to, lub)
     VALUES (username, password, email, first_name, last_name, reports_to, current_user_id)
     RETURNING id INTO new_user_id;
 
@@ -40,7 +40,7 @@ CREATE OR REPLACE FUNCTION administration.update_user(
 BEGIN
     UPDATE administration.user
     SET username = username, email = email, first_name = first_name, last_name = last_name,
-        reports_to = reports_to, last_updated_by = current_user_id
+        reports_to = reports_to, lub = current_user_id
     WHERE id = user_id;
 
     PERFORM administration.delete_all_roles_for_user(user_id, current_user_id);
@@ -60,7 +60,7 @@ CREATE OR REPLACE FUNCTION administration.change_password(
 ) RETURNS INT AS $$
 BEGIN
     UPDATE administration.user
-    SET password = password, last_updated_by = current_user_id
+    SET password = password, lub = current_user_id
     WHERE id = user_id;
     RETURN user_id;
 END;
@@ -122,7 +122,7 @@ CREATE OR REPLACE FUNCTION administration.insert_role(
 ) RETURNS INT AS $$
 DECLARE new_role_id INT;
 BEGIN
-    INSERT INTO administration.role (name, description, last_updated_by)
+    INSERT INTO administration.role (name, description, lub)
     VALUES (name, description, current_user_id)
     RETURNING id INTO new_role_id;
     return new_role_id;
@@ -138,7 +138,7 @@ CREATE OR REPLACE FUNCTION administration.update_role(
 ) RETURNS INT AS $$
 BEGIN
     UPDATE administration.role
-    SET name = name, description = description, last_updated_by = current_user_id
+    SET name = name, description = description, lub = current_user_id
     WHERE id = role_id;
     RETURN role_id;
 END;
@@ -155,7 +155,7 @@ CREATE OR REPLACE FUNCTION administration.insert_claim(
 ) RETURNS INT AS $$
 DECLARE new_claim_id INT;
 BEGIN
-    INSERT INTO administration.claim (role_id, resource_id, access_type_ids, access_level_id, last_updated_by)
+    INSERT INTO administration.claim (role_id, resource_id, access_type_ids, access_level_id, lub)
     VALUES (role_id, resource_id, access_type_ids, access_level_id, current_user_id)
     RETURNING id INTO new_claim_id;
 
@@ -174,7 +174,7 @@ CREATE OR REPLACE FUNCTION administration.update_claim(
 ) RETURNS INT AS $$
 BEGIN
     UPDATE claim
-    SET role_id = role_id, resource_id = resource_id, access_type_ids = access_type_ids, access_level_id = access_level_id, last_updated_by = current_user_id
+    SET role_id = role_id, resource_id = resource_id, access_type_ids = access_type_ids, access_level_id = access_level_id, lub = current_user_id
     WHERE id = claim_id;
     RETURN claim_id;
 END;
@@ -295,7 +295,7 @@ CREATE OR REPLACE FUNCTION administration.insert_resource(
     current_user_id INT
 ) RETURNS INT AS $$
 BEGIN
-    INSERT INTO administration.resource (name, list_config_file, parent_id, last_updated_by)
+    INSERT INTO administration.resource (name, list_config_file, parent_id, lub)
     VALUES (name, list_config_file, parent_id, current_user_id)
     RETURNING id;
 END;
@@ -311,7 +311,7 @@ CREATE OR REPLACE FUNCTION administration.update_resource(
 ) RETURNS INT AS $$
 BEGIN
     UPDATE administration.resource
-    SET name = name, list_config_file = list_config_file, parent_id = parent_id, last_updated_by = current_user_id
+    SET name = name, list_config_file = list_config_file, parent_id = parent_id, lub = current_user_id
     WHERE id = resource_id;
     RETURN resource_id;
 END;
@@ -345,5 +345,39 @@ BEGIN
     -- Delete the country_master
     DELETE FROM wms.country_master 
     WHERE id = country_master_id_to_delete;
+END;
+$$ LANGUAGE plpgsql;
+
+---------------------------** State Master **---------------------------
+
+-- Function to delete state_master
+CREATE OR REPLACE FUNCTION wms.delete_state_master(
+    state_master_id_to_delete INTEGER,
+    deleted_by_user_id INTEGER
+)
+RETURNS VOID AS $$
+BEGIN
+    -- Insert into history before deletion
+    INSERT INTO wms.state_master_history (
+        state_id,
+        name,
+        description,
+        code,
+        country_id,
+        operation, operation_at, operation_by
+    )
+    SELECT 
+        id,
+        name,
+        description,
+        code,
+        country_id,
+        'DELETE', NOW(), deleted_by_user_id
+    FROM wms.state_master
+    WHERE id = state_master_id_to_delete;
+
+    -- Delete the state_master
+    DELETE FROM wms.state_master 
+    WHERE id = state_master_id_to_delete;
 END;
 $$ LANGUAGE plpgsql;

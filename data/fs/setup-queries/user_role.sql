@@ -11,8 +11,9 @@ CREATE TABLE IF NOT EXISTS administration.user_role (
     id SERIAL PRIMARY KEY,
     user_id int REFERENCES administration.user(id),
     role_id int REFERENCES administration.role(id),
-    last_updated_at TIMESTAMP NOT NULL DEFAULT NOW(),
-    last_updated_by int REFERENCES administration.user(id),
+    is_active boolean not null default true,
+    lub int REFERENCES administration.user(id),
+    lua TIMESTAMP NOT NULL DEFAULT NOW(),
     UNIQUE(user_id, role_id)
 );
 
@@ -33,10 +34,15 @@ RETURNS TRIGGER AS $$
 BEGIN
     IF TG_OP = 'INSERT' THEN
         INSERT INTO administration.user_role_history (user_role_id, user_id, role_id, operation, operation_at, operation_by)
-        VALUES (NEW.id, NEW.user_id, NEW.role_id, 'INSERT', NEW.last_updated_at, NEW.last_updated_by);
+        VALUES (NEW.id, NEW.user_id, NEW.role_id, 'INSERT', NEW.lua, NEW.lub);
     ELSIF TG_OP = 'UPDATE' THEN
-        INSERT INTO administration.user_role_history (user_role_id, user_id, role_id, operation, operation_at, operation_by)
-        VALUES (NEW.id, NEW.user_id, NEW.role_id, 'UPDATE', NEW.last_updated_at, NEW.last_updated_by);
+        IF (OLD.is_active = true AND NEW.is_active = false) THEN
+            INSERT INTO administration.user_role_history (user_role_id,user_id,role_id,operation,operation_at,operation_by)
+            VALUES (NEW.id,NEW.user_id,NEW.role_id,'DELETE',NEW.lua,NEW.lub);
+        ELSE
+            INSERT INTO administration.user_role_history (user_role_id,user_id,role_id,operation,operation_at,operation_by)
+            VALUES (NEW.id,NEW.user_id,NEW.role_id,'UPDATE',NEW.lua,NEW.lub);
+        END IF;
     END IF;
     RETURN NEW;
 END;

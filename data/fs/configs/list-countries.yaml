@@ -1,0 +1,78 @@
+queryInfo:
+  returnType: MULTIPLE_ROWS
+  query: |
+    SELECT
+      cm.id as country_id,
+      cm.country_name,
+      cm.country_code,
+      cm.description,
+      cm.lua,
+      TRIM(CONCAT(u.first_name, ' ', u.last_name)) as last_updated_by_name
+    FROM
+      wms.country_master cm
+      LEFT JOIN administration.user u ON cm.luv = u.id
+    WHERE
+      cm.is_active = true
+    ORDER BY
+      cm.country_name
+  options:
+    applyFiltering: true
+    applySorting: true
+    applyPagenation: true
+  path:
+    - queryInfo
+
+applicableActions:
+  - NEW
+  - EDIT
+  - DELETE
+
+actionConfig:
+  NEW:
+    label: Add Country
+    resourcePath: country-master
+    accessTypeRequired: COUNTRY-CREATE
+  EDIT:
+    label: Edit Country
+    resourcePath: country-master
+    accessTypeRequired: COUNTRY-UPDATE
+    targetParams:
+      - key: country_id
+        as: country_id
+  DELETE:
+    label: Delete Country
+    actionType: EXECUTE_QUERY
+    accessTypeRequired: COUNTRY-DELETE
+    queryInfo:
+      returnType: SCALAR
+      query: |
+        SELECT wms.delete_country_master($1, $2);
+      payload:
+        - country_id
+      contextParams:
+        - current_user_id
+      path:
+        - actionConfig
+        - DELETE
+    onSuccess: refreshList
+    onFailure: showErrorSnackbar
+
+columns:
+  - name: country_id
+    label: ID
+    visible: false
+  - name: country_name
+    label: Country Name
+    visible: true
+  - name: country_code
+    label: Country Code
+    visible: true
+  - name: description
+    label: Description
+    visible: true
+  - name: lua
+    label: Last Updated At
+    visible: true
+  - name: last_updated_by_name
+    label: Last Updated By
+    visible: true 

@@ -1,0 +1,80 @@
+- sectionType: FIELDS
+  sectionName: City Details
+  queryInfo:
+    returnType: SINGLE_ROW
+    query: |
+      SELECT
+        c.id as city_id,
+        c.city_name,
+        c.city_code,
+        c.description,
+        c.district_id,
+        d.district_name,
+        c.is_active,
+        c.lua,
+        TRIM(CONCAT(u.first_name, ' ', u.last_name)) as last_updated_by_name
+      FROM
+        wms.city_master c
+        LEFT JOIN wms.district_master d ON c.district_id = d.id
+        LEFT JOIN administration.user u ON c.lub = u.id
+      WHERE
+        c.id = $1
+        AND c.is_active = true
+    payload:
+      - city_id
+    path:
+      - sections
+      - 0
+  applicableActions:
+    - SAVE
+    - CANCEL
+  actionConfig:
+    SAVE:
+      label: Save City
+      actionType: EXECUTE_QUERY
+      queryInfo:
+        returnType: SCALAR
+        query: |
+          INSERT INTO wms.city_master
+            (city_name, city_code, description, district_id, lub, lua)
+          VALUES
+            ($1, $2, $3, $4, $5, NOW())
+          RETURNING id;
+        payload:
+          - city_name
+          - city_code
+          - description
+          - district_id
+        contextParams:
+          - current_user_id
+        path:
+          - sections
+          - 0
+          - actionConfig
+          - SAVE
+          - queryInfo
+      onSuccess: exitAndComplete
+      onFailure: showErrorSnackbar
+    CANCEL:
+      label: Discard Changes
+  fields:
+    - name: city_name
+      label: City Name
+      type: TEXT
+      required: true
+    - name: city_code
+      label: City Code
+      type: TEXT
+      required: true
+    - name: description
+      label: Description
+      type: TEXTAREA
+      required: false
+    - name: district_id
+      label: District
+      type: DROPDOWN
+      required: true
+      dataSource:
+        type: QUERY
+        query: |
+          SELECT id, district_name as label FROM wms.district_master ORDER BY district_name;

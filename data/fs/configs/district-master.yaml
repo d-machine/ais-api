@@ -1,0 +1,81 @@
+sections:
+  - sectionType: FIELDS
+    sectionName: District Details
+    queryInfo:
+      returnType: SINGLE_ROW
+      query: |
+        SELECT
+          d.id as district_id,
+          d.district_name,
+          d.district_code,
+          d.description,
+          d.state_id,
+          s.state_name,
+          d.is_active,
+          d.lua,
+          TRIM(CONCAT(u.first_name, ' ', u.last_name)) as last_updated_by_name
+        FROM
+          wms.district_master d
+          LEFT JOIN wms.state_master s ON d.state_id = s.id
+          LEFT JOIN administration.user u ON d.lub = u.id
+        WHERE
+          d.id = $1
+          AND d.is_active = true
+      payload:
+        - district_id
+      path:
+        - sections
+        - 0
+    applicableActions:
+      - SAVE
+      - CANCEL
+    actionConfig:
+      SAVE:
+        label: Save District
+        actionType: EXECUTE_QUERY
+        queryInfo:
+          returnType: SCALAR
+          query: |
+            INSERT INTO wms.district_master
+              (district_name, district_code, description, state_id, lub, lua)
+            VALUES
+              ($1, $2, $3, $4, $5, NOW())
+            RETURNING id;
+          payload:
+            - district_name
+            - district_code
+            - description
+            - state_id
+          contextParams:
+            - current_user_id
+          path:
+            - sections
+            - 0
+            - actionConfig
+            - SAVE
+            - queryInfo
+        onSuccess: exitAndComplete
+        onFailure: showErrorSnackbar
+      CANCEL:
+        label: Discard Changes
+    fields:
+      - name: district_name
+        label: District Name
+        type: TEXT
+        required: true
+      - name: district_code
+        label: District Code
+        type: TEXT
+        required: true
+      - name: description
+        label: Description
+        type: TEXTAREA
+        required: false
+      - name: state_id
+        label: State
+        type: DROPDOWN
+        required: true
+        dataSource:
+          type: QUERY
+          query: |
+            SELECT id, state_name as label FROM wms.state_master ORDER BY state_name;

@@ -13,8 +13,9 @@ CREATE TABLE IF NOT EXISTS administration.claim (
   resource_id INTEGER NOT NULL REFERENCES administration.resource(id),
   access_level_id VARCHAR(255) NOT NULL,
   access_type_ids varchar(255) NOT NULL,
-  last_updated_at TIMESTAMP NOT NULL DEFAULT NOW(),
-  last_updated_by int REFERENCES administration.user(id),
+  is_active boolean not null default true,
+  lub integer references administration.user(id),
+  lua TIMESTAMP NOT NULL DEFAULT NOW(),
   UNIQUE (role_id, resource_id)
 );
 
@@ -37,10 +38,15 @@ RETURNS TRIGGER AS $$
 BEGIN
     IF TG_OP = 'INSERT' THEN
         INSERT INTO administration.claim_history (claim_id, role_id, resource_id, access_level_id, access_type_ids, operation, operation_at, operation_by)
-        VALUES (NEW.id, NEW.role_id, NEW.resource_id, NEW.access_level_id, NEW.access_type_ids, 'INSERT', NEW.last_updated_at, NEW.last_updated_by);
+        VALUES (NEW.id, NEW.role_id, NEW.resource_id, NEW.access_level_id, NEW.access_type_ids, 'INSERT', NEW.lua, NEW.lub);
     ELSIF TG_OP = 'UPDATE' THEN
-        INSERT INTO administration.claim_history (claim_id, role_id, resource_id, access_level_id, access_type_ids, operation, operation_at, operation_by)
-        VALUES (NEW.id, NEW.email, NEW.first_name, NEW.last_name, NEW.username, NEW.password, NEW.reportsTo, 'UPDATE', NEW.last_updated_at, NEW.last_updated_by);
+        IF (OLD.is_active = true AND NEW.is_active = false) THEN
+            INSERT INTO administration.claim_history (claim_id,role_id,resource_id,access_level_id,access_type_ids,operation,operation_at,operation_by)
+            VALUES (NEW.id,NEW.role_id,NEW.resource_id,NEW.access_level_id,NEW.access_type_ids,'DELETE',NEW.lua,NEW.lub);
+        ELSE
+            INSERT INTO administration.claim_history (claim_id,role_id,resource_id,access_level_id,access_type_ids,operation,operation_at,operation_by)
+            VALUES (NEW.id,NEW.role_id,NEW.resource_id,NEW.access_level_id,NEW.access_type_ids,'UPDATE',NEW.lua,NEW.lub);
+        END IF;
     END IF;
     RETURN NEW;
 END;
