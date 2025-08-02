@@ -1,12 +1,13 @@
+actionType: EXECUTE_QUERY
 queryInfo:
   returnType: MULTIPLE_ROWS
   query: |
     SELECT
       cm.id as country_id,
-      cm.country_name,
-      cm.country_code,
-      cm.description,
-      cm.lua,
+      cm.name as country_name,
+      cm.code as country_code,
+      cm.descr as description,
+      cm.lua as last_updated_at,
       TRIM(CONCAT(u.first_name, ' ', u.last_name)) as last_updated_by_name
     FROM
       wms.country_master cm
@@ -14,39 +15,40 @@ queryInfo:
     WHERE
       cm.is_active = true
     ORDER BY
-      cm.country_name
+      cm.name
   options:
+    applyAccessLevelRestrictions: false
     applyFiltering: true
     applySorting: true
     applyPagenation: true
-  path:
-    - queryInfo
-
+    onSuccess: refresh
+    onFailure: showErrorPage
 applicableActions:
-  - NEW
-  - EDIT
-  - DELETE
-
+  - add
+  - edit
+  - delete
 actionConfig:
-  NEW:
+  add:
     label: Add Country
-    resourcePath: country-master
-    accessTypeRequired: COUNTRY-CREATE
-  EDIT:
+    actionType: DISPLAY_FORM
+    formConfig: add-country
+    onSuccess: refresh
+    accessTypeRequired: 7-ADD
+  edit:
     label: Edit Country
-    resourcePath: country-master
-    accessTypeRequired: COUNTRY-UPDATE
-    targetParams:
-      - key: country_id
-        as: country_id
-  DELETE:
+    actionType: DISPLAY_FORM
+    formConfig: add-country
+    accessTypeRequired: 7-EDIT
+    payload:
+      - country_id
+    onSuccess: refresh
+  delete:
     label: Delete Country
     actionType: EXECUTE_QUERY
-    accessTypeRequired: COUNTRY-DELETE
+    accessTypeRequired: 7-DELETE
     queryInfo:
-      returnType: SCALAR
-      query: |
-        SELECT wms.delete_country_master($1, $2);
+      returnType: SINGLE_ROW
+      query: SELECT wms.delete_country_master($1, $2) as id;
       payload:
         - country_id
       contextParams:
@@ -54,7 +56,7 @@ actionConfig:
       path:
         - actionConfig
         - DELETE
-    onSuccess: refreshList
+    onSuccess: refresh
     onFailure: showErrorSnackbar
 
 columns:
@@ -70,7 +72,7 @@ columns:
   - name: description
     label: Description
     visible: true
-  - name: lua
+  - name: last_updated_at
     label: Last Updated At
     visible: true
   - name: last_updated_by_name

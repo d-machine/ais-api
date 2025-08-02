@@ -50,6 +50,10 @@ export default class DBClient {
         "user_role.sql",
         "refresh_token.sql",
         "country_master.sql",
+        "state_master.sql",
+        "city_master.sql",
+        "district_master.sql",
+        "city_district_master.sql",
         "query_functions.sql",
         "initial_data.sql",
       ];

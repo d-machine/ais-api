@@ -1,0 +1,55 @@
+sections:
+  - sectionType: FIELDS
+    sectionName: Country Details
+    queryInfo:
+      returnType: SINGLE_ROW
+      query: |
+        SELECT
+          id as country_id, name as country_name, descr as description
+        FROM
+          wms.country_master
+        WHERE
+          id = $1
+      payload:
+        - country_id
+      path:
+        - sections
+        - 0
+    applicableActions:
+      - SAVE
+      - CANCEL
+    actionConfig:
+      SAVE:
+        label: Create Country
+        actionType: EXECUTE_QUERY
+        queryInfo:
+          returnType: SCALAR
+          query: |
+            SELECT wms.insert_country($1, $2, $3, $4) as id;
+          payload:
+            - country_name
+            - country_code
+            - description
+          contextParams:
+            - current_user_id
+          path:
+            - sections
+            - 0
+            - actionConfig
+            - SAVE
+        onSuccess: exitAndComplete
+        onFailure: showErrorSnackbar
+      CANCEL:
+        label: Discard Changes
+    fields:
+      - name: country_name
+        label: Country Name
+        type: TEXT
+        required: true
+      - name: country_code
+        label: Country Code
+        type: TEXT
+        required: true
+      - name: description
+        label: Description
+        type: TEXTAREA

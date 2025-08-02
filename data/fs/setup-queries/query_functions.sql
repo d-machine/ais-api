@@ -319,65 +319,114 @@ $$ LANGUAGE plpgsql;
 
 
 ---------------------------** Country Master **---------------------------
+-- Function to insert in country_master
+CREATE OR REPLACE FUNCTION wms.insert_country(
+    country_name VARCHAR(255),
+    country_code VARCHAR(3),
+    description VARCHAR(255),
+    current_user_id INTEGER
+) RETURNS INT AS $$
+DECLARE new_country_id INT;
+BEGIN
+    INSERT INTO wms.country_master (name, code, descr, lub)
+    VALUES (country_name, country_code, description, current_user_id)
+    RETURNING id into new_country_id;
+    RETURN new_country_id;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Function to update country_master
+CREATE OR REPLACE FUNCTION wms.update_country(
+    country_master_id INT,
+    country_name VARCHAR(255),
+    country_code VARCHAR(3),
+    description VARCHAR(255),
+    current_user_id INTEGER
+) RETURNS INT AS $$
+BEGIN
+    UPDATE wms.country_master
+    SET name = country_name, code = country_code, descr = description, lub = current_user_id
+    WHERE id = country_master_id;
+    RETURN country_master_id;
+END;
+$$ LANGUAGE plpgsql;
 
 -- Function to delete country_master
-CREATE OR REPLACE FUNCTION wms.delete_country_master(
+CREATE OR REPLACE FUNCTION wms.delete_country(
     country_master_id_to_delete INTEGER,
     deleted_by_user_id INTEGER
 )
-RETURNS VOID AS $$
+RETURNS INT AS $$
 BEGIN
-    -- Insert into history before deletion
-    INSERT INTO wms.country_master_history (
-        country_master_id,
-        country_name,
-        country_code,
-        operation, operation_at, operation_by
-    )
-    SELECT 
-        id,
-        country_name,
-        country_code,
-        'DELETE', NOW(), deleted_by_user_id
-    FROM wms.country_master
-    WHERE id = country_master_id_to_delete;
+    -- Delete all states associated with this country
+    PERFORM wms.delete_state_by_country(country_master_id_to_delete, deleted_by_user_id);
 
-    -- Delete the country_master
-    DELETE FROM wms.country_master 
+    -- Delete country
+    UPDATE wms.country_master
+    SET is_active = false, lub = deleted_by_user_id
     WHERE id = country_master_id_to_delete;
+    RETURN country_master_id_to_delete;
 END;
 $$ LANGUAGE plpgsql;
 
 ---------------------------** State Master **---------------------------
 
+-- Function to insert in state_master
+CREATE OR REPLACE FUNCTION wms.insert_state(
+    name VARCHAR(255),
+    code VARCHAR(3),
+    descr VARCHAR(255),
+    country_id INT,
+    current_user_id INTEGER
+) RETURNS INT AS $$
+DECLARE new_state_id INT;
+BEGIN
+    INSERT INTO wms.state_master (name, code, descr, country_id, lub)
+    VALUES (name, code, descr, country_id, current_user_id)
+    RETURNING id into new_state_id;
+    RETURN new_state_id;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Function to update state_master
+CREATE OR REPLACE FUNCTION wms.update_state(
+    state_master_id INT,
+    name VARCHAR(255),
+    code VARCHAR(3),
+    descr VARCHAR(255),
+    country_id INT,
+    current_user_id INTEGER
+) RETURNS INT AS $$
+BEGIN
+    UPDATE wms.state_master
+    SET name = name, code = code, descr = descr, country_id = country_id, lub = current_user_id
+    WHERE id = state_master_id;
+    RETURN state_master_id;
+END;
+$$ LANGUAGE plpgsql;
+
 -- Function to delete state_master
-CREATE OR REPLACE FUNCTION wms.delete_state_master(
+CREATE OR REPLACE FUNCTION wms.delete_state(
     state_master_id_to_delete INTEGER,
     deleted_by_user_id INTEGER
-)
-RETURNS VOID AS $$
+) RETURNS INT AS $$
 BEGIN
-    -- Insert into history before deletion
-    INSERT INTO wms.state_master_history (
-        state_id,
-        name,
-        description,
-        code,
-        country_id,
-        operation, operation_at, operation_by
-    )
-    SELECT 
-        id,
-        name,
-        description,
-        code,
-        country_id,
-        'DELETE', NOW(), deleted_by_user_id
-    FROM wms.state_master
+    -- Delete state
+    UPDATE wms.state_master
+    SET is_active = false, lub = deleted_by_user_id
     WHERE id = state_master_id_to_delete;
+    RETURN state_master_id_to_delete;
+END;
+$$ LANGUAGE plpgsql;
 
-    -- Delete the state_master
-    DELETE FROM wms.state_master 
-    WHERE id = state_master_id_to_delete;
+-- Function to delete all states associated with a country
+CREATE OR REPLACE FUNCTION wms.delete_state_by_country(
+    country_id_to_delete INTEGER,
+    deleted_by_user_id INTEGER
+) RETURNS VOID AS $$
+BEGIN
+    UPDATE wms.state_master
+    SET is_active = false, lub = deleted_by_user_id
+    WHERE country_id = country_id_to_delete;
 END;
 $$ LANGUAGE plpgsql;

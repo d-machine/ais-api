@@ -69,3 +69,14 @@ docker exec -it ais_postgres psql -U ais_dev -d ais_dev_db -c "\dt"
 # - \l is a psql command to list databases
 # - \c is a psql command to switch databases
 # - \dt is a psql command to list all tables
+
+
+
+# Run following command after any change to see the impact
+node .\docker_recreate.js 
+
+# Go to postman click send for following route -
+localhost:3000/api/storage/initializeDatabase
+
+# then click send for following route -
+localhost:3000/api/storage/loadConfigs
