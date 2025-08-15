@@ -430,3 +430,115 @@ BEGIN
     WHERE country_id = country_id_to_delete;
 END;
 $$ LANGUAGE plpgsql;
+
+
+---------------------------** Item Category Master **---------------------------
+
+
+-- Function to insert in item_category_master
+CREATE OR REPLACE FUNCTION wms.insert_item_category(
+    item_category_name VARCHAR(255),
+    description VARCHAR(255),
+    current_user_id INTEGER
+)RETURNS INT AS $$
+DECLARE new_item_category_id INT;
+BEGIN 
+    INSERT INTO wms.item_category_master(name,descr,lub)
+    VALUES (item_category_name,description,current_user_id)
+    RETURNING id INTO new_item_category_id;
+    RETURN new_item_category_id;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Function to update item_category_master
+CREATE OR REPLACE FUNCTION wms.update_item_category(
+    item_category_master_id INT,
+    item_category_name VARCHAR(255),
+    description VARCHAR(255),
+    current_user_id INTEGER
+)RETURNS INT AS $$
+BEGIN
+    UPDATE wms.item_category_master
+    SET name = item_category_name,descr = description,lub = current_user_id
+    WHERE id =item_category_master_id;
+    RETURN item_category_master_id;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Function to delete item_category_master
+CREATE OR REPLACE FUNCTION wms.delete_item_category(
+    item_category_master_id_to_delete INTEGER,
+    deleted_by_user_id INTEGER
+)RETURNS INT AS $$
+BEGIN
+    -- Delete all brands associated with this item category
+    PERFORM wms.delete_item_brand_by_item_category(item_category_master_id_to_delete,deleted_by_user_id);
+
+    --Delete item category
+    UPDATE wms.item_category_master
+    SET is_active = false,lub = deleted_by_user_id
+    WHERE id = item_category_master_id_to_delete;
+    RETURN item_category_master_id_to_delete;
+END;
+$$ LANGUAGE plpgsql;
+
+
+---------------------------** Item Brand **---------------------------
+
+
+-- Function to insert in item_brand
+CREATE OR REPLACE FUNCTION wms.insert_item_brand(
+    brand_name VARCHAR(255),
+    category_id INTEGER,
+    descr VARCHAR(255),
+    current_user_id INTEGER
+)RETURNS INT AS $$
+DECLARE new_item_brand_id INT;
+BEGIN 
+    INSERT INTO wms.item_brand(brand_name,category_id,descr,lub)
+    VALUES (brand_name,category_id,descr,curren_user_id)
+    RETURNING id INTO new_item_brand_id;
+    RETURN new_item_brand_id;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Function to update item_brand
+CREATE OR REPLACE FUNCTION wms.update_item_brand(
+    item_brand_id INT,
+    brand_name VARCHAR(255),
+    category_id INTEGER,
+    descr VARCHAR(255),
+    current_user_id INTEGER
+)RETURNS INT AS $$
+BEGIN 
+    UPDATE wms.item_brand
+    SET brand_name = brand_name,category_id = category_id,descr = descr,lub = curren_user_id
+    WHERE id = item_brand_id;
+    RETURN item_brand_id;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Function to delete item_brand
+CREATE OR REPLACE  FUNCTION wms.delete_item_brand(
+    item_brand_id_to_delete INTEGER,
+    deleted_by_user_id INTEGER
+)RETURNS INT AS $$
+BEGIN 
+    UPDATE wms.item_brand
+    SET is_active = false ,lub = deleted_by_user_id
+    WHERE id = item_brand_id_to_delete;
+    RETURN item_brand_id_to_delete;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Function to delete all item_brand associated with an item_category
+CREATE OR REPLACE FUNCTION wms.delete_item_brand_by_item_category(
+    item_category_id_to_delete INTEGER,
+    deleted_by_user_id INTEGER
+)RETURNS VOID AS $$
+BEGIN
+    UPDATE wms.item_brand
+    SET is_active = false ,lub = deleted_by_user_id
+    WHERE item_category_id = item_category_id_to_delete;
+END;
+$$ LANGUAGE plpgsql;
