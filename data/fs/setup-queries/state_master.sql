@@ -1,3 +1,4 @@
+-- Create  table for state_master
 CREATE TABLE wms.state_master (
     id SERIAL PRIMARY KEY,
     name VARCHAR(255) NOT NULL,
@@ -8,7 +9,7 @@ CREATE TABLE wms.state_master (
     lub int REFERENCES administration.user(id),
     lua TIMESTAMP NOT NULL DEFAULT NOW()
 );
-
+-- Create temporal table for state_master
 CREATE TABLE wms.state_master_history (
     history_id SERIAL PRIMARY KEY,
     state_id INT NOT NULL,
