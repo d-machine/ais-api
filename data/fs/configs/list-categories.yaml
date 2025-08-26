@@ -1,0 +1,77 @@
+actionType: EXECUTE_QUERY
+queryInfo:
+  returnType: MULTIPLE_ROWS
+  query: |
+    SELECT
+      icm.id as item_category_id,
+      icm.name as item_category_name,
+      icm.descr as description,
+      icm.lua as last_updated_at,
+      TRIM(CONCAT(u.first_name,' ',u.last_name)) as last_updated_by_name
+    FROM
+      wms.item_category_master icm
+      LEFT JOIN administration.user u ON icm.lub = u.id
+    WHERE 
+      icm.is_active = true
+    ORDER BY
+      icm.name
+  options:
+    applyAccessLevelRestrictions: false
+    applyFiltering: true
+    applysorting: true
+    onSuccess: refresh
+    onFailure: showErrorPage
+applicableActions:
+  - add
+  - edit
+  - delete
+actionConfig:
+  add:
+    label: Add Item Category
+    actionType: DISPLAY_FORM
+    formConfig: add-category
+    onSuccess: refresh
+    accessTypeRequired: 7-ADD
+  
+  edit:
+    label: Edit Item Category
+    actionType: DISPLAY_FORM
+    formConfig: add-category
+    accessTypeRequired: 7-EDIT
+    payload:
+      - item_category_id
+    onSuccess: refresh
+
+  delete:
+    label: Delete Item Category
+    actionType: EXECUTE_QUERY
+    accessTypeRequired: 7-DELETE
+    queryInfo:
+      returnType: SINGLE_ROW
+      query: SELECT wms.delete_item_category_master($1,$2) as id;
+      payload:
+        - item_category_id
+      contextParams:
+        - current_user_id
+      path:
+        - actionConfig
+        - DELETE
+    onSuccess: refresh
+    onFailure: showErrorSnackbar
+
+columns:
+  - name: item_category_id
+    label: ID
+    visible: false
+  - name: item_category_name
+    lable: Item Category Name
+    visible: true
+  - name: description
+    lable: Description
+    visible: true
+  - name: last_updated_at
+    label: Last Updated At
+    visible: true
+  - name: last_updated_by_name
+    lable: Last Updated BY
+    visible: true
