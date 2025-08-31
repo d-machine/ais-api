@@ -1,0 +1,61 @@
+sections:
+  - sectionType: FIELDS
+    sectionName: Item Category Details
+    queryInfo:
+      returnType: SINGLE_ROW
+      query: |
+        SELECT
+          icm.id as item_category_id,
+          icm.name as item_category_name,
+          icm.descr as description,
+          icm.is_active,
+          icm.lua,
+          TRIM(CONCAT(u.first_name,' ',u.last_name)) as last_updated_by_name
+        FROM
+          wms.item_categoey_master icm
+          LEFT JOIN administration.user u ON icm.lub = u.id
+        WHERE
+          icm.id = $1
+          AND icm.is_active = true
+      payload:
+        - item_category_id
+      path:
+        - sections
+        - 0
+    applicableActions:
+      - SAVE
+      - CANCEL
+    actionConfig:
+      SAVE:
+        label: Save Item Category
+        actionType: EXECUTE_QUERY
+        queryInfo:
+          returnType: SCALAR
+          query: |
+            INSERT INTO wms.item_categoey_master
+              (name,descr,lub,lua)
+            RETURNING id;
+          payload:
+            - item_category_name
+            - description
+          contextParams:
+            - current_user_id
+          path:
+            - sections
+            - 0
+            - actionConfig
+            - SAVE
+            - queryInfo
+        onSuccess: exitAndComplete
+        onFailure: showErrorSnackbar
+      CANCEL:
+        label: Discard Changes
+    fields:
+      - name: item_category_name
+        label: Item Category name
+        type: TEXT
+        required: true
+      - name: description
+        label: Description
+        type: TEXTAREA
+        required: false
