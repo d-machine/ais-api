@@ -791,8 +791,10 @@ CREATE OR REPLACE FUNCTION wms.delete_picking_list_header(
     deleted_by_user_id INT
 ) RETURNS INT AS $$
 BEGIN
-
-     PERFORM wms.delete_picking_palette_by_(picking_list_id_to_delete,deleted_by_user_id);
+     --Delete all picking palette associated with this picking header
+     PERFORM wms.delete_picking_palette_by_picking_header(picking_list_id_to_delete,deleted_by_user_id);
+     --Delete all picking order associated with this picking header
+     PERFORM wms.delete_picking_order_by_picking_header(picking_list_id_to_delete,deleted_by_user_id);
 
     UPDATE wms.picking_list_header
     SET is_active = false,lub = deleted_by_user_id
@@ -968,7 +970,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
---Function to delete  picking_list_header
+--Function to delete  palette_master
 CREATE OR REPLACE FUNCTION wms.delete_palette_master(
     palette_id_to_delete INT,
     deleted_by_user_id INT
