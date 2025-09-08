@@ -493,12 +493,12 @@ CREATE OR REPLACE FUNCTION wms.insert_item_brand(
     descr VARCHAR(255),
     current_user_id INTEGER
 )RETURNS INT AS $$
-DECLARE new_item_brand_id INT;
+DECLARE new_brand_id INT;
 BEGIN 
     INSERT INTO wms.item_brand(brand_name,category_id,descr,lub)
     VALUES (brand_name,category_id,descr,curren_user_id)
-    RETURNING id INTO new_item_brand_id;
-    RETURN new_item_brand_id;
+    RETURNING id INTO new_brand_id;
+    RETURN new_brand_id;
 END;
 $$ LANGUAGE plpgsql;
 
@@ -524,6 +524,7 @@ CREATE OR REPLACE  FUNCTION wms.delete_item_brand(
     deleted_by_user_id INTEGER
 )RETURNS INT AS $$
 BEGIN 
+    --Delete brand
     UPDATE wms.item_brand
     SET is_active = false ,lub = deleted_by_user_id
     WHERE id = item_brand_id_to_delete;
@@ -533,13 +534,13 @@ $$ LANGUAGE plpgsql;
 
 -- Function to delete all item_brand associated with an item_category
 CREATE OR REPLACE FUNCTION wms.delete_item_brand_by_item_category(
-    item_category_id_to_delete INTEGER,
+    category_id_to_delete INTEGER,
     deleted_by_user_id INTEGER
 )RETURNS VOID AS $$
 BEGIN
     UPDATE wms.item_brand
     SET is_active = false ,lub = deleted_by_user_id
-    WHERE item_category_id = item_category_id_to_delete;
+    WHERE category_id = category_id_to_delete;
 END;
 $$ LANGUAGE plpgsql;
 
@@ -552,7 +553,7 @@ CREATE OR REPLACE FUNCTION wms.insert_sales_order_header(
     entry_dt TIMESTAMP,
     party_id INTEGER,
     broker_id INTEGER,
-    delivery_at_dt INTEGER,
+    delivery_at_id INTEGER,
     trsp_id INTEGER,
     year_code VARCHAR(4),
     delivery_dt TIMESTAMP,
@@ -560,12 +561,13 @@ CREATE OR REPLACE FUNCTION wms.insert_sales_order_header(
     remarks VARCHAR(255),
     current_user_id INTEGER
 ) RETURNS INT AS $$
-DECLARE new_sales_order_id INT;
+DECLARE new_sales_header_id INT;
 BEGIN
     INSERT INTO wms.sales_order_header(
         entry_no,
         entry_dt,
         party_id,
+        broker_id,
         delivery_at_id,
         trsp_id,
         year_code,
@@ -579,7 +581,7 @@ BEGIN
         entry_dt,
         party_id,
         broker_id,
-        delivery_at_dt,
+        delivery_at_id,
         trsp_id,
         year_code,
         delivery_dt,
@@ -587,19 +589,19 @@ BEGIN
         remarks,
         current_user_id
     )
-    RETURNING id INTO new_sales_order_id;
-    RETURN new_sales_order_id;
+    RETURNING id INTO new_sales_header_id;
+    RETURN new_sales_header_id;
 END;
 $$ LANGUAGE plpgsql;
 
 --Function to update sales_order_header
 CREATE OR  REPLACE FUNCTION wms.update_sales_order_header(
-    sales_order_id INT,
+    sales_order_header_id INT,
     entry_no VARCHAR(6),
     entry_dt TIMESTAMP,
     party_id INTEGER,
     broker_id INTEGER,
-    delivery_at_dt INTEGER,
+    delivery_at_id INTEGER,
     trsp_id INTEGER,
     year_code VARCHAR(4),
     delivery_dt TIMESTAMP,
@@ -612,33 +614,34 @@ BEGIN
     SET entry_no = entry_no,
         entry_dt = entry_dt,
         party_id = party_id,
-        delivery_at_id = delivery_at_dt,
+        broker_id = broker_id,
+        delivery_at_id = delivery_at_id,
         trsp_id = trsp_id,
         year_code = year_code,
         delivery_dt = delivery_dt,
         status =status,
         remarks = remarks,
-        lub = current_user_id,
-    WHERE id = sales_order_id;
-    RETURN sales_order_id;
+        lub = current_user_id
+    WHERE id = sales_order_header_id;
+    RETURN sales_order_header_id;
 END;
 $$ LANGUAGE plpgsql;
 
 --Function to delete sales_order_header
 CREATE OR REPLACE FUNCTION wms.delete_sales_order_header(
-    sales_order_id_to_delete INTEGER,
+    header_id_to_delete INTEGER,
     deleted_by_user_id INTEGER
-)RETURN INT AS $$
+)RETURNS INT AS $$
 BEGIN
     --Delete all sales details associated with this sales header
-    PERFORM wms.delete_sales_details_by_sales_header(sales_order_id_to_delete,deleted_by_user_id);
+    PERFORM wms.delete_sales_details_by_sales_header(sales_order_header_id_to_delete,deleted_by_user_id);
 
     -- Delete sales order header
     UPDATE wms.sales_order_header
     SET is_active = false,
         lub = deleted_by_user_id
-    WHERE id = sales_order_id_to_delete;
-    RETURN sales_order_id_to_delete
+    WHERE id = sales_order_header_id_to_delete;
+    RETURN sales_order_header_id_to_delete;
 END;
 $$ LANGUAGE plpgsql;
 
@@ -659,8 +662,7 @@ CREATE OR REPLACE FUNCTION wms.insert_sales_order_details(
     remarks VARCHAR(255),
     current_user_id INTEGER
 )RETURNS INT AS $$
-DECLARE
-    new_sales_order_id INT;
+DECLARE new_sales_details_id INT;
 BEGIN
     INSERT INTO wms.sales_order_details(
         header_id,
@@ -686,14 +688,14 @@ BEGIN
         remarks,
         current_user_id
     )
-    RETURNING id INTO new_sales_order_detail_id;
-    RETURN new_sales_order_detail_id;
+    RETURNING id INTO new_sales_details_id;
+    RETURN new_sales_details_id;
 END;
 $$ LANGUAGE plpgsql;
 
 --Function to update sales_order_details
 CREATE OR REPLACE FUNCTION wms.update_sales_order_details(
-    sales_detail_id INTEGER,
+    sales_order_details_id INTEGER,
     header_id INTEGER,
     item_id INTEGER,
     uom_pc_id INTEGER,
@@ -717,22 +719,23 @@ BEGIN
         status = status,
         remarks = remarks,
         lub = current_user_id
-    WHERE id = sales_detail_id;
-    RETURN sales_detail_id;
+    WHERE id = sales_order_details_id;
+    RETURN sales_order_details_id;
 END;
 $$ LANGUAGE plpgsql;
 
 --Function to delete sales_order_details
 CREATE OR REPLACE FUNCTION wms.delete_sales_order_details(
-    sales_detail_id_to_delete INTEGER,
+    sales_order_details_id_to_delete INTEGER,
     deleted_by_user_id INTEGER
 )RETURNS INT AS $$
 BEGIN
+    --Delete Sales details
     UPDATE wms.sales_order_details
     SET is_active = false,
         lub = deleted_by_user_id
-    WHERE id =  sales_detail_id_to_delete;
-    RETURN sales_detail_id_to_delete;
+    WHERE id =  sales_order_details_id_to_delete;
+    RETURN sales_order_details_id_to_delete;
 END;
 $$ LANGUAGE plpgsql;
 
@@ -759,19 +762,18 @@ CREATE OR REPLACE FUNCTION wms.insert_picking_list_header(
     status VARCHAR(255),
     current_user_id INTEGER
 ) RETURNS INT AS $$
-DECLARE 
-    new_picking_list_id INT;
+DECLARE new_picking_header_id INT;
 BEGIN
     INSERT INTO wms.picking_list_header(party_id,descr,status,lub)
-    VALUES (party_id,descr,status,current_user_id);
-    RETURNING id INTO new_picking_list_id;
-    RETURN new_picking_list_id;
+    VALUES (party_id,descr,status,current_user_id)
+    RETURNING id INTO new_picking_header_id;
+    RETURN new_picking_header_id;
 END;
 $$ LANGUAGE plpgsql;
 
 --Function to update  picking_list_header
 CREATE OR REPLACE FUNCTION wms.update_picking_list_header(
-    picking_list_id INT,
+    picking_list_header_id INT,
     party_id INTEGER,
     descr VARCHAR(255),
     status VARCHAR(255),
@@ -780,24 +782,27 @@ CREATE OR REPLACE FUNCTION wms.update_picking_list_header(
 BEGIN
     UPDATE wms.picking_list_header
     SET party_id = party_id,descr = descr,status = status,lub = current_user_id
-    WHERE id = picking_list_id;
-    RETURN picking_list_id;
+    WHERE id = picking_list_header_id;
+    RETURN picking_list_header_id;
 END;
 $$ LANGUAGE plpgsql;
 
 --Function to delete  picking_list_header
 CREATE OR REPLACE FUNCTION wms.delete_picking_list_header(
-    picking_list_id_to_delete INT,
+    picking_list_header_id_to_delete INT,
     deleted_by_user_id INT
 ) RETURNS INT AS $$
 BEGIN
-
-     PERFORM wms.delete_picking_palette_by_(picking_list_id_to_delete,deleted_by_user_id);
-
+    -- Delete all picking_palette associated with picking header
+    PERFORM wms.delete_picking_palette_by_picking_header(picking_list_header_id_to_delete,deleted_by_user_id);
+    -- Delete all picking_order associated with picking header
+    PERFORM wms.delete_picking_order_by_picking_header(picking_list_header_id_to_delete,deleted_by_user_id);
+    
+    --Delete picking header
     UPDATE wms.picking_list_header
     SET is_active = false,lub = deleted_by_user_id
-    WHERE id = picking_list_id_to_delete;
-    RETURN picking_list_id_to_delete;
+    WHERE id = picking_list_header_id_to_delete;
+    RETURN picking_list_header_id_to_delete;
 END;
 $$ LANGUAGE plpgsql;
 
@@ -806,19 +811,17 @@ $$ LANGUAGE plpgsql;
 
 --Function to insert in picking_list_palette
 CREATE OR REPLACE FUNCTION wms.insert_picking_list_palette(
-    header_id INTEGER,
-    palette_id INTEGER
+    palette_id INTEGER,
     item_id INTEGER,
     qty INTEGER,
     descr VARCHAR(255),
     status VARCHAR(255),
     current_user_id INTEGER
 ) RETURNS INT AS $$
-DECLARE 
-    new_picking_palette_id INT;
+DECLARE new_picking_palette_id INT;
 BEGIN
     INSERT INTO wms.picking_list_palette(header_id,palette_id,item_id,qty,descr,status,lub)
-    VALUES (header_id,palette_id,item_id,qty,descr,status,current_user_id);
+    VALUES (header_id,palette_id,item_id,qty,descr,status,current_user_id)
     RETURNING id INTO new_picking_palette_id;
     RETURN new_picking_palette_id;
 END;
@@ -826,7 +829,7 @@ $$ LANGUAGE plpgsql;
 
 --Function to update  picking_list_palette
 CREATE OR REPLACE FUNCTION wms.update_picking_list_palette(
-    picking_palette_id INT,
+    picking_list_palette_id INT,
     header_id INTEGER,
     palette_id INTEGER,
     item_id INTEGER,
@@ -838,8 +841,8 @@ CREATE OR REPLACE FUNCTION wms.update_picking_list_palette(
 BEGIN
     UPDATE wms.picking_list_palette
     SET header_id = header_id,palette_id = palette_id,item_id = item_id,descr = descr,status = status,lub = current_user_id
-    WHERE id = picking_palette_id;
-    RETURN picking_palette_id;
+    WHERE id = picking_list_palette_id;
+    RETURN picking_list_palette_id;
 END;
 $$ LANGUAGE plpgsql;
 
@@ -849,14 +852,15 @@ CREATE OR REPLACE FUNCTION wms.delete_picking_list_palette(
     deleted_by_user_id INT
 ) RETURNS INT AS $$
 BEGIN
+    --Delete picking palette
     UPDATE wms.picking_list_palette
     SET is_active = false,lub = deleted_by_user_id
-    WHERE id = picking_palette_id_to_delete;
-    RETURN picking_palette_id_to_delete;
+    WHERE id = picking_list_palette_id_to_delete;
+    RETURN picking_list_palette_id_to_delete;
 END;
 $$ LANGUAGE plpgsql;
 
--- Function to delete all  picking palettes linked to a picking list header
+-- Function to delete all  picking palette associated with picking list header
 CREATE OR REPLACE FUNCTION wms.delete_picking_palette_by_picking_header(
     header_id_to_delete INTEGER,
     deleted_by_user_id INTEGER
@@ -874,26 +878,25 @@ $$ LANGUAGE plpgsql;
 --Function to insert in picking_list_order
 CREATE OR REPLACE FUNCTION wms.insert_picking_list_order(
     header_id INTEGER,
-    order_id INTEGER
+    order_id INTEGER,
     item_id INTEGER,
     qty INTEGER,
     descr VARCHAR(255),
     status VARCHAR(255),
     current_user_id INTEGER
 ) RETURNS INT AS $$
-DECLARE 
-    new_picking_order_id INT;
+DECLARE new_picking_order_id INT;
 BEGIN
     INSERT INTO wms.picking_list_order(header_id,order_id,item_id,qty,descr,status,lub)
-    VALUES (header_id,order_id,item_id,qty,descr,status,current_user_id);
-    RETURNING id INTO new_picking_palette_id;
-    RETURN new_picking_palette_id;
+    VALUES (header_id,order_id,item_id,qty,descr,status,current_user_id)
+    RETURNING id INTO new_picking_order_id;
+    RETURN new_picking_order_id;
 END;
 $$ LANGUAGE plpgsql;
 
 --Function to update  picking_list_order
 CREATE OR REPLACE FUNCTION wms.update_picking_list_order(
-    picking_order_id INT,
+    picking_list_order_id INT,
     header_id INTEGER,
     order_id INTEGER,
     item_id INTEGER,
@@ -905,25 +908,26 @@ CREATE OR REPLACE FUNCTION wms.update_picking_list_order(
 BEGIN
     UPDATE wms.picking_list_order
     SET header_id = header_id,order_id = order_id,item_id = item_id,descr = descr,status = status,lub = current_user_id
-    WHERE id = picking_order_id;
-    RETURN picking_order_id;
+    WHERE id = picking_list_order_id;
+    RETURN picking_list_order_id;
 END;
 $$ LANGUAGE plpgsql;
 
 --Function to delete  picking_list_order
 CREATE OR REPLACE FUNCTION wms.delete_picking_list_order(
-    picking_order_id_to_delete INT,
+    picking_list_order_id_to_delete INT,
     deleted_by_user_id INT
 ) RETURNS INT AS $$
 BEGIN
+    --Delete picking order
     UPDATE wms.picking_list_order
     SET is_active = false,lub = deleted_by_user_id
-    WHERE id = picking_order_id_to_delete;
-    RETURN picking_order_id_to_delete;
+    WHERE id = picking_list_order_id_to_delete;
+    RETURN picking_list_order_id_to_delete;
 END;
 $$ LANGUAGE plpgsql;
 
--- Function to delete all picking orders linked to a picking list header
+-- Function to delete all picking orders associated with  picking  header
 CREATE OR REPLACE FUNCTION wms.delete_picking_order_by_picking_header(
     header_id_to_delete INTEGER,
     deleted_by_user_id INTEGER
@@ -944,11 +948,10 @@ CREATE OR REPLACE FUNCTION wms.insert_palette_master(
     descr VARCHAR(255),
     current_user_id INTEGER
 ) RETURNS INT AS $$
-DECLARE 
-    new_palette_master_id INT;
+DECLARE new_palette_id INT;
 BEGIN
     INSERT INTO wms.palette_master(descr,lub)
-    VALUES (descr,current_user_id);
+    VALUES (descr,current_user_id)
     RETURNING id INTO new_palette_id;
     RETURN new_palette_id;
 END;
@@ -956,27 +959,235 @@ $$ LANGUAGE plpgsql;
 
 --Function to update  palette_master
 CREATE OR REPLACE FUNCTION wms.update_palette_master(
-    palette_id INT,
+    palette_master_id INT,
     descr VARCHAR(255),
     current_user_id INTEGER
-)RETURNS INT AS $$
-BEGIN
-    UPDATE wms.palette_master
-    SET descr = descr,lub = current_user_id
-    WHERE id = palette_id;
-    RETURN palette_id;
-END;
-$$ LANGUAGE plpgsql;
-
---Function to delete  picking_list_header
-CREATE OR REPLACE FUNCTION wms.delete_palette_master(
-    palette_id_to_delete INT,
-    deleted_by_user_id INT
 ) RETURNS INT AS $$
 BEGIN
     UPDATE wms.palette_master
+    SET descr = descr,lub = current_user_id
+    WHERE id = palette_master_id;
+    RETURN palette_master_id;
+END;
+$$ LANGUAGE plpgsql;
+
+--Function to delete  palette_master
+CREATE OR REPLACE FUNCTION wms.delete_palette_master(
+    palette_master_id_to_delete INT,
+    deleted_by_user_id INT
+) RETURNS INT AS $$
+BEGIN
+    -- Delete palette master
+    UPDATE wms.palette_master
     SET is_active = false,lub = deleted_by_user_id
-    WHERE id = palette_id_to_delete;
-    RETURN palette_id_to_delete;
+    WHERE id = palette_master_id_to_delete;
+    RETURN palette_master_id_to_delete;
+END;
+$$ LANGUAGE plpgsql;
+
+
+---------------------------** Purchase Order Header **---------------------------
+
+
+-- Function to insert in purchase_order_header
+CREATE OR REPLACE FUNCTION wms.insert_purchase_order_header(
+    entry_no VARCHAR(6),
+    entry_dt TIMESTAMP,
+    party_id INTEGER,
+    broker_id INTEGER,
+    delivery_at_id INTEGER,
+    trsp_id INTEGER,
+    year_code VARCHAR(4),
+    delivery_dt TIMESTAMP,
+    status VARCHAR(255),
+    remarks VARCHAR(255),
+    current_user_id INTEGER
+) RETURNS INT AS $$
+DECLARE new_purchase_header_id INT;
+BEGIN
+    INSERT INTO wms.purchase_order_header(
+        entry_no,
+        entry_dt,
+        party_id,
+        delivery_at_id,
+        trsp_id,
+        year_code,
+        delivery_dt,
+        status,
+        remarks,
+        lub
+    )
+    VALUES (
+        entry_no, 
+        entry_dt,
+        party_id,
+        broker_id,
+        delivery_at_id,
+        trsp_id,
+        year_code,
+        delivery_dt,
+        status,
+        remarks,
+        current_user_id
+    )
+    RETURNING id INTO new_purchase_header_id;
+    RETURN new_purchase_header_id;
+END;
+$$ LANGUAGE plpgsql;
+
+--Function to update purchase_order_header
+CREATE OR  REPLACE FUNCTION wms.update_purchase_order_header(
+    purchase_list_header_id INT,
+    entry_no VARCHAR(6),
+    entry_dt TIMESTAMP,
+    party_id INTEGER,
+    broker_id INTEGER,
+    delivery_at_id INTEGER,
+    trsp_id INTEGER,
+    year_code VARCHAR(4),
+    delivery_dt TIMESTAMP,
+    status VARCHAR(255),
+    remarks VARCHAR(255),
+    current_user_id INTEGER
+)RETURNS INT AS $$
+BEGIN
+    UPDATE  wms.purchase_order_header
+    SET entry_no = entry_no,
+        entry_dt = entry_dt,
+        party_id = party_id,
+        delivery_at_id = delivery_at_id,
+        trsp_id = trsp_id,
+        year_code = year_code,
+        delivery_dt = delivery_dt,
+        status =status,
+        remarks = remarks,
+        lub = current_user_id
+    WHERE id = purchase_list_header_id;
+    RETURN purchase_list_header_id;
+END;
+$$ LANGUAGE plpgsql;
+
+--Function to delete purchase_order_header
+CREATE OR REPLACE FUNCTION wms.delete_purchase_order_header(
+    purchase_list_header_id_to_delete INTEGER,
+    deleted_by_user_id INTEGER
+)RETURNs INT AS $$
+BEGIN
+    --Delete all purchase details associated with this purchase header
+    PERFORM wms.delete_purchase_details_by_purchase_header(purchase_list_header_id_to_delete,deleted_by_user_id);
+
+    -- Delete purchase order header
+    UPDATE wms.purchase_order_header
+    SET is_active = false,
+        lub = deleted_by_user_id
+    WHERE id = purchase_list_header_id_to_delete;
+    RETURN purchase_list_header_id_to_delete;
+END;
+$$ LANGUAGE plpgsql;
+
+
+---------------------------** Purchase Order Details **---------------------------
+
+
+--Function to insert in purchase_order_details
+CREATE OR REPLACE FUNCTION wms.insert_purchase_order_details(
+    header_id INTEGER,
+    item_id INTEGER,
+    uom_pc_id INTEGER,
+    uom_package_id INTEGER,
+    rate_per_pc DOUBLE PRECISION,
+    no_of_pc INTEGER,
+    amount DOUBLE PRECISION,
+    status VARCHAR(255),
+    remarks VARCHAR(255),
+    current_user_id INTEGER
+)RETURNS INT AS $$
+DECLARE new_purchase_details_id INT;
+BEGIN
+    INSERT INTO wms.purchase_order_details(
+        header_id,
+        item_id,
+        uom_pc_id,
+        uom_package_id,
+        rate_per_pc,
+        no_of_pc,
+        amount,
+        status,
+        remarks,
+        lub
+    )
+    VALUES (
+        header_id,
+        item_id,
+        uom_pc_id,
+        uom_package_id,
+        rate_per_pc,
+        no_of_pc,
+        amount,
+        status,
+        remarks,
+        current_user_id
+    )
+    RETURNING id INTO new_purchase_details_id;
+    RETURN new_purchase_details_id;
+END;
+$$ LANGUAGE plpgsql;
+
+--Function to update sales_order_details
+CREATE OR REPLACE FUNCTION wms.update_purchase_order_details(
+    purchase_order_details_id INTEGER,
+    header_id INTEGER,
+    item_id INTEGER,
+    uom_pc_id INTEGER,
+    uom_package_id INTEGER,
+    rate_per_pc DOUBLE PRECISION,
+    no_of_pc INTEGER,
+    amount DOUBLE PRECISION,
+    status VARCHAR(255),
+    remarks VARCHAR(255),
+    current_user_id INTEGER
+)RETURNS INT AS $$
+BEGIN
+    UPDATE wms.purchase_order_details
+    SET header_id = header_id,
+        item_id = item_id,
+        uom_pc_id = uom_pc_id,
+        uom_package_id = uom_package_id,
+        rate_per_pc = rate_per_pc,
+        no_of_pc = no_of_pc,
+        amount = amount,
+        status = status,
+        remarks = remarks,
+        lub = current_user_id
+    WHERE id = purchase_order_details_id;
+    RETURN purchase_order_details_id;
+END;
+$$ LANGUAGE plpgsql;
+
+--Function to delete purchase_order_details
+CREATE OR REPLACE FUNCTION wms.delete_purchase_order_details(
+    purchase_order_details_id_to_delete INTEGER,
+    deleted_by_user_id INTEGER
+)RETURNS INT AS $$
+BEGIN
+    --Delete Purchase details
+    UPDATE wms.purchase_order_details
+    SET is_active = false,
+        lub = deleted_by_user_id
+    WHERE id =  purchase_order_details_id_to_delete;
+    RETURN purchase_order_details_id_to_delete;
+END;
+$$ LANGUAGE plpgsql;
+
+--Function to delete all purchase details associated with purchase header
+CREATE OR REPLACE FUNCTION wms.delete_purchase_details_by_purchase_header(
+    header_id_to_delete INTEGER,
+    deleted_by_user_id INTEGER
+)RETURNS VOID AS $$
+BEGIN 
+    UPDATE wms.purchase_order_details
+    SET is_active = false,
+    lub = deleted_by_user_id
+    WHERE header_id = header_id_to_delete;
 END;
 $$ LANGUAGE plpgsql;
