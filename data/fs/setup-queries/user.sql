@@ -30,6 +30,7 @@ CREATE TABLE IF NOT EXISTS administration.user_history (
     username VARCHAR(255),
     password VARCHAR(255),
     reports_to int NOT NULL,
+    is_active boolean not null,
     operation VARCHAR(10),
     operation_at TIMESTAMP,
     operation_by int not null
@@ -40,15 +41,15 @@ CREATE OR REPLACE FUNCTION administration.log_user_changes()
 RETURNS TRIGGER AS $$
 BEGIN
     IF TG_OP = 'INSERT' THEN
-        INSERT INTO administration.user_history (user_id, email, first_name, last_name, username, password, reports_to, operation, operation_at, operation_by)
-        VALUES (NEW.id, NEW.email, NEW.first_name, NEW.last_name, NEW.username, NEW.password, NEW.reports_to, 'INSERT', NEW.lua, NEW.lub);
+        INSERT INTO administration.user_history (user_id, email, first_name, last_name, username, password, reports_to, is_active, operation, operation_at, operation_by)
+        VALUES (NEW.id, NEW.email, NEW.first_name, NEW.last_name, NEW.username, NEW.password, NEW.reports_to, NEW.is_active, 'INSERT', NEW.lua, NEW.lub);
     ELSIF TG_OP = 'UPDATE' THEN
         IF (OLD.is_active = true AND NEW.is_active = false) THEN
-            INSERT INTO administration.user_history (user_id,email,first_name,last_name,username,password,reports_to, operation,operation_at,operation_by)
-            VALUES (NEW.id,NEW.email,NEW.first_name,NEW.last_name,NEW.username,NEW.password,NEW.reports_to,'DELETE',NEW.lua,NEW.lub);
+            INSERT INTO administration.user_history (user_id,email,first_name,last_name,username,password,reports_to,is_active, operation,operation_at,operation_by)
+            VALUES (NEW.id,NEW.email,NEW.first_name,NEW.last_name,NEW.username,NEW.password,NEW.reports_to,NEW.is_active,'DELETE',NEW.lua,NEW.lub);
         ELSE
-            INSERT INTO administration.user_history (user_id,email,first_name,last_name,username,password,reports_to, operation,operation_at,operation_by)
-            VALUES (NEW.id,NEW.email,NEW.first_name,NEW.last_name,NEW.username,NEW.password,NEW.reports_to,'UPDATE',NEW.lua,NEW.lub);
+            INSERT INTO administration.user_history (user_id,email,first_name,last_name,username,password,reports_to,is_active, operation,operation_at,operation_by)
+            VALUES (NEW.id,NEW.email,NEW.first_name,NEW.last_name,NEW.username,NEW.password,NEW.reports_to,NEW.is_active,'UPDATE',NEW.lua,NEW.lub);
         END IF;
     END IF;
     RETURN NEW;

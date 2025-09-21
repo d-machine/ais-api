@@ -1,7 +1,7 @@
 INSERT INTO administration.user (username, email, first_name, last_name, password, reports_to, lub) VALUES
 ('admin', 'LQrGq@example.com', 'Admin', 'Admin', 'admin', 0, 1);
 
-INSERT INTO administration.role (name, description, lub) VALUES
+INSERT INTO administration.role (name, descr, lub) VALUES
 ('super_admin', 'desc', 1);
 
 INSERT INTO administration.user_role (user_id, role_id, lub) VALUES

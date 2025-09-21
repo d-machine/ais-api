@@ -14,7 +14,7 @@ CREATE TABLE IF NOT EXISTS wms.picking_list_order(
     is_active boolean NOT NULL DEFAULT true,
     status VARCHAR(255),
     lub INTEGER REFERENCES administration.user(id),
-    lua TIMESTAMP NOT NULL DEFAULT NOW(),
+    lua TIMESTAMP NOT NULL DEFAULT NOW()
 );
 
 --Create temporal table for picking_list_order
@@ -26,7 +26,8 @@ CREATE TABLE IF NOT EXISTS wms.picking_list_order_history(
     item_id INTEGER,
     qty INTEGER,
     descr VARCHAR(255),
-    status(255),
+    status VARCHAR(255),
+    is_active boolean NOT NULL,
     operation VARCHAR(10),
     operation_at TIMESTAMP,
     operation_by INTEGER REFERENCES administration.user(id)
@@ -38,25 +39,25 @@ RETURNS TRIGGER AS $$
 BEGIN
     IF (TG_OP = 'INSERT') THEN
         INSERT INTO wms.picking_list_order_history(
-            picking_order_id,header_id,order_id,item_id,qty,descr,status,operation,operation_at,operation_by
+            picking_order_id, header_id, order_id, item_id, qty, descr, status, is_active, operation, operation_at, operation_by
         )
         VALUES (
-            NEW.id,NEW.header_id,NEW.item_id,NEW.qty,NEW.descr,NEW.status,'INSERT',NEW.lua,NEW.lub
+            NEW.id, NEW.header_id, NEW.order_id, NEW.item_id, NEW.qty, NEW.descr, NEW.status, NEW.is_active, 'INSERT', NEW.lua, NEW.lub
         );
     ELSIF (TG_OP = 'UPDATE') THEN
         IF (OLD.is_active = true AND NEW.is_active = false) THEN
-            INSERT INTO wms.picking_list_order_histroy(
-                picking_order_id,header_id,order_id,item_id,qty,descr,status,operation,operation_at,operation_by
+            INSERT INTO wms.picking_list_order_history(
+                picking_order_id, header_id, order_id, item_id, qty, descr, status, is_active, operation, operation_at, operation_by
             )
             VALUES (
-                NEW.id,NEW.header_id,NEW.order_id,NEW.item_id,NEW.qty,NEW.descr,NEW.status,'DELETE',NEW.lua,NEW.lub
+                NEW.id, NEW.header_id, NEW.order_id, NEW.item_id, NEW.qty, NEW.descr, NEW.status, NEW.is_active, 'DELETE', NEW.lua, NEW.lub
             );
         ELSE
             INSERT INTO wms.picking_list_order_history(
-                picking_order_id,header_id,order_id,item_id,qty,descr,status,operation,operation_at,operation_by
+                picking_order_id, header_id, order_id, item_id, qty, descr, status, is_active, operation, operation_at, operation_by
             )
             VALUES (
-                NEW.id,NEW.header_id,NEW.order_id,NEW.item_id,NEW.qty,NEW.status,'update',NEW.lua,NEW.lub
+                NEW.id, NEW.header_id, NEW.order_id, NEW.item_id, NEW.qty, NEW.descr, NEW.status, NEW.is_active, 'UPDATE', NEW.lua, NEW.lub
             );
         END IF;
     END IF;

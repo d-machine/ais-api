@@ -7,7 +7,7 @@
 CREATE TABLE IF NOT EXISTS wms.picking_list_header(
     id SERIAL PRIMARY KEY,
     party_id INTEGER NOT NULL REFERENCES wms.party(id),
-    descr VARCHAR(255)
+    descr VARCHAR(255),
     is_active boolean NOT NULL DEFAULT true,
     lub INTEGER references administration.user(id),
     lua TIMESTAMP NOT NULL DEFAULT NOW(),
@@ -21,6 +21,7 @@ CREATE TABLE IF NOT EXISTS wms.picking_list_header_history(
     party_id INTEGER,
     descr VARCHAR(255),
     status VARCHAR(255),
+    is_active boolean NOT NULL,
     operation VARCHAR(10),
     operation_at TIMESTAMP,
     operation_by INTEGER REFERENCES administration.user(id)
@@ -32,25 +33,25 @@ RETURNS TRIGGER AS $$
 BEGIN
     IF (TG_OP = 'INSERT') THEN
         INSERT INTO wms.picking_list_header_history(
-            picking_list_id,party_id,descr,status,operation,operation_at,operation_by
+            picking_list_id, party_id, descr, status, is_active, operation, operation_at, operation_by
         )
         VALUES(
-            NEW.id,NEW.party_id,NEW.descr,NEW.status,'INSERT',new.lua,NEW.lub
+            NEW.id, NEW.party_id, NEW.descr, NEW.status, NEW.is_active, 'INSERT', NEW.lua, NEW.lub
         );
     ELSIF (TG_OP = 'UPDATE') THEN
         IF (OLD.is_active = true AND NEW.is_active = false) THEN
             INSERT INTO wms.picking_list_header_history(
-                picking_list_id,party_id,descr,status,operation,operation_at,operation_by
+                picking_list_id, party_id, descr, status, is_active, operation, operation_at, operation_by
             )
             VALUES (
-                NEW.id,NEW.party_id,NEW.descr,NEW.status,'DELETE',NEW.lua,NEW.lub
+                NEW.id, NEW.party_id, NEW.descr, NEW.status, NEW.is_active, 'DELETE', NEW.lua, NEW.lub
             );
         ELSE
             INSERT INTO wms.picking_list_header_history(
-                picking_list_id,party_id,descr,status,operation,operation_at,operation_by
+                picking_list_id, party_id, descr, status, is_active, operation, operation_at, operation_by
             )
             VALUES (
-                NEW.id,NEW.party_id,NEW.descr,NEW.status,'UPDATE',NEW.lua,NEW.lub
+                NEW.id, NEW.party_id, NEW.descr, NEW.status, NEW.is_active, 'UPDATE', NEW.lua, NEW.lub
             );
         END IF;
     END IF;

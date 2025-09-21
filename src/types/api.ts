@@ -20,7 +20,7 @@ export interface IRoleClaim {
 
 export interface IUpsertRoleRequest {
     name: string;
-    description: string;
+    descr: string;
     team: string;
     department: string;
     claims: Array<IRoleClaim>;

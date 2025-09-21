@@ -1,22 +1,22 @@
 queryInfo:
   returnType: MULTIPLE_ROWS
   query: |
-    SELECT
-      sm.id as state_id,
-      sm.name as state_name,
-      sm.code as state_code,
-      sm.description,
-      cm.country_name,
-      sm.lua,
-      TRIM(CONCAT(u.first_name, ' ', u.last_name)) as last_updated_by_name
-    FROM
-      wms.state_master sm
-      LEFT JOIN wms.country_master cm ON sm.country_id = cm.id
-      LEFT JOIN administration.user u ON sm.lub = u.id
-    WHERE
-      sm.is_active = true
-    ORDER BY
-      sm.name
+    SELECT * FROM (
+      SELECT
+        sm.id as state_id,
+        sm.name as state_name,
+        sm.code as state_code,
+        sm.descr,
+        cm.country_name,
+        sm.lua,
+        TRIM(CONCAT(u.first_name, ' ', u.last_name)) as last_updated_by_name
+      FROM
+        wms.state sm
+        LEFT JOIN wms.country cm ON sm.country_id = cm.id
+        LEFT JOIN administration.user u ON sm.lub = u.id
+      WHERE
+        sm.is_active = true
+      ) as states
   options:
     applyFiltering: true
     applySorting: true
@@ -48,7 +48,7 @@ actionConfig:
     queryInfo:
       returnType: SCALAR
       query: |
-        SELECT wms.delete_state_master($1, $2);
+        SELECT wms.delete_state($1, $2);
       payload:
         - state_id
       contextParams:
@@ -69,8 +69,8 @@ columns:
   - name: state_code
     label: State Code
     visible: true
-  - name: description
-    label: Description
+  - name: descr
+    label: descr
     visible: true
   - name: country_name
     label: Country

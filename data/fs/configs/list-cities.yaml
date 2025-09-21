@@ -5,12 +5,12 @@ queryInfo:
       cm.id as city_id,
       cm.city_name,
       cm.city_code,
-      cm.description,
+      cm.descr,
       cm.is_active,
       cm.lua,
       TRIM(CONCAT(u.first_name, ' ', u.last_name)) as last_updated_by_name
     FROM
-      wms.city_master cm
+      wms.city cm
       LEFT JOIN administration.user u ON cm.lub = u.id
     WHERE
       cm.is_active = true
@@ -47,7 +47,7 @@ actionConfig:
     queryInfo:
       returnType: SCALAR
       query: |
-        SELECT wms.delete_city_master($1, $2);
+        SELECT wms.delete_city($1, $2);
       payload:
         - city_id
       contextParams:
@@ -68,8 +68,8 @@ columns:
   - name: city_code
     label: City Code
     visible: true
-  - name: description
-    label: Description
+  - name: descr
+    label: descr
     visible: true
   - name: lua
     label: Last Updated At

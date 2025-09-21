@@ -45,24 +45,24 @@ export default class ApiController {
       });
       
       // Check if this is a direct query execution
-      if (body.query) {
-        try {
-          const baseService = new BaseService();
-          const returnType = body.returnType || EQueryReturnType.SCALAR;
-          const result = await baseService.executeDirectQuery(
-            returnType,
-            body.query,
-            body.payload || []
-          );
-          return c.json(result);
-        } catch (error: any) {
-          console.error("Direct query execution error:", error);
-          return c.json({ 
-            error: "Direct query execution failed", 
-            details: error?.message || "Unknown error" 
-          }, 500);
-        }
-      }
+    //   if (body.query) {
+    //     try {
+    //       const baseService = new BaseService();
+    //       const returnType = body.returnType || EQueryReturnType.SCALAR;
+    //       const result = await baseService.executeDirectQuery(
+    //         returnType,
+    //         body.query,
+    //         body.payload || []
+    //       );
+    //       return c.json(result);
+    //     } catch (error: any) {
+    //       console.error("Direct query execution error:", error);
+    //       return c.json({ 
+    //         error: "Direct query execution failed", 
+    //         details: error?.message || "Unknown error" 
+    //       }, 500);
+    //     }
+    //   }
       
       // Regular config-based query execution
       try {

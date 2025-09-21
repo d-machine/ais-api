@@ -117,13 +117,13 @@ $$ LANGUAGE plpgsql;
 -- Insert a role
 CREATE OR REPLACE FUNCTION administration.insert_role(
     name VARCHAR(255),
-    description VARCHAR(255),
+    descr VARCHAR(255),
     current_user_id INT
 ) RETURNS INT AS $$
 DECLARE new_role_id INT;
 BEGIN
-    INSERT INTO administration.role (name, description, lub)
-    VALUES (name, description, current_user_id)
+    INSERT INTO administration.role (name, descr, lub)
+    VALUES (name, descr, current_user_id)
     RETURNING id INTO new_role_id;
     return new_role_id;
 END;
@@ -133,12 +133,12 @@ $$ LANGUAGE plpgsql;
 CREATE OR REPLACE FUNCTION administration.update_role(
     role_id INT,
     name VARCHAR(255),
-    description VARCHAR(255),
+    descr VARCHAR(255),
     current_user_id INT
 ) RETURNS INT AS $$
 BEGIN
     UPDATE administration.role
-    SET name = name, description = description, lub = current_user_id
+    SET name = name, descr = descr, lub = current_user_id
     WHERE id = role_id;
     RETURN role_id;
 END;
@@ -269,8 +269,8 @@ CREATE OR REPLACE FUNCTION administration.delete_role(
     current_user_id INT
 ) RETURNS INT AS $$
 BEGIN
-    INSERT INTO administration.role_history (role_id, name, description, operation, operation_at, operation_by)
-    SELECT id, name, description, 'DELETE', NOW(), current_user_id
+    INSERT INTO administration.role_history (role_id, name, descr, operation, operation_at, operation_by)
+    SELECT id, name, descr, 'DELETE', NOW(), current_user_id
     FROM administration.role
     WHERE id = p_role_id;
 
@@ -319,59 +319,59 @@ $$ LANGUAGE plpgsql;
 
 
 ---------------------------** Country Master **---------------------------
--- Function to insert in country_master
+-- Function to insert in country
 CREATE OR REPLACE FUNCTION wms.insert_country(
     country_name VARCHAR(255),
     country_code VARCHAR(3),
-    description VARCHAR(255),
+    descr VARCHAR(255),
     current_user_id INTEGER
 ) RETURNS INT AS $$
 DECLARE new_country_id INT;
 BEGIN
-    INSERT INTO wms.country_master (name, code, descr, lub)
-    VALUES (country_name, country_code, description, current_user_id)
+    INSERT INTO wms.country (name, code, descr, lub)
+    VALUES (country_name, country_code, descr, current_user_id)
     RETURNING id into new_country_id;
     RETURN new_country_id;
 END;
 $$ LANGUAGE plpgsql;
 
--- Function to update country_master
+-- Function to update country
 CREATE OR REPLACE FUNCTION wms.update_country(
-    country_master_id INT,
+    country_id INT,
     country_name VARCHAR(255),
     country_code VARCHAR(3),
-    description VARCHAR(255),
+    descr VARCHAR(255),
     current_user_id INTEGER
 ) RETURNS INT AS $$
 BEGIN
-    UPDATE wms.country_master
-    SET name = country_name, code = country_code, descr = description, lub = current_user_id
-    WHERE id = country_master_id;
-    RETURN country_master_id;
+    UPDATE wms.country
+    SET name = country_name, code = country_code, descr = descr, lub = current_user_id
+    WHERE id = country_id;
+    RETURN country_id;
 END;
 $$ LANGUAGE plpgsql;
 
--- Function to delete country_master
+-- Function to delete country
 CREATE OR REPLACE FUNCTION wms.delete_country(
-    country_master_id_to_delete INTEGER,
+    country_id_to_delete INTEGER,
     deleted_by_user_id INTEGER
 )
 RETURNS INT AS $$
 BEGIN
     -- Delete all states associated with this country
-    PERFORM wms.delete_state_by_country(country_master_id_to_delete, deleted_by_user_id);
+    PERFORM wms.delete_state_by_country(country_id_to_delete, deleted_by_user_id);
 
     -- Delete country
-    UPDATE wms.country_master
+    UPDATE wms.country
     SET is_active = false, lub = deleted_by_user_id
-    WHERE id = country_master_id_to_delete;
-    RETURN country_master_id_to_delete;
+    WHERE id = country_id_to_delete;
+    RETURN country_id_to_delete;
 END;
 $$ LANGUAGE plpgsql;
 
 ---------------------------** State Master **---------------------------
 
--- Function to insert in state_master
+-- Function to insert in state
 CREATE OR REPLACE FUNCTION wms.insert_state(
     name VARCHAR(255),
     code VARCHAR(3),
@@ -381,16 +381,16 @@ CREATE OR REPLACE FUNCTION wms.insert_state(
 ) RETURNS INT AS $$
 DECLARE new_state_id INT;
 BEGIN
-    INSERT INTO wms.state_master (name, code, descr, country_id, lub)
+    INSERT INTO wms.state (name, code, descr, country_id, lub)
     VALUES (name, code, descr, country_id, current_user_id)
     RETURNING id into new_state_id;
     RETURN new_state_id;
 END;
 $$ LANGUAGE plpgsql;
 
--- Function to update state_master
+-- Function to update state
 CREATE OR REPLACE FUNCTION wms.update_state(
-    state_master_id INT,
+    state_id INT,
     name VARCHAR(255),
     code VARCHAR(3),
     descr VARCHAR(255),
@@ -398,24 +398,24 @@ CREATE OR REPLACE FUNCTION wms.update_state(
     current_user_id INTEGER
 ) RETURNS INT AS $$
 BEGIN
-    UPDATE wms.state_master
+    UPDATE wms.state
     SET name = name, code = code, descr = descr, country_id = country_id, lub = current_user_id
-    WHERE id = state_master_id;
-    RETURN state_master_id;
+    WHERE id = state_id;
+    RETURN state_id;
 END;
 $$ LANGUAGE plpgsql;
 
--- Function to delete state_master
+-- Function to delete state
 CREATE OR REPLACE FUNCTION wms.delete_state(
-    state_master_id_to_delete INTEGER,
+    state_id_to_delete INTEGER,
     deleted_by_user_id INTEGER
 ) RETURNS INT AS $$
 BEGIN
     -- Delete state
-    UPDATE wms.state_master
+    UPDATE wms.state
     SET is_active = false, lub = deleted_by_user_id
-    WHERE id = state_master_id_to_delete;
-    RETURN state_master_id_to_delete;
+    WHERE id = state_id_to_delete;
+    RETURN state_id_to_delete;
 END;
 $$ LANGUAGE plpgsql;
 
@@ -425,7 +425,7 @@ CREATE OR REPLACE FUNCTION wms.delete_state_by_country(
     deleted_by_user_id INTEGER
 ) RETURNS VOID AS $$
 BEGIN
-    UPDATE wms.state_master
+    UPDATE wms.state
     SET is_active = false, lub = deleted_by_user_id
     WHERE country_id = country_id_to_delete;
 END;
@@ -435,50 +435,50 @@ $$ LANGUAGE plpgsql;
 ---------------------------** Item Category Master **---------------------------
 
 
--- Function to insert in item_category_master
+-- Function to insert in item_category
 CREATE OR REPLACE FUNCTION wms.insert_item_category(
     item_category_name VARCHAR(255),
-    description VARCHAR(255),
+    descr VARCHAR(255),
     current_user_id INTEGER
 )RETURNS INT AS $$
 DECLARE new_item_category_id INT;
 BEGIN 
-    INSERT INTO wms.item_category_master(name,descr,lub)
-    VALUES (item_category_name,description,current_user_id)
+    INSERT INTO wms.item_category(name,descr,lub)
+    VALUES (item_category_name,descr,current_user_id)
     RETURNING id INTO new_item_category_id;
     RETURN new_item_category_id;
 END;
 $$ LANGUAGE plpgsql;
 
--- Function to update item_category_master
+-- Function to update item_category
 CREATE OR REPLACE FUNCTION wms.update_item_category(
-    item_category_master_id INT,
+    item_category_id INT,
     item_category_name VARCHAR(255),
-    description VARCHAR(255),
+    descr VARCHAR(255),
     current_user_id INTEGER
 )RETURNS INT AS $$
 BEGIN
-    UPDATE wms.item_category_master
-    SET name = item_category_name,descr = description,lub = current_user_id
-    WHERE id =item_category_master_id;
-    RETURN item_category_master_id;
+    UPDATE wms.item_category
+    SET name = item_category_name,descr = descr,lub = current_user_id
+    WHERE id =item_category_id;
+    RETURN item_category_id;
 END;
 $$ LANGUAGE plpgsql;
 
--- Function to delete item_category_master
+-- Function to delete item_category
 CREATE OR REPLACE FUNCTION wms.delete_item_category(
-    item_category_master_id_to_delete INTEGER,
+    item_category_id_to_delete INTEGER,
     deleted_by_user_id INTEGER
 )RETURNS INT AS $$
 BEGIN
     -- Delete all brands associated with this item category
-    PERFORM wms.delete_item_brand_by_item_category(item_category_master_id_to_delete,deleted_by_user_id);
+    PERFORM wms.delete_item_brand_by_item_category(item_category_id_to_delete,deleted_by_user_id);
 
     --Delete item category
-    UPDATE wms.item_category_master
+    UPDATE wms.item_category
     SET is_active = false,lub = deleted_by_user_id
-    WHERE id = item_category_master_id_to_delete;
-    RETURN item_category_master_id_to_delete;
+    WHERE id = item_category_id_to_delete;
+    RETURN item_category_id_to_delete;
 END;
 $$ LANGUAGE plpgsql;
 
@@ -943,58 +943,58 @@ $$ LANGUAGE plpgsql;
 ---------------------------** Palette Master **---------------------------
 
 
---Function to insert in palette_master
-CREATE OR REPLACE FUNCTION wms.insert_palette_master(
+--Function to insert in palette
+CREATE OR REPLACE FUNCTION wms.insert_palette(
     descr VARCHAR(255),
     current_user_id INTEGER
 ) RETURNS INT AS $$
 DECLARE new_palette_id INT;
 BEGIN
-    INSERT INTO wms.palette_master(descr,lub)
+    INSERT INTO wms.palette(descr,lub)
     VALUES (descr,current_user_id)
     RETURNING id INTO new_palette_id;
     RETURN new_palette_id;
 END;
 $$ LANGUAGE plpgsql;
 
---Function to update  palette_master
-CREATE OR REPLACE FUNCTION wms.update_palette_master(
-    palette_master_id INT,
+--Function to update  palette
+CREATE OR REPLACE FUNCTION wms.update_palette(
+    palette_id INT,
     descr VARCHAR(255),
     current_user_id INTEGER
 ) RETURNS INT AS $$
 BEGIN
-    UPDATE wms.palette_master
+    UPDATE wms.palette
     SET descr = descr,lub = current_user_id
     WHERE id = palette_id;
     RETURN palette_id;
 END;
 $$ LANGUAGE plpgsql;
 
---Function to delete  palette_master
-CREATE OR REPLACE FUNCTION wms.delete_palette_master(
-    palette_master_id_to_delete INT,
+--Function to delete  palette
+CREATE OR REPLACE FUNCTION wms.delete_palette(
+    palette_id_to_delete INT,
     deleted_by_user_id INT
 ) RETURNS INT AS $$
 BEGIN
-    UPDATE wms.palette_master
+    UPDATE wms.palette
     SET descr = descr,lub = current_user_id
-    WHERE id = palette_master_id;
-    RETURN palette_master_id;
+    WHERE id = palette_id;
+    RETURN palette_id;
 END;
 $$ LANGUAGE plpgsql;
 
---Function to delete  palette_master
-CREATE OR REPLACE FUNCTION wms.delete_palette_master(
-    palette_master_id_to_delete INT,
+--Function to delete  palette
+CREATE OR REPLACE FUNCTION wms.delete_palette(
+    palette_id_to_delete INT,
     deleted_by_user_id INT
 ) RETURNS INT AS $$
 BEGIN
     -- Delete palette master
-    UPDATE wms.palette_master
+    UPDATE wms.palette
     SET is_active = false,lub = deleted_by_user_id
-    WHERE id = palette_master_id_to_delete;
-    RETURN palette_master_id_to_delete;
+    WHERE id = palette_id_to_delete;
+    RETURN palette_id_to_delete;
 END;
 $$ LANGUAGE plpgsql;
 

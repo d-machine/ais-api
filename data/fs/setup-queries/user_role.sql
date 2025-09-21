@@ -23,6 +23,7 @@ CREATE TABLE IF NOT EXISTS administration.user_role_history (
     user_role_id INT,
     user_id INT,
     role_id INT,
+    is_active boolean NOT NULL,
     operation VARCHAR(10),
     operation_at TIMESTAMP,
     operation_by int REFERENCES administration.user(id)
@@ -33,15 +34,15 @@ CREATE OR REPLACE FUNCTION administration.log_user_role_changes()
 RETURNS TRIGGER AS $$
 BEGIN
     IF TG_OP = 'INSERT' THEN
-        INSERT INTO administration.user_role_history (user_role_id, user_id, role_id, operation, operation_at, operation_by)
-        VALUES (NEW.id, NEW.user_id, NEW.role_id, 'INSERT', NEW.lua, NEW.lub);
+        INSERT INTO administration.user_role_history (user_role_id, user_id, role_id, is_active, operation, operation_at, operation_by)
+        VALUES (NEW.id, NEW.user_id, NEW.role_id, NEW.is_active, 'INSERT', NEW.lua, NEW.lub);
     ELSIF TG_OP = 'UPDATE' THEN
         IF (OLD.is_active = true AND NEW.is_active = false) THEN
-            INSERT INTO administration.user_role_history (user_role_id,user_id,role_id,operation,operation_at,operation_by)
-            VALUES (NEW.id,NEW.user_id,NEW.role_id,'DELETE',NEW.lua,NEW.lub);
+            INSERT INTO administration.user_role_history (user_role_id, user_id, role_id, is_active, operation, operation_at, operation_by)
+            VALUES (NEW.id, NEW.user_id, NEW.role_id, NEW.is_active, 'DELETE', NEW.lua, NEW.lub);
         ELSE
-            INSERT INTO administration.user_role_history (user_role_id,user_id,role_id,operation,operation_at,operation_by)
-            VALUES (NEW.id,NEW.user_id,NEW.role_id,'UPDATE',NEW.lua,NEW.lub);
+            INSERT INTO administration.user_role_history (user_role_id, user_id, role_id, is_active, operation, operation_at, operation_by)
+            VALUES (NEW.id, NEW.user_id, NEW.role_id, NEW.is_active, 'UPDATE', NEW.lua, NEW.lub);
         END IF;
     END IF;
     RETURN NEW;

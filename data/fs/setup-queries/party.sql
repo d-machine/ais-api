@@ -1,4 +1,4 @@
-CREATE TABLE  wms.party_master (
+CREATE TABLE  wms.party (
   id SERIAL PRIMARY KEY,
   party_type VARCHAR(50),
   name VARCHAR(50),
@@ -7,8 +7,6 @@ CREATE TABLE  wms.party_master (
   add3 VARCHAR(50),
   city VARCHAR(50),
   pincode VARCHAR(50),
-  district VARCHAR(50),
-  
   person_name VARCHAR(50),
   telephone VARCHAR(50),
   email VARCHAR(50),
@@ -18,30 +16,29 @@ CREATE TABLE  wms.party_master (
   cr_limit NUMERIC, 
   cr_days INTEGER,
   gstno VARCHAR(50),
-  
-
   aadhar_no VARCHAR(50),
   sales_head VARCHAR(50),
   director VARCHAR(50),
   manager VARCHAR(50),
-  state_id INTEGER REFERENCES wms.state_master(id),
-  country_id INTEGER REFERENCES wms.country_master(id),
+  city_district_id INTEGER REFERENCES wms.city_district(id),
+  state_id INTEGER REFERENCES wms.state(id),
+  country_id INTEGER REFERENCES wms.country(id),
   is_active boolean not null default true,
   lub int REFERENCES administration.user(id),
   lua TIMESTAMP NOT NULL DEFAULT NOW()
 );
-CREATE TABLE IF NOT EXISTS wms.party_master_history (
+CREATE TABLE IF NOT EXISTS wms.party_history (
     history_id SERIAL PRIMARY KEY,
-    id INTEGER REFERENCES wms.party_master(id),
+    id INTEGER REFERENCES wms.party(id),
     party_type VARCHAR(50),
     name VARCHAR(50),
     add1 VARCHAR(50),
     add2 VARCHAR(50),
-        add3 VARCHAR(50),
-            city VARCHAR(50),
+    add3 VARCHAR(50),
+    city VARCHAR(50),
     pincode VARCHAR(50),
-    district VARCHAR(50),
-    state_id INTEGER REFERENCES wms.state_master(id),
+    city_district_id INTEGER REFERENCES wms.city_district(id),
+    state_id INTEGER REFERENCES wms.state(id),
     person_name VARCHAR(50),
     telephone VARCHAR(50),
     email VARCHAR(50),
@@ -51,21 +48,22 @@ CREATE TABLE IF NOT EXISTS wms.party_master_history (
     cr_limit NUMERIC, 
     cr_days INTEGER,
     gstno VARCHAR(50),
-    country_id INTEGER REFERENCES wms.country_master(id),
+    country_id INTEGER REFERENCES wms.country(id),
     aadhar_no VARCHAR(50),
     sales_head VARCHAR(50),
     director VARCHAR(50),
     manager VARCHAR(50),
+    is_active boolean NOT NULL,
     operation VARCHAR(10),
     operation_at TIMESTAMP,
     operation_by INTEGER REFERENCES administration.user(id)
 );
------create trigger function for party_master-----
-CREATE OR REPLACE FUNCTION wms.party_master_trigger()
+-----create trigger function for party-----
+CREATE OR REPLACE FUNCTION wms.party_trigger()
     RETURNS TRIGGER AS $$
 BEGIN
     IF TG_OP = 'INSERT' THEN
-        INSERT INTO party_master_history (
+        INSERT INTO party_history (
             id,
             party_type,
             name,
@@ -74,7 +72,7 @@ BEGIN
             add3,
             city,
             pincode,
-            district,
+            city_district_id,
             state_id,
             person_name,
             telephone,
@@ -90,6 +88,7 @@ BEGIN
             sales_head,
             director,
             manager,
+            is_active,
             operation, operation_at, operation_by
         )
         VALUES (
@@ -101,7 +100,7 @@ BEGIN
             NEW.add3,
             NEW.city,
             NEW.pincode,
-            NEW.district,
+            NEW.city_district_id,
             NEW.state_id,
             NEW.person_name,
             NEW.telephone,
@@ -117,11 +116,12 @@ BEGIN
             NEW.sales_head,
             NEW.director,
             NEW.manager,
+            NEW.is_active,
             'INSERT', NEW.lua, NEW.lub
         );
     ELSIF TG_OP = 'UPDATE' THEN
         IF (OLD.is_active = true AND NEW.is_active = false) THEN
-            INSERT INTO party_master_history (
+            INSERT INTO party_history (
                 id,
                 party_type,
                 name,
@@ -130,7 +130,7 @@ BEGIN
                 add3,
                 city,
                 pincode,
-                district,
+                city_district_id,
                 state_id,
                 person_name,
                 telephone,
@@ -146,6 +146,7 @@ BEGIN
                 sales_head,
                 director,
                 manager,
+                is_active,
                 operation,operation_at,operation_by
             )
             VALUES (
@@ -157,7 +158,7 @@ BEGIN
                 NEW.add3,
                 NEW.city,
                 NEW.pincode,
-                NEW.district,
+                NEW.city_district_id,
                 NEW.state_id,
                 NEW.person_name,
                 NEW.telephone,
@@ -173,10 +174,11 @@ BEGIN
                 NEW.sales_head,
                 NEW.director,
                 NEW.manager,
+                NEW.is_active,
                 'DELETE',NEW.lua,NEW.lub
             );
         ELSE
-            INSERT INTO party_master_history (
+            INSERT INTO party_history (
                 id,
                 party_type,
                 name,
@@ -185,7 +187,7 @@ BEGIN
                 add3,
                 city,
                 pincode,
-                district,
+                city_district_id,
                 state_id,
                 person_name,
                 telephone,
@@ -201,6 +203,7 @@ BEGIN
                 sales_head,
                 director,
                 manager,
+                is_active,
                 operation,operation_at,operation_by
             )
             VALUES (
@@ -212,7 +215,7 @@ BEGIN
                 NEW.add3,
                 NEW.city,
                 NEW.pincode,
-                NEW.district,
+                NEW.city_district_id,
                 NEW.state_id,
                 NEW.person_name,
                 NEW.telephone,
@@ -228,6 +231,7 @@ BEGIN
                 NEW.sales_head,
                 NEW.director,
                 NEW.manager,
+                NEW.is_active,
                 'UPDATE',NEW.lua,NEW.lub
             );
         END IF;
@@ -236,9 +240,9 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
--- create trigger for party_master
-DROP TRIGGER IF EXISTS party_master_trigger ON wms.party_master;
-CREATE TRIGGER party_master_trigger
-    AFTER INSERT OR UPDATE ON wms.party_master
+-- create trigger for party
+DROP TRIGGER IF EXISTS party_trigger ON wms.party;
+CREATE TRIGGER party_trigger
+    AFTER INSERT OR UPDATE ON wms.party
     FOR EACH ROW
-    EXECUTE FUNCTION wms.party_master_trigger();
+    EXECUTE FUNCTION wms.party_trigger();

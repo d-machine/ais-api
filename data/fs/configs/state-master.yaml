@@ -7,15 +7,15 @@
         s.id as state_id,
         s.state_name,
         s.state_code,
-        s.description,
+        s.descr,
         s.country_id,
         c.country_name,
         is_active,
         s.lua,
         TRIM(CONCAT(u.first_name, ' ', u.last_name)) as last_updated_by_name
       FROM
-        wms.state_master s
-        LEFT JOIN wms.country_master c ON s.country_id = c.id
+        wms.state s
+        LEFT JOIN wms.country c ON s.country_id = c.id
         LEFT JOIN administration.user u ON s.lub = u.id
       WHERE
         s.id = $1
@@ -35,15 +35,15 @@
       queryInfo:
         returnType: SCALAR
         query: |
-          INSERT INTO wms.state_master
-            (state_name, state_code, description, country_id, lub, lua)
+          INSERT INTO wms.state
+            (state_name, state_code, descr, country_id, lub, lua)
           VALUES
             ($1, $2, $3, $4, $5, NOW())
           RETURNING id;
         payload:
           - state_name
           - state_code
-          - description
+          - descr
           - country_id
         contextParams:
           - current_user_id
@@ -66,8 +66,8 @@
       label: State Code
       type: TEXT
       required: true
-    - name: description
-      label: Description
+    - name: descr
+      label: descr
       type: TEXTAREA
       required: false
     - name: country_id
@@ -77,4 +77,4 @@
       dataSource:
         type: QUERY
         query: |
-          SELECT id, country_name as label FROM wms.country_master ORDER BY country_name;
+          SELECT id, country_name as label FROM wms.country ORDER BY country_name;

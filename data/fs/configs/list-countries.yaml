@@ -2,20 +2,19 @@ actionType: EXECUTE_QUERY
 queryInfo:
   returnType: MULTIPLE_ROWS
   query: |
-    SELECT
-      cm.id as country_id,
-      cm.name as country_name,
-      cm.code as country_code,
-      cm.descr as description,
-      cm.lua as last_updated_at,
-      TRIM(CONCAT(u.first_name, ' ', u.last_name)) as last_updated_by_name
-    FROM
-      wms.country_master cm
-      LEFT JOIN administration.user u ON cm.lub = u.id
-    WHERE
-      cm.is_active = true
-    ORDER BY
-      cm.name
+    Select * from (
+      SELECT
+        cm.id as country_id,
+        cm.name as country_name,
+        cm.code as country_code,
+        cm.descr as descr,
+        cm.lua as last_updated_at,
+        TRIM(CONCAT(u.first_name, ' ', u.last_name)) as last_updated_by_name
+      FROM
+        wms.country cm
+        LEFT JOIN administration.user u ON cm.lub = u.id
+      where cm.is_active = true
+    ) as countries
   options:
     applyAccessLevelRestrictions: false
     applyFiltering: true
@@ -48,7 +47,7 @@ actionConfig:
     accessTypeRequired: 7-DELETE
     queryInfo:
       returnType: SINGLE_ROW
-      query: SELECT wms.delete_country_master($1, $2) as id;
+      query: SELECT wms.delete_country($1, $2) as id;
       payload:
         - country_id
       contextParams:
@@ -69,8 +68,8 @@ columns:
   - name: country_code
     label: Country Code
     visible: true
-  - name: description
-    label: Description
+  - name: descr
+    label: descr
     visible: true
   - name: last_updated_at
     label: Last Updated At

@@ -6,8 +6,8 @@
 --Create picking_list_palette table
 CREATE TABLE IF NOT EXISTS wms.picking_list_palette(
     id SERIAL PRIMARY KEY,
-    header_id INTEGER NOT NULL REFERENCES wms.picking_list_header(id)
-    palette_id INTEGER NOT NULL REFERENCES wms.palette_master(id),
+    header_id INTEGER NOT NULL REFERENCES wms.picking_list_header(id),
+    palette_id INTEGER NOT NULL REFERENCES wms.palette(id),
     item_id INTEGER NOT NULL REFERENCES wms.material(id),
     qty INTEGER NOT NULL,
     descr VARCHAR(255),
@@ -27,6 +27,7 @@ CREATE TABLE IF NOT EXISTS wms.picking_list_palette_history(
     qty INTEGER,
     descr VARCHAR(255),
     status VARCHAR(255),
+    is_active boolean NOT NULL,
     operation VARCHAR(10),
     operation_at TIMESTAMP,
     operation_by INTEGER REFERENCES administration.user(id)
@@ -38,25 +39,25 @@ RETURNS TRIGGER AS $$
 BEGIN
     IF (TG_OP = 'INSERT') THEN
         INSERT INTO wms.picking_list_palette_history(
-            picking_palette_id,header_id,palette_id,item_id,qty,descr,status,operation,operation_at,operation_by
+            picking_palette_id, header_id, palette_id, item_id, qty, descr, status, is_active, operation, operation_at, operation_by
         )
         VALUES (
-            NEW.id,NEW.header_id,NEW.palette_id,NEW.item_id,NEW.qty,NEW.descr,NEW.status,'INSERT',NEW.lua,NEW.lub
+            NEW.id, NEW.header_id, NEW.palette_id, NEW.item_id, NEW.qty, NEW.descr, NEW.status, NEW.is_active, 'INSERT', NEW.lua, NEW.lub
         );
     ELSIF (TG_OP = 'UPDATE') THEN
         IF (OLD.is_active = true AND NEW.is_active = false) THEN
             INSERT INTO wms.picking_list_palette_history(
-                picking_palette_id,header_id,palette_id,item_id,qty,descr,status,operation,operation_at,operation_by
+                picking_palette_id, header_id, palette_id, item_id, qty, descr, status, is_active, operation, operation_at, operation_by
             )
             VALUES (
-                NEW.id,NEW.header_id,NEW.palette_id,NEW.item_id,NEW.qty,NEW.descr,NEW.status,operation,operation_at,operation_by
+                NEW.id, NEW.header_id, NEW.palette_id, NEW.item_id, NEW.qty, NEW.descr, NEW.status, NEW.is_active, 'DELETE', NEW.lua, NEW.lub
             );
-        ELSIF
+        ELSE
             INSERT INTO wms.picking_list_palette_history(
-                pickking_palette_id,header_id,palette_id,item_id,qty,descr,status,operation,operation_at,operation_by
+                picking_palette_id, header_id, palette_id, item_id, qty, descr, status, is_active, operation, operation_at, operation_by
             )
             VALUES (
-                NEW.id,NEW.header_id,NEW.palette_id,NEW.item_id,NEW.qty,NEW.descr,NEW.status,'UPDATE',NEW.lua,NEW.lub
+                NEW.id, NEW.header_id, NEW.palette_id, NEW.item_id, NEW.qty, NEW.descr, NEW.status, NEW.is_active, 'UPDATE', NEW.lua, NEW.lub
             );
         END IF;
     END IF;

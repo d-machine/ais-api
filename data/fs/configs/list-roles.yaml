@@ -3,11 +3,11 @@ queryInfo:
   returnType: MULTIPLE_ROWS
   query: |
     SELECT
-    role_id, role_name, description, lub, lua
+    role_id, role_name, descr, lub, lua
     FROM
       (
         Select 
-          id as role_id, name as role_name, description, 
+          id as role_id, name as role_name, descr, 
           lub, lua
         from
           administration.role
@@ -63,8 +63,8 @@ columns:
     width: 200
     sortable: true
     filterType: string
-  - name: description
-    label: Description
+  - name: descr
+    label: descr
     width: 600
     sortable: true
     filterType: string

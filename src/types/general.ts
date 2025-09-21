@@ -36,8 +36,8 @@ export interface IPaginationInfo {
 
 export interface IFilterInfo {
   field: string;
-  value: string;
-  operator?: string;
+  value: string | number | boolean;
+  operator?: EFilterOperator;
 }
 
 export interface IFetchQuery {

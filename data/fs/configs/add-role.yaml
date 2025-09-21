@@ -5,7 +5,7 @@ sections:
       returnType: SINGLE_ROW
       query: |
         SELECT
-          id as role_id, name as role_name, description
+          id as role_id, name as role_name, descr
         FROM
           administration.role
         WHERE
@@ -28,7 +28,7 @@ sections:
             SELECT administration.insert_role($1, $2, $3) as id;
           payload:
             - role_name
-            - description
+            - descr
           contextParams:
             - current_user_id
           path:
@@ -45,8 +45,8 @@ sections:
         label: Role Name
         type: TEXT
         required: true
-      - name: description
-        label: Description
+      - name: descr
+        label: descr
         type: TEXTAREA
   - sectionType: TABLE
     sectionName: Claims
@@ -94,7 +94,7 @@ sections:
             - current_user_id
           path:
             - sections
-            - 1 
+            - 1
             - actionConfig
             - SAVE
         onSuccess: saveChanges

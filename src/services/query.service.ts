@@ -26,6 +26,8 @@ export default class QueryService extends BaseService {
           return `${filter.field} IS NULL`;
         case EFilterOperator.IS_NOT_NULL:
           return `${filter.field} IS NOT NULL`;
+        case EFilterOperator.EQUAL:
+          return `${filter.field} = ${filter.value}`;
         case EFilterOperator.IN:
           return `${filter.field} IN (${filter.value})`;
         case EFilterOperator.NOT_IN:

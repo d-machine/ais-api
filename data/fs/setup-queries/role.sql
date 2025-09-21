@@ -10,7 +10,7 @@
 CREATE TABLE IF NOT EXISTS administration.role (
     id SERIAL PRIMARY KEY,
     name VARCHAR(255) NOT NULL UNIQUE,
-    description VARCHAR(255),
+    descr VARCHAR(255),
     is_active boolean not null default true,
     lub int REFERENCES administration.user(id),
     lua TIMESTAMP NOT NULL DEFAULT NOW()
@@ -21,7 +21,7 @@ CREATE TABLE IF NOT EXISTS administration.role_history (
     history_id SERIAL PRIMARY KEY,
     role_id INT,
     name VARCHAR(255),
-    description VARCHAR(255),
+    descr VARCHAR(255),
     operation VARCHAR(10),
     operation_at TIMESTAMP,
     operation_by int REFERENCES administration.user(id)
@@ -32,15 +32,15 @@ CREATE OR REPLACE FUNCTION administration.log_role_changes()
 RETURNS TRIGGER AS $$
 BEGIN
     IF TG_OP = 'INSERT' THEN
-        INSERT INTO administration.role_history (role_id, name, description, operation, operation_at, operation_by)
-        VALUES (NEW.id, NEW.name, NEW.description, 'INSERT', NEW.lua, NEW.lub);
+        INSERT INTO administration.role_history (role_id, name, descr, operation, operation_at, operation_by)
+        VALUES (NEW.id, NEW.name, NEW.descr, 'INSERT', NEW.lua, NEW.lub);
     ELSIF TG_OP = 'UPDATE' THEN
         IF (OLD.is_active = true AND NEW.is_active = false) THEN
-            INSERT INTO administration.role_history (role_id,name,description,operation,operation_at,operation_by)
-            VALUES (NEW.id,NEW.name,NEW.description,'DELETE',NEW.lua,NEW.lub);
+            INSERT INTO administration.role_history (role_id,name,descr,operation,operation_at,operation_by)
+            VALUES (NEW.id,NEW.name,NEW.descr,'DELETE',NEW.lua,NEW.lub);
         ELSE
-            INSERT INTO administration.role_history (role_id,name,description,operation,operation_at,operation_by)
-            VALUES (NEW.id,NEW.name,NEW.description,'UPDATE',NEW.lua,NEW.lub);
+            INSERT INTO administration.role_history (role_id,name,descr,operation,operation_at,operation_by)
+            VALUES (NEW.id,NEW.name,NEW.descr,'UPDATE',NEW.lua,NEW.lub);
         END IF;
     END IF;
     RETURN NEW;

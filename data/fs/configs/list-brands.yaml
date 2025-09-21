@@ -5,7 +5,7 @@ queryInfo:
       ib.id as brand_id,
       ib.brand_name,
       icm.name as category_name,
-      ib.descr as description
+      ib.descr as descr
       ib.lua,
       TRIM(CONCAT(u.first_name,' ',u.last_name)) as last_updated_by_name
     FROM
@@ -67,8 +67,8 @@ columns:
   - name: category_name
     label: Category
     visible: true
-  - name: description
-    label: Description
+  - name: descr
+    label: descr
     visible: true
   - name: lua
     label: Last Updated At

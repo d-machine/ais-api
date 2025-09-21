@@ -5,11 +5,11 @@ queryInfo:
     SELECT
       icm.id as item_category_id,
       icm.name as item_category_name,
-      icm.descr as description,
+      icm.descr as descr,
       icm.lua as last_updated_at,
       TRIM(CONCAT(u.first_name,' ',u.last_name)) as last_updated_by_name
     FROM
-      wms.item_category_master icm
+      wms.item_category icm
       LEFT JOIN administration.user u ON icm.lub = u.id
     WHERE 
       icm.is_active = true
@@ -48,7 +48,7 @@ actionConfig:
     accessTypeRequired: 7-DELETE
     queryInfo:
       returnType: SINGLE_ROW
-      query: SELECT wms.delete_item_category_master($1,$2) as id;
+      query: SELECT wms.delete_item_category($1,$2) as id;
       payload:
         - item_category_id
       contextParams:
@@ -66,8 +66,8 @@ columns:
   - name: item_category_name
     lable: Item Category Name
     visible: true
-  - name: description
-    lable: Description
+  - name: descr
+    lable: descr
     visible: true
   - name: last_updated_at
     label: Last Updated At

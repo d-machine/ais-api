@@ -35,6 +35,7 @@ CREATE TABLE IF NOT EXISTS wms.purchase_order_header_history(
     delivery_dt TIMESTAMP,
     status VARCHAR(255),
     remarks VARCHAR(255),
+    is_active boolean NOT NULL,
     operation VARCHAR(10),
     operation_at TIMESTAMP,
     operation_by INTEGER REFERENCES administration.user(id)
@@ -57,9 +58,9 @@ BEGIN
             delivery_dt,
             status,
             remarks,
+            is_active,
             operation,operation_at,operation_by
-        )
-        VALUES (
+        ) VALUES (
             NEW.id,
             NEW.entry_no,
             NEW.entry_dt,
@@ -70,6 +71,8 @@ BEGIN
             NEW.year_code,
             NEW.delivery_dt,
             NEW.status,
+            NEW.remarks,
+            NEW.is_active,
             'INSERT',NEW.lua,NEW.lub
         );
     ELSIF (TG_OP = 'UPDATE') THEN
@@ -86,9 +89,9 @@ BEGIN
                 delivery_dt,
                 status,
                 remarks,
+                is_active,
                 operation,operation_at,operation_by
-            )
-            VALUES (
+            ) VALUES (
                 NEW.id,
                 NEW.entry_no,
                 NEW.entry_dt,
@@ -100,6 +103,7 @@ BEGIN
                 NEW.delivery_dt,
                 NEW.status,
                 NEW.remarks,
+                NEW.is_active,
                 'DELETE',NEW.lua,NEW.lub
             );
         ELSE
@@ -115,9 +119,9 @@ BEGIN
                 delivery_dt,
                 status,
                 remarks,
+                is_active,
                 operation,operation_at,operation_by
-            )
-            VALUES (
+            ) VALUES (
                 NEW.id,
                 NEW.entry_no,
                 NEW.entry_dt,
@@ -125,10 +129,11 @@ BEGIN
                 NEW.broker_id,
                 NEW.delivery_at_id,
                 NEW.trsp_id,
-                NEW,year_code,
+                NEW.year_code,
                 NEW.delivery_dt,
                 NEW.status,
                 NEW.remarks,
+                NEW.is_active,
                 'UPDATE',NEW.lua,NEW.lub
             );
         END IF;
@@ -137,20 +142,19 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
---Create trigger for purchase_order_header
-DROP TRIGGER IF purchase_order_insert_trigger ON wms.purchase_order_header;
+DROP TRIGGER IF EXISTS purchase_order_insert_trigger ON wms.purchase_order_header;
 CREATE TRIGGER purchase_order_insert_trigger
     AFTER INSERT ON wms.purchase_order_header
     FOR EACH ROW
     EXECUTE FUNCTION wms.purchase_order_header_trigger();
 
-DROP TRIGGER IF purchase_order_update_trigger ON wms.purchase_order_header;
+DROP TRIGGER IF EXISTS purchase_order_update_trigger ON wms.purchase_order_header;
 CREATE TRIGGER purchase_order_update_trigger
     AFTER UPDATE ON wms.purchase_order_header     
     FOR EACH ROW
     EXECUTE FUNCTION wms.purchase_order_header_trigger();
 
-DROP TRIGGER IF purchase_order_delete_trigger ON wms.purchase_order_header;
+DROP TRIGGER IF EXISTS purchase_order_delete_trigger ON wms.purchase_order_header;
 CREATE TRIGGER purchase_order_delete_trigger
     AFTER DELETE ON wms.purchase_order_header
     FOR EACH ROW

@@ -14,7 +14,7 @@ export interface IUser {
 export interface IRole {
   id: number;
   name: string;
-  description?: string;
+  descr?: string;
   team?: string;
   department?: string;
   is_active: boolean;
@@ -45,7 +45,7 @@ export interface IAccessGrant {
 export interface IResource {
   id: number;
   name: string;
-  description?: string;
+  descr?: string;
   parent_id?: number;
   is_active: boolean;
   lua: Date;

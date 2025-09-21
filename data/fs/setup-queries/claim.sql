@@ -21,15 +21,16 @@ CREATE TABLE IF NOT EXISTS administration.claim (
 
 -- Create history table
 CREATE TABLE IF NOT EXISTS administration.claim_history (
-  history_id SERIAL PRIMARY KEY,
-  claim_id INT,
-  role_id INTEGER NOT NULL,
-  resource_id INTEGER NOT NULL,
-  access_level_id VARCHAR(255) NOT NULL,
-  access_type_ids varchar(255) NOT NULL,
-  operation VARCHAR(10),
-  operation_at TIMESTAMP,
-  operation_by int REFERENCES administration.user(id)
+    history_id SERIAL PRIMARY KEY,
+    claim_id INT,
+    role_id INTEGER NOT NULL,
+    resource_id INTEGER NOT NULL,
+    access_level_id VARCHAR(255) NOT NULL,
+    access_type_ids varchar(255) NOT NULL,
+    is_active boolean NOT NULL,
+    operation VARCHAR(10),
+    operation_at TIMESTAMP,
+    operation_by int REFERENCES administration.user(id)
 );
 
 -- Create trigger function
@@ -37,15 +38,15 @@ CREATE OR REPLACE FUNCTION administration.log_claim_changes()
 RETURNS TRIGGER AS $$
 BEGIN
     IF TG_OP = 'INSERT' THEN
-        INSERT INTO administration.claim_history (claim_id, role_id, resource_id, access_level_id, access_type_ids, operation, operation_at, operation_by)
-        VALUES (NEW.id, NEW.role_id, NEW.resource_id, NEW.access_level_id, NEW.access_type_ids, 'INSERT', NEW.lua, NEW.lub);
+        INSERT INTO administration.claim_history (claim_id, role_id, resource_id, access_level_id, access_type_ids, is_active, operation, operation_at, operation_by)
+        VALUES (NEW.id, NEW.role_id, NEW.resource_id, NEW.access_level_id, NEW.access_type_ids, NEW.is_active, 'INSERT', NEW.lua, NEW.lub);
     ELSIF TG_OP = 'UPDATE' THEN
         IF (OLD.is_active = true AND NEW.is_active = false) THEN
-            INSERT INTO administration.claim_history (claim_id,role_id,resource_id,access_level_id,access_type_ids,operation,operation_at,operation_by)
-            VALUES (NEW.id,NEW.role_id,NEW.resource_id,NEW.access_level_id,NEW.access_type_ids,'DELETE',NEW.lua,NEW.lub);
+            INSERT INTO administration.claim_history (claim_id, role_id, resource_id, access_level_id, access_type_ids, is_active, operation, operation_at, operation_by)
+            VALUES (NEW.id, NEW.role_id, NEW.resource_id, NEW.access_level_id, NEW.access_type_ids, NEW.is_active, 'DELETE', NEW.lua, NEW.lub);
         ELSE
-            INSERT INTO administration.claim_history (claim_id,role_id,resource_id,access_level_id,access_type_ids,operation,operation_at,operation_by)
-            VALUES (NEW.id,NEW.role_id,NEW.resource_id,NEW.access_level_id,NEW.access_type_ids,'UPDATE',NEW.lua,NEW.lub);
+            INSERT INTO administration.claim_history (claim_id, role_id, resource_id, access_level_id, access_type_ids, is_active, operation, operation_at, operation_by)
+            VALUES (NEW.id, NEW.role_id, NEW.resource_id, NEW.access_level_id, NEW.access_type_ids, NEW.is_active, 'UPDATE', NEW.lua, NEW.lub);
         END IF;
     END IF;
     RETURN NEW;

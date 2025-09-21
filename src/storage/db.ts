@@ -49,11 +49,38 @@ export default class DBClient {
         "claim.sql",
         "user_role.sql",
         "refresh_token.sql",
-        "country_master.sql",
-        "state_master.sql",
-        "city_master.sql",
-        "district_master.sql",
-        "city_district_master.sql",
+        // "access_grants.sql",
+        // Geographical tables
+        "country.sql",
+        "state.sql",
+        "city.sql",
+        "district.sql",
+        "city_district.sql",
+        "address.sql",
+        // transport
+        "transport.sql",
+        // material
+        "item_category.sql",
+        "item_brand.sql",
+        "uom.sql",
+        "material.sql",
+        // warehouse
+        "palette.sql",
+        // broker
+        "broker.sql",
+        // party
+        "party.sql",
+        // purchase_order
+        "purchase_order_header.sql",
+        "purchase_order_details.sql",
+        // sales_order
+        "sales_order_header.sql",
+        "sales_order_details.sql",
+        // picking_list
+        "picking_list_header.sql",
+        "picking_list_order.sql",
+        "picking_list_palette.sql",
+
         "query_functions.sql",
         "initial_data.sql",
       ];

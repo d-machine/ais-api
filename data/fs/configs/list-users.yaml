@@ -3,7 +3,7 @@ queryInfo:
   returnType: MULTIPLE_ROWS
   query: |
     SELECT
-    user_id, username, email, full_name, reports_to, roles,is_active,
+    user_id, username, email, full_name, reports_to, roles, is_active,
     lub, lua 
     FROM
       (
@@ -14,7 +14,7 @@ queryInfo:
           string_agg(r.name, ', ') as roles, string_agg(r.id::text, ', ') as role_ids,
           string_agg(ur.id::text, ', ') as user_role_ids,
           TRIM(CONCAT(rt.first_name, ' ', rt.last_name)) as reports_to,
-          u.lub as lub, u.lua as lua
+          u.lub as lub, u.lua as lua, u.is_active as is_active
         FROM
           administration.user u
           LEFT JOIN administration.user rt ON u.reports_to = rt.id

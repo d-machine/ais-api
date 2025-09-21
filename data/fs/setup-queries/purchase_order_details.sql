@@ -33,6 +33,7 @@ CREATE TABLE IF NOT EXISTS wms.purchase_order_details_history(
     amount DOUBLE PRECISION,
     status VARCHAR(255),
     remarks VARCHAR(255),
+    is_active boolean NOT NULL,
     operation VARCHAR(10),
     operation_at TIMESTAMP,
     operation_by INTEGER REFERENCES administration.user(id) 
@@ -54,6 +55,7 @@ BEGIN
             amount,
             status,
             remarks,
+            is_active,
             operation,operation_at,operation_by
         )
         VALUES (
@@ -67,9 +69,10 @@ BEGIN
             NEW.amount,
             NEW.status,
             NEW.remarks,
+            NEW.is_active,
             'INSERT',NEW.lua,NEW.lub
         );
-    ELSIF (TG_OP= 'UPDATE') THEN
+    ELSIF (TG_OP = 'UPDATE') THEN
         IF (OLD.is_active = true AND NEW.is_active = false) THEN
             INSERT INTO wms.purchase_order_details_history(
                 purchase_details_id,
@@ -82,6 +85,7 @@ BEGIN
                 amount,
                 status,
                 remarks,
+                is_active,
                 operation,operation_at,operation_by
             )
             VALUES (
@@ -95,6 +99,7 @@ BEGIN
                 NEW.amount,
                 NEW.status,
                 NEW.remarks,
+                NEW.is_active,
                 'DELETE',NEW.lua,NEW.lub
             );
         ELSE
@@ -109,6 +114,7 @@ BEGIN
                 amount,
                 status,
                 remarks,
+                is_active,
                 operation,operation_at,operation_by
             )
             VALUES (
@@ -122,8 +128,9 @@ BEGIN
                 NEW.amount,
                 NEW.status,
                 NEW.remarks,
+                NEW.is_active,
                 'UPDATE',NEW.lua,NEW.lub
-            ); 
+            );
         END IF;
     END IF;
     RETURN NEW;
@@ -133,7 +140,7 @@ $$ LANGUAGE plpgsql;
 --Create trigger for purchase_oder_details
 DROP TRIGGER IF EXISTS purchase_order_details_insert_trigger ON wms.purchase_order_details;
 CREATE TRIGGER purchase_order_details_insert_trigger
-    AFTER INSERT ON wms.purchase_oder_details
+    AFTER INSERT ON wms.purchase_order_details
     FOR EACH ROW
     EXECUTE FUNCTION wms.purchase_order_details_trigger();
             

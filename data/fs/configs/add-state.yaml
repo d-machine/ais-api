@@ -1,23 +1,21 @@
 sections:
   - sectionType: FIELDS
-    sectionName: Country Details
+    sectionName: State Details
     queryInfo:
       returnType: SINGLE_ROW
       query: |
         SELECT
-          cm.id as country_id,
-          cm.country_name,
-          cm.country_code,
-          cm.description,
-          cm.is_active,
-          cm.lua,
-          TRIM(CONCAT(u.first_name, ' ', u.last_name)) as last_updated_by_name
+          sm.id as state_id,
+          sm.name as state_name,
+          sm.code as state_code,
+          sm.country_id as country_id,
+          cm.name as country_name,
+          descr as descr
         FROM
-          wms.country_master cm
-          LEFT JOIN administration.user u ON cm.lub = u.id
+          wms.state sm
+          LEFT JOIN wms.country cm ON sm.country_id = cm.id
         WHERE
-          cm.id = $1
-          AND cm.is_active = true
+          sm.id = $1
       payload:
         - country_id
       path:
@@ -28,20 +26,16 @@ sections:
       - CANCEL
     actionConfig:
       SAVE:
-        label: Save Country
+        label: Create Country
         actionType: EXECUTE_QUERY
         queryInfo:
           returnType: SCALAR
           query: |
-            INSERT INTO wms.country_master
-              (country_name, country_code, description, lub, lua)
-            VALUES
-              ($1, $2, $3, $4, NOW())
-            RETURNING id;
+            SELECT wms.insert_country($1, $2, $3, $4) as id;
           payload:
             - country_name
             - country_code
-            - description
+            - descr
           contextParams:
             - current_user_id
           path:
@@ -49,7 +43,6 @@ sections:
             - 0
             - actionConfig
             - SAVE
-            - queryInfo
         onSuccess: exitAndComplete
         onFailure: showErrorSnackbar
       CANCEL:
@@ -63,7 +56,23 @@ sections:
         label: Country Code
         type: TEXT
         required: true
-      - name: description
-        label: Description
+      - name: country,
+        label: Country
+        type: SELECT
+        required: true
+        multi: false
+        selectConfig:
+          resource: list-countries
+          selectHandler: converter
+          currentSelection:
+            - key: country_id
+              as: country_id
+          selectParser: converter
+          fields_to_extract:
+            - key: country_id
+              as: country_id
+            - key: country_name
+              as: country_name
+      - name: descr
+        label: descr
         type: TEXTAREA
-        required: false 

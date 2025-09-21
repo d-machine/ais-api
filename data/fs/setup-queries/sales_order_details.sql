@@ -16,7 +16,7 @@ CREATE TABLE IF NOT EXISTS wms.sales_order_details(
     lub INTEGER REFERENCES administration.user(id),
     lua TIMESTAMP NOT NULL DEFAULT NOW(),
     is_active boolean NOT NULL DEFAULT true,
-    status VARCHAR(255)
+    status VARCHAR(255),
     remarks VARCHAR(255)
 );
 
@@ -33,6 +33,7 @@ CREATE TABLE IF NOT EXISTS wms.sales_order_details_history(
     amount DOUBLE PRECISION,
     status VARCHAR(255),
     remarks VARCHAR(255),
+    is_active boolean NOT NULL,
     operation VARCHAR(10),
     operation_at TIMESTAMP,
     operation_by INTEGER REFERENCES administration.user(id)
@@ -54,6 +55,7 @@ BEGIN
             amount,
             status,
             remarks,
+            is_active,
             operation, operation_at, operation_by
         )
         VALUES (
@@ -67,6 +69,7 @@ BEGIN
             NEW.amount,
             NEW.status,
             NEW.remarks,
+            NEW.is_active,
             'INSERT', NEW.lua, NEW.lub
         );
     ELSIF (TG_OP = 'UPDATE') THEN
@@ -82,6 +85,7 @@ BEGIN
                 amount,
                 status,
                 remarks,
+                is_active,
                 operation, operation_at, operation_by
             )
             VALUES (
@@ -95,6 +99,7 @@ BEGIN
                 NEW.amount,
                 NEW.status,
                 NEW.remarks,
+                NEW.is_active,
                 'DELETE', NEW.lua, NEW.lub
             );
         ELSE
@@ -109,6 +114,7 @@ BEGIN
                 amount,
                 status,
                 remarks,
+                is_active,
                 operation, operation_at, operation_by
             )
             VALUES (
@@ -122,6 +128,7 @@ BEGIN
                 NEW.amount,
                 NEW.status,
                 NEW.remarks,
+                NEW.is_active,
                 'UPDATE', NEW.lua, NEW.lub
             );
         END IF;
@@ -137,6 +144,7 @@ BEGIN
             amount,
             status,
             remarks,
+            is_active,
             operation, operation_at, operation_by
         )
         VALUES (
@@ -150,6 +158,7 @@ BEGIN
             OLD.amount,
             OLD.status,
             OLD.remarks,
+            OLD.is_active,
             'DELETE', NEW.lua, NEW.lub
         );
     END IF;

@@ -5,9 +5,9 @@ sections:
       returnType: SINGLE_ROW
       query: |
         SELECT
-          id as country_id, name as country_name, descr as description
+          id as country_id, name as country_name, descr as descr
         FROM
-          wms.country_master
+          wms.country
         WHERE
           id = $1
       payload:
@@ -29,7 +29,7 @@ sections:
           payload:
             - country_name
             - country_code
-            - description
+            - descr
           contextParams:
             - current_user_id
           path:
@@ -50,6 +50,6 @@ sections:
         label: Country Code
         type: TEXT
         required: true
-      - name: description
-        label: Description
+      - name: descr
+        label: descr
         type: TEXTAREA

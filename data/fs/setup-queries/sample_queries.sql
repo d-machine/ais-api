@@ -23,16 +23,16 @@ CREATE TABLE IF NOT EXISTS administration.resource_hierarchy_closure_history (
     operation_by INTEGER REFERENCES administration.user(id)
 );
 
-insert into administration.resource (name, description, lub) VALUES
+insert into administration.resource (name, descr, lub) VALUES
 ('Main Menu', 'Main menu placeholder', 3);
 
-insert into administration.resource (name, description, lub) VALUES
+insert into administration.resource (name, descr, lub) VALUES
 ('Admin Panel', 'Admin Panel', 3);
 
-insert into administration.resource (name, description, lub) VALUES
+insert into administration.resource (name, descr, lub) VALUES
 ('User Panel', 'User Panel', 3);
 
-insert into administration.resource (name, description, lub) VALUES
+insert into administration.resource (name, descr, lub) VALUES
 ('Role Panel', 'Role Panel', 3);
 
 
@@ -47,13 +47,13 @@ insert into administration.user (username, password, reportsto, lub) VALUES
 insert into administration.user (username, password, reportsto, lub) VALUES
 ('chavi', 'chavi', 7, 3);
 
-insert into administration.role (name, description, team, department, lub) values
+insert into administration.role (name, descr, team, department, lub) values
 ('super_admin', 'desc', 'ais', 'dev', 3);
-insert into administration.role (name, description, team, department, lub) values
+insert into administration.role (name, descr, team, department, lub) values
 ('manager', 'desc', 'ais', 'dev', 3);
-insert into administration.role (name, description, team, department, lub) values
+insert into administration.role (name, descr, team, department, lub) values
 ('assistant_manager', 'desc', 'ais', 'dev', 3);
-insert into administration.role (name, description, team, department, lub) values
+insert into administration.role (name, descr, team, department, lub) values
 ('salesman', 'desc', 'ais', 'dev', 3);
 
 insert into administration.user_role (user_id, role_id, lub) VALUES

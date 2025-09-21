@@ -5,12 +5,12 @@ queryInfo:
       dm.id as district_id,
       dm.district_name,
       dm.district_code,
-      dm.description,
+      dm.descr,
       dm.is_active,
       dm.lua,
       TRIM(CONCAT(u.first_name, ' ', u.last_name)) as last_updated_by_name
     FROM
-      wms.district_master dm
+      wms.district dm
       LEFT JOIN administration.user u ON dm.lub = u.id 
     WHERE 
       dm.is_active = true
@@ -47,7 +47,7 @@ actionConfig:
     queryInfo:
       returnType: SCALAR
       query: |
-        SELECT wms.delete_district_master($1, $2);
+        SELECT wms.delete_district($1, $2);
       payload:
         - district_id
       contextParams:
@@ -68,8 +68,8 @@ columns:
   - name: district_code
     label: District Code
     visible: true
-  - name: description
-    label: Description
+  - name: descr
+    label: descr
     visible: true
   - name: lua
     label: Last Updated At

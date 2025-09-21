@@ -19,7 +19,7 @@ CREATE TABLE IF NOT EXISTS wms.sales_order_header(
     lua TIMESTAMP NOT NULL DEFAULT NOW(),
     is_active boolean NOT NULL DEFAULT true,
     status VARCHAR(255),
-    remarks VARCHAR(255),
+    remarks VARCHAR(255)
 );
 
 -- Create temporal table for sales_order_header
@@ -36,6 +36,7 @@ CREATE TABLE IF NOT EXISTS wms.sales_order_header_history(
     delivery_dt TIMESTAMP,
     status VARCHAR(255),
     remarks VARCHAR(255),
+    is_active boolean NOT NULL,
     operation VARCHAR(10),
     operation_at TIMESTAMP,
     operation_by INTEGER REFERENCES administration.user(id)
@@ -43,7 +44,7 @@ CREATE TABLE IF NOT EXISTS wms.sales_order_header_history(
 
 -- Create trigger function for sales_order_header
 CREATE OR REPLACE FUNCTION wms.sales_order_header_trigger()
-RETURN TRIGGER AS $$
+RETURNS TRIGGER AS $$
 BEGIN 
     IF (TG_OP = 'INSERT') THEN
         INSERT INTO wms.sales_order_header_history(
@@ -58,9 +59,9 @@ BEGIN
             delivery_dt,
             status,
             remarks,
+            is_active,
             operation, operation_at, operation_by
-        )
-        VALUES (
+        ) VALUES (
             NEW.id,
             NEW.entry_no,
             NEW.entry_dt,
@@ -72,7 +73,8 @@ BEGIN
             NEW.delivery_dt,
             NEW.status,
             NEW.remarks,
-            'INSERT', NEW.lua, NEW.lub
+            NEW.is_active,
+            'INSERT',NEW.lua,NEW.lub
         );
     ELSIF (TG_OP = 'UPDATE') THEN
         IF (OLD.is_active = true AND NEW.is_active = false) THEN
@@ -88,9 +90,9 @@ BEGIN
                 delivery_dt,
                 status,
                 remarks,
-                operation, operation_at, operation_by
-            )
-            VALUES (
+                is_active,
+                operation,operation_at,operation_by
+            ) VALUES (
                 NEW.id,
                 NEW.entry_no,
                 NEW.entry_dt,
@@ -102,7 +104,8 @@ BEGIN
                 NEW.delivery_dt,
                 NEW.status,
                 NEW.remarks,
-                'DELETE', NEW.lua, NEW.lub
+                NEW.is_active,
+                'DELETE',NEW.lua,NEW.lub
             );
         ELSE
             INSERT INTO wms.sales_order_header_history(
@@ -117,9 +120,9 @@ BEGIN
                 delivery_dt,
                 status,
                 remarks,
-                operation, operation_at, operation_by
-            )
-            VALUES (
+                is_active,
+                operation,operation_at,operation_by
+            ) VALUES (
                 NEW.id,
                 NEW.entry_no,
                 NEW.entry_dt,
@@ -131,38 +134,10 @@ BEGIN
                 NEW.delivery_dt,
                 NEW.status,
                 NEW.remarks,
-                'UPDATE', NEW.lua, NEW.lub
+                NEW.is_active,
+                'UPDATE',NEW.lua,NEW.lub
             );
         END IF;
-    ELSIF (TG_OP = 'DELETE') THEN
-        INSERT INTO wms.sales_order_header_history(
-            sales_order_id,
-            entry_no,
-            entry_dt,
-            party_id,
-            broker_id,
-            delivery_at_id,
-            trsp_id,
-            year_code,
-            delivery_dt,
-            status,
-            remarks,
-            operation, operation_at, operation_by
-        )
-        VALUES (
-            OLD.id,
-            OLD.entry_no,
-            OLD.entry_dt,
-            OLD.party_id,
-            OLD.broker_id,
-            OLD.delivery_at_id,
-            OLD.trsp_id,
-            OLD.year_code,
-            OLD.delivery_dt,
-            OLD.status,
-            OLD.remarks,
-            'DELETE', NEW.lua, NEW.lub
-        );
     END IF;
     RETURN NEW;
 END;
@@ -173,7 +148,7 @@ DROP TRIGGER IF EXISTS sales_order_insert_trigger ON wms.sales_order_header;
 CREATE TRIGGER sales_order_insert_trigger
     BEFORE INSERT ON wms.sales_order_header
     FOR EACH ROW
-    EXECUTE FUNCTION wms.sales_order_trigger();
+    EXECUTE FUNCTION wms.sales_order_header_trigger();
 
 DROP TRIGGER IF EXISTS sales_order_update_trigger ON wms.sales_order_header;
 CREATE TRIGGER sales_order_update_trigger
