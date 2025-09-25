@@ -21,36 +21,40 @@ export default class QueryService extends BaseService {
 
   private buildWhereClause(filters: Array<IFilterInfo>): string {
     const filterClauses = _map(filters, (filter) => {
+      let filterValue = filter.value;
+      if (typeof filter.value === "string") {
+        filterValue = `'${filter.value.trim()}'`;
+      }
       switch (filter.operator) {
         case EFilterOperator.IS_NULL:
           return `${filter.field} IS NULL`;
         case EFilterOperator.IS_NOT_NULL:
           return `${filter.field} IS NOT NULL`;
         case EFilterOperator.EQUAL:
-          return `${filter.field} = ${filter.value}`;
+          return `${filter.field} = ${filterValue}`;
         case EFilterOperator.IN:
-          return `${filter.field} IN (${filter.value})`;
+          return `${filter.field} IN (${filterValue})`;
         case EFilterOperator.NOT_IN:
-          return `${filter.field} NOT IN (${filter.value})`;
+          return `${filter.field} NOT IN (${filterValue})`;
         case EFilterOperator.BETWEEN:
-          return `${filter.field} BETWEEN ${filter.value}`;
+          return `${filter.field} BETWEEN ${filterValue}`;
         case EFilterOperator.NOT_BETWEEN:
-          return `${filter.field} NOT BETWEEN ${filter.value}`;
+          return `${filter.field} NOT BETWEEN ${filterValue}`;
         case EFilterOperator.CONTAINS:
-          return `${filter.field} LIKE '%${filter.value}%'`;
+          return `${filter.field} LIKE '%${filterValue}%'`;
         case EFilterOperator.NOT_CONTAINS:
-          return `${filter.field} NOT LIKE %${filter.value}%`;
+          return `${filter.field} NOT LIKE %${filterValue}%`;
         case EFilterOperator.STARTS_WITH:
-          return `${filter.field} LIKE ${filter.value}%`;
+          return `${filter.field} LIKE ${filterValue}%`;
         case EFilterOperator.NOT_STARTS_WITH:
-          return `${filter.field} NOT LIKE ${filter.value}%`;
+          return `${filter.field} NOT LIKE ${filterValue}%`;
         case EFilterOperator.ENDS_WITH:
-          return `${filter.field} LIKE %${filter.value}`;
+          return `${filter.field} LIKE %${filterValue}`;
         case EFilterOperator.NOT_ENDS_WITH:
-          return `${filter.field} NOT LIKE %${filter.value}`;
+          return `${filter.field} NOT LIKE %${filterValue}`;
         default:
           return `${filter.field} ${filter.operator || "LIKE"} %${
-            filter.value
+            filterValue
           }%`;
       }
     }).join(" AND ");

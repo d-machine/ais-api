@@ -38,7 +38,7 @@ export default class ApiController {
       const userId = c.get("userId");
       
       console.log("Execute query request:", {
-        query: body.query,
+        fetchQuery: body.fetchQuery,
         configFile: body.configFile,
         path: body.path,
         payload: body.payload

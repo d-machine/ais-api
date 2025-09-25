@@ -6,9 +6,10 @@ queryInfo:
         sm.id as state_id,
         sm.name as state_name,
         sm.code as state_code,
-        sm.descr,
-        cm.country_name,
-        sm.lua,
+        sm.descr as descr,
+        cm.id as country_id,
+        cm.name as country_name,
+        sm.lua as lua,
         TRIM(CONCAT(u.first_name, ' ', u.last_name)) as last_updated_by_name
       FROM
         wms.state sm
@@ -23,32 +24,33 @@ queryInfo:
     applyPagenation: true
   path:
     - queryInfo
-
 applicableActions:
-  - NEW
-  - EDIT
-  - DELETE
-
+  - add
+  - edit
+  - delete
 actionConfig:
-  NEW:
+  add:
     label: Add State
-    resourcePath: state-master
-    accessTypeRequired: STATE-CREATE
-  EDIT:
+    actionType: DISPLAY_FORM
+    formConfig: add-state
+    onSuccess: refresh
+    accessTypeRequired: 7-ADD
+  edit:
     label: Edit State
-    resourcePath: state-master
-    accessTypeRequired: STATE-UPDATE
-    targetParams:
-      - key: state_id
-        as: state_id
-  DELETE:
+    actionType: DISPLAY_FORM
+    formConfig: add-state
+    accessTypeRequired: 7-EDIT
+    payload:
+      - state_id
+    onSuccess: refresh
+  delete:
     label: Delete State
     actionType: EXECUTE_QUERY
-    accessTypeRequired: STATE-DELETE
+    accessTypeRequired: 7-DELETE
     queryInfo:
       returnType: SCALAR
       query: |
-        SELECT wms.delete_state($1, $2);
+        SELECT wms.delete_state($1, $2) as id;
       payload:
         - state_id
       contextParams:
