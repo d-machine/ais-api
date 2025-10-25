@@ -1,21 +1,21 @@
 queryInfo:
   returnType: MULTIPLE_ROWS
   query: |
-    SELECT
-      ib.id as brand_id,
-      ib.brand_name,
-      icm.name as category_name,
-      ib.descr as descr
-      ib.lua,
-      TRIM(CONCAT(u.first_name,' ',u.last_name)) as last_updated_by_name
-    FROM
-      wms.item_brand ib
-      LEFT JOIN wms.item_categoey_master icm ON ib.category_id = icm.id
-      LEFT JOIN administration.user u ON ib.lub = u.id
-    WHERE
-      ib.is_active = true
-    ORDER BY
-      ib.brand_name
+    SELECT * FROM (
+      SELECT
+        ib.id as brand_id,
+        ib.brand_name as brand_name,
+        icm.name as category_name,
+        ib.descr as descr,
+        ib.lua as last_updated_by_name,
+        TRIM(CONCAT(u.first_name, ' ', u.last_name)) as last_updated_by_name
+      FROM
+        wms.item_brand ib
+        LEFT JOIN wms.item_category icm ON ib.category_id = icm.id
+        LEFT JOIN administration.user u ON ib.lub = u.id
+      WHERE
+        ib.is_active = true
+    ) as item_brands
   options:
     applyFiltering: true
     applySorting: true
@@ -38,7 +38,6 @@ actionConfig:
     targetParams:
       - key: brand_id
         as: brand_id
-  
   DELETE:
     label: Delete Brand
     actionType: EXECUTE_QUERY
@@ -68,7 +67,7 @@ columns:
     label: Category
     visible: true
   - name: descr
-    label: descr
+    label: Descr
     visible: true
   - name: lua
     label: Last Updated At

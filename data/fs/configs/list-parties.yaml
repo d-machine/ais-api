@@ -1,0 +1,160 @@
+queryInfo:
+  returnType: MULTIPLE_ROWS
+  query: |
+    SELECT * FROM (
+      SELECT
+        p.id as party_id,
+        p.party_type as party_type,
+        p.name as party_name,
+        p.add1 as add1,
+        p.add2 as add2,
+        p.add3 as add3,
+        p.city as city,
+        p.pincode as pincode,
+        p.person_name as person_name,
+        p.telephone as telephone,
+        p.email as email,
+        p.udate as udate,
+        p.salesman as salesman,
+        p.pan_no as pan_no,
+        p.cr_limit as cr_limit,
+        p.cr_days as cr_days,
+        p.gstno as gstno,
+        p.aadhar_no as aadhar_no,
+        p.sales_head as sales_head,
+        p.director as director,
+        p.manager as manager,
+        cd.name as city_district_name,
+        sm.name as state_name,
+        cm.name as country_name,
+        p.lua as last_updated_at,
+        TRIM(CONCAT(u.first_name, ' ', u.last_name)) as last_updated_by_name
+      FROM
+        wms.party p
+        LEFT JOIN wms.city_district cd ON p.city_district_id = cd.id
+        LEFT JOIN wms.state sm ON p.state_id = sm.id
+        LEFT JOIN wms.country cm ON p.country_id = cm.id
+        LEFT JOIN administration.user u ON p.lub = u.id
+      WHERE
+        p.is_active = true
+    ) as parties
+  options:
+    applyFiltering: true
+    applySorting: true
+    applyPagenation: true
+  path:
+    - queryInfo
+
+applicableActions:
+  - NEW
+  - EDIT
+  - DELETE
+
+actionConfig:
+  NEW:
+    label: Add Party
+    resourcePath: party-master
+    accessTypeRequired: PARTY-CREATE
+  EDIT:
+    label: Edit Party
+    resourcePath: party-master
+    accessTypeRequired: PARTY-UPDATE
+    targetParams:
+      - key: party_id
+        as: party_id
+  DELETE:
+    label: Delete Party
+    actionType: EXECUTE_QUERY
+    accessTypeRequired: PARTY-DELETE
+    queryInfo:
+      returnType: SCALAR
+      query: |
+        UPDATE wms.party
+        SET is_active = false, lua = NOW()
+        WHERE id = $1;
+      payload:
+        - party_id
+      contextParams:
+        - current_user_id
+      path:
+        - actionConfig
+        - DELETE
+    onSuccess: refreshList
+    onFailure: showErrorSnackbar
+
+columns:
+  - name: party_id
+    label: ID
+    visible: false
+  - name: party_type
+    label: Party Type
+    visible: true
+  - name: party_name
+    label: Party Name
+    visible: true
+  - name: add1
+    label: Address 1
+    visible: true
+  - name: add2
+    label: Address 2
+    visible: false
+  - name: add3
+    label: Address 3
+    visible: false
+  - name: city
+    label: City
+    visible: true
+  - name: pincode
+    label: Pincode
+    visible: true
+  - name: person_name
+    label: Contact Person
+    visible: true
+  - name: telephone
+    label: Telephone
+    visible: true
+  - name: email
+    label: Email
+    visible: true
+  - name: salesman
+    label: Salesman
+    visible: true
+  - name: pan_no
+    label: PAN No
+    visible: true
+  - name: cr_limit
+    label: Credit Limit
+    visible: true
+  - name: cr_days
+    label: Credit Days
+    visible: true
+  - name: gstno
+    label: GST No
+    visible: true
+  - name: aadhar_no
+    label: Aadhaar No
+    visible: true
+  - name: sales_head
+    label: Sales Head
+    visible: true
+  - name: director
+    label: Director
+    visible: true
+  - name: manager
+    label: Manager
+    visible: true
+  - name: city_district_name
+    label: City District Name
+    visible: true
+  - name: state_name
+    label: State Name
+    visible: true
+  - name: country_name
+    label: Country Name
+    visible: true
+  - name: lua
+    label: Last Updated At
+    visible: true
+  - name: last_updated_by_name
+    label: Last Updated By
+    visible: true

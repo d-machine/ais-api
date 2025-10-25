@@ -1,21 +1,20 @@
 queryInfo:
   returnType: MULTIPLE_ROWS
   query: |
-    SELECT
-      dm.id as district_id,
-      dm.district_name,
-      dm.district_code,
-      dm.descr,
-      dm.is_active,
-      dm.lua,
-      TRIM(CONCAT(u.first_name, ' ', u.last_name)) as last_updated_by_name
-    FROM
-      wms.district dm
-      LEFT JOIN administration.user u ON dm.lub = u.id 
-    WHERE 
-      dm.is_active = true
-    ORDER BY
-      dm.district_name
+    SELECT * FROM (
+      SELECT
+        dm.id as district_id,
+        dm.name as district_name,
+        dm.code as district_code,
+        dm.descr as descr,
+        dm.lua as last_updated_at,
+        TRIM(CONCAT(u.first_name, ' ', u.last_name)) as last_updated_by_name
+      FROM
+        wms.district dm
+        LEFT JOIN administration.user u ON dm.lub = u.id 
+      WHERE 
+        dm.is_active = true
+    ) as districts
   options:
     applyFiltering: true
     applySorting: true
@@ -69,7 +68,7 @@ columns:
     label: District Code
     visible: true
   - name: descr
-    label: descr
+    label: Descr
     visible: true
   - name: lua
     label: Last Updated At

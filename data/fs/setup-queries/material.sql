@@ -62,18 +62,3 @@ CREATE TRIGGER material_update_trigger
     AFTER UPDATE ON wms.material
     FOR EACH ROW
     EXECUTE FUNCTION wms.log_material_changes();
-
--- Custom function to perform a "soft delete" by setting is_active to false
-CREATE OR REPLACE FUNCTION wms.delete_material(
-    material_id_to_delete INTEGER,
-    deleted_by_user_id INTEGER
-)
-RETURNS VOID AS $$
-BEGIN
-    UPDATE wms.material
-    SET is_active = false,
-        lub = deleted_by_user_id,
-        lua = NOW()
-    WHERE id = material_id_to_delete;
-END;
-$$ LANGUAGE plpgsql;

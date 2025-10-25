@@ -1,0 +1,119 @@
+sections:
+  - sectionType: FIELDS
+    sectionName: Material Details
+    queryInfo:
+      returnType: SINGLE_ROW
+      query: |
+        SELECT
+          m.id as material_id,
+          m.name as material_name,
+          m.descr as descr,
+          m.brand_id as brand_id,
+          ib.name as brand_name,
+          m.uom_pc_id as uom_pc_id,
+          m.uom_package_id as uom_package_id,
+          m.pc_in_package as pc_in_package
+        FROM
+          wms.material m
+          LEFT JOIN wms.item_brand ib ON m.brand_id = ib.id
+          LEFT JOIN wms.uom u1 ON m.uom_pc_id = u1.id
+          LEFT JOIN wms.uom u2 ON m.uom_package_id = u2.id
+        WHERE
+          m.id = $1
+      payload:
+        - material_id
+      path:
+        - sections
+        - 0
+    applicableActions:
+      - SAVE
+      - CANCEL
+    actionConfig:
+      SAVE:
+        label: Create Material
+        actionType: EXECUTE_QUERY
+        queryInfo:
+          returnType: SCALAR
+          query: |
+            SELECT wms.insert_material($1, $2, $3, $4, $5, $6, $7) as id;
+          payload:
+            - material_name
+            - descr
+            - brand_id
+            - uom_pc_id
+            - uom_package_id
+            - pc_in_package
+          contextParams:
+            - current_user_id
+          path:
+            - sections
+            - 0
+            - actionConfig
+            - SAVE
+        onSuccess: exitAndComplete
+        onFailure: showErrorSnackbar
+      CANCEL:
+        label: Discard Changes
+    fields:
+      - name: material_name
+        label: Material Name
+        type: TEXT
+        required: true
+      - name: descr
+        label: Descr
+        type: TEXTAREA
+      - name: brand_id
+        label: Brand
+        type: SELECT
+        required: true
+        multi: false
+        selectConfig:
+          resource: list-item-brands
+          selectHandler: converter
+          currentSelection:
+            - key: brand_id
+              as: brand_id
+          selectParser: converter
+          fields_to_extract:
+            - key: brand_id
+              as: brand_id
+            - key: brand_name
+              as: brand_name
+      - name: uom_pc_id
+        label: UOM (Per Unit)
+        type: SELECT
+        required: true
+        multi: false
+        selectConfig:
+          resource: list-uoms
+          selectHandler: converter
+          currentSelection:
+            - key: uom_id
+              as: uom_pc_id
+          selectParser: converter
+          fields_to_extract:
+            - key: uom_id
+              as: uom_id
+            - key: uom_name
+              as: uom_name
+      - name: uom_package_id
+        label: UOM (Package)
+        type: SELECT
+        required: true
+        multi: false
+        selectConfig:
+          resource: list-uoms
+          selectHandler: converter
+          currentSelection:
+            - key: uom_id
+              as: uom_package_id
+          selectParser: converter
+          fields_to_extract:
+            - key: uom_id
+              as: uom_id
+            - key: uom_name
+              as: uom_name
+      - name: pc_in_package
+        label: Units in Package
+        type: NUMBER
+        required: true

@@ -1,0 +1,85 @@
+queryInfo:
+  returnType: MULTIPLE_ROWS
+  query: |
+    SELECT * FROM (
+      SELECT
+        cd.id as city_district_id,
+        cm.name as city_name,
+        dm.name as district_name,
+        sm.name as state_name,
+        cd.descr as descr,
+        cd.lua as last_updated_at,
+        TRIM(CONCAT(u.first_name, ' ', u.last_name)) AS last_updated_by_name
+      FROM
+        wms.city_district cd
+        LEFT JOIN wms.city cm ON cd.city_id = cm.id
+        LEFT JOIN wms.district dm ON cd.district_id = dm.id
+        LEFT JOIN wms.state sm ON cd.state_id = sm.id
+        LEFT JOIN administration.user u ON cd.lub = u.id
+      WHERE
+        cd.is_active = true
+    ) as city_districts
+  options:
+    applyFiltering: true
+    applySorting: true
+    applyPagenation: true
+  path:
+    - queryInfo
+
+applicableActions:
+  - NEW
+  - EDIT
+  - DELETE
+
+actionConfig:
+  NEW:
+    label: Add City-District
+    resourcePath: city-district-master
+    accessTypeRequired: CITY_DISTRICT-CREATE
+  EDIT:
+    label: Edit City-District
+    resourcePath: city-district-master
+    accessTypeRequired: CITY_DISTRICT-UPDATE
+    targetParams:
+      - key: city_district_id
+        as: city_district_id
+  DELETE:
+    label: Delete City-District
+    actionType: EXECUTE_QUERY
+    accessTypeRequired: CITY_DISTRICT-DELETE
+    queryInfo:
+      returnType: SCALAR
+      query: |
+        SELECT wms.delete_city_district($1, $2);
+      payload:
+        - city_district_id
+      contextParams:
+        - current_user_id
+      path:
+        - actionConfig
+        - DELETE
+    onSuccess: refreshList
+    onFailure: showErrorSnackbar
+
+columns:
+  - name: city_district_id
+    label: ID
+    visible: false
+  - name: city_name
+    label: City Name
+    visible: true
+  - name: district_name
+    label: District Name
+    visible: true
+  - name: state_name
+    label: State Name
+    visible: true
+  - name: descr
+    label: Descr
+    visible: true
+  - name: lua
+    label: Last Updated At
+    visible: true
+  - name: last_updated_by_name
+    label: Last Updated By
+    visible: true

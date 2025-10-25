@@ -1,21 +1,20 @@
 queryInfo:
   returnType: MULTIPLE_ROWS
   query: |
-    SELECT
-      cm.id as city_id,
-      cm.city_name,
-      cm.city_code,
-      cm.descr,
-      cm.is_active,
-      cm.lua,
-      TRIM(CONCAT(u.first_name, ' ', u.last_name)) as last_updated_by_name
-    FROM
-      wms.city cm
-      LEFT JOIN administration.user u ON cm.lub = u.id
-    WHERE
+    SELECT * FROM (
+      SELECT
+        cm.id as city_id,
+        cm.name as city_name,
+        cm.code as city_code,
+        cm.descr as descr,
+        cm.lua as last_updated_at,
+        TRIM(CONCAT(u.first_name, ' ', u.last_name)) as last_updated_by_name
+      FROM
+        wms.city cm
+        LEFT JOIN administration.user u ON cm.lub = u.id
+      WHERE
       cm.is_active = true
-    ORDER BY
-      cm.city_name
+    ) as cities
   options:
     applyFiltering: true
     applySorting: true
@@ -69,7 +68,7 @@ columns:
     label: City Code
     visible: true
   - name: descr
-    label: descr
+    label: Descr
     visible: true
   - name: lua
     label: Last Updated At

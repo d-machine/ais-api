@@ -1,0 +1,202 @@
+sections:
+  - sectionType: FIELDS
+    sectionName: Vendor Details
+    queryInfo:
+      returnType: SINGLE_ROW
+      query: |
+        SELECT
+          v.id as vendor_id,
+          v.vendor_type as vendor_type,
+          v.name as vendor_name,
+          v.add1 as add1,
+          v.add2 as add2,
+          v.add3 as add3,
+          v.city as city,
+          v.pincode as pincode,
+          v.person_name as person_name,
+          v.telephone as telephone,
+          v.email as email,
+          v.salesman as salesman,
+          v.pan_no as pan_no,
+          v.cr_limit as cr_limit,
+          v.cr_days as cr_days,
+          v.gstno as gstno,
+          v.aadhar_no as aadhar_no,
+          v.sales_head as sales_head,
+          v.director as director,
+          v.manager as manager,
+          v.city_district_id as city_district_id,
+          cd.name as city_district_name,
+          v.state_id as state_id,
+          sm.name as state_name,
+          v.country_id as country_id,
+          cm.name as country_name
+        FROM
+          wms.party p
+          LEFT JOIN wms.city_district cd ON v.city_district_id = cd.id
+          LEFT JOIN wms.state sm ON v.state_id = sm.id
+          LEFT JOIN wms.country cm ON v.country_id = cm.id
+        WHERE
+          v.id = $1
+      payload:
+        - vendor_id
+      path:
+        - sections
+        - 0
+    applicableActions:
+      - SAVE
+      - CANCEL
+    actionConfig:
+      SAVE:
+        label: Create Vendor
+        actionType: EXECUTE_QUERY
+        queryInfo:
+          returnType: SCALAR
+          query: |
+            SELECT wms.insert_vendor(
+              $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20) as id;
+          payload:
+            - vendor_type
+            - vendor_name
+            - add1
+            - add2
+            - add3
+            - city
+            - pincode
+            - person_name
+            - telephone
+            - email
+            - salesman
+            - pan_no
+            - cr_limit
+            - cr_days
+            - gstno
+            - aadhar_no
+            - sales_head
+            - director
+            - manager
+            - city_district_id
+            - state_id
+            - country_id
+          contextParams:
+            - current_user_id
+          path:
+            - sections
+            - 0
+            - actionConfig
+            - SAVE
+        onSuccess: exitAndComplete
+        onFailure: showErrorSnackbar
+      CANCEL:
+        label: Discard Changes
+    fields:
+      - name: vendor_type
+        label: Vendor Type
+        type: TEXT
+        required: true
+      - name: vendor_name
+        label: Vendor Name
+        type: TEXT
+        required: true
+      - name: add1
+        label: Address 1
+        type: TEXT
+      - name: add2
+        label: Address 2
+        type: TEXT
+      - name: add3
+        label: Address 3
+        type: TEXT
+      - name: city
+        label: City
+        type: TEXT
+      - name: pincode
+        label: Pincode
+        type: TEXT
+      - name: person_name
+        label: Contact Person
+        type: TEXT
+      - name: telephone
+        label: Telephone
+        type: TEXT
+      - name: email
+        label: Email
+        type: TEXT
+      - name: salesman
+        label: Salesman
+        type: TEXT
+      - name: pan_no
+        label: PAN No
+        type: TEXT
+      - name: cr_limit
+        label: Credit Limit
+        type: TEXT
+      - name: cr_days
+        label: Credit Days
+        type: TEXT
+      - name: gstno
+        label: GST No
+        type: TEXT
+      - name: aadhar_no
+        label: Aadhaar No
+        type: TEXT
+      - name: sales_head
+        label: Sales Head
+        type: TEXT
+      - name: director
+        label: Director
+        type: TEXT
+      - name: manager
+        label: Manager
+        type: TEXT
+      - name: country_id
+        label: Country
+        type: SELECT
+        required: true
+        multi: false
+        selectConfig:
+          resource: list-countries
+          selectHandler: converter
+          currentSelection:
+            - key: country_id
+              as: country_id
+          selectParser: converter
+          fields_to_extract:
+            - key: country_id
+              as: country_id
+            - key: country_name
+              as: country_name
+      - name: state_id
+        label: State
+        type: SELECT
+        required: true
+        multi: false
+        selectConfig:
+          resource: list-states
+          selectHandler: converter
+          currentSelection:
+            - key: state_id
+              as: state_id
+          selectParser: converter
+          fields_to_extract:
+            - key: state_id
+              as: state_id
+            - key: state_name
+              as: state_name
+      - name: city_district_id
+        label: City District
+        type: SELECT
+        required: true
+        multi: false
+        selectConfig:
+          resource: list-city-districts
+          selectHandler: converter
+          currentSelection:
+            - key: city_district_id
+              as: city_district_id
+          selectParser: converter
+          fields_to_extract:
+            - key: city_district_id
+              as: city_district_id
+            - key: city_district_name
+              as: city_district_name

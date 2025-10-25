@@ -1,0 +1,202 @@
+sections:
+  - sectionType: FIELDS
+    sectionName: Broker Details
+    queryInfo:
+      returnType: SINGLE_ROW
+      query: |
+        SELECT
+          b.id as broker_id,
+          b.broker_type as broker_type,
+          b.name as broker_name,
+          b.add1 as add1,
+          b.add2 as add2,
+          b.add3 as add3,
+          b.city as city,
+          b.pincode as pincode,
+          b.person_name as person_name,
+          b.telephone as telephone,
+          b.email as email,
+          b.salesman as salesman,
+          b.pan_no as pan_no,
+          b.cr_limit as cr_limit,
+          b.cr_days as cr_days,
+          b.gstno as gstno,
+          b.aadhar_no as aadhar_no,
+          b.sales_head as sales_head,
+          b.director as director,
+          b.manager as manager,
+          b.city_district_id as city_district_id,
+          cd.name as city_district_name,
+          b.state_id as state_id,
+          sm.name as state_name,
+          b.country_id as country_id,
+          cm.name as country_name
+        FROM
+          wms.broker b
+          LEFT JOIN wms.city_district cd ON b.city_district_id = cd.id
+          LEFT JOIN wms.state sm ON b.state_id = sm.id
+          LEFT JOIN wms.country cm ON b.country_id = cm.id
+        WHERE
+          b.id = $1
+      payload:
+        - broker_id
+      path:
+        - sections
+        - 0
+    applicableActions:
+      - SAVE
+      - CANCEL
+    actionConfig:
+      SAVE:
+        label: Create Broker
+        actionType: EXECUTE_QUERY
+        queryInfo:
+          returnType: SCALAR
+          query: |
+            SELECT wms.insert_broker(
+              $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20) as id;
+          payload:
+            - broker_type
+            - broker_name
+            - add1
+            - add2
+            - add3
+            - city
+            - pincode
+            - person_name
+            - telephone
+            - email
+            - salesman
+            - pan_no
+            - cr_limit
+            - cr_days
+            - gstno
+            - aadhar_no
+            - sales_head
+            - director
+            - manager
+            - city_district_id
+            - state_id
+            - country_id
+          contextParams:
+            - current_user_id
+          path:
+            - sections
+            - 0
+            - actionConfig
+            - SAVE
+        onSuccess: exitAndComplete
+        onFailure: showErrorSnackbar
+      CANCEL:
+        label: Discard Changes
+    fields:
+      - name: broker_type
+        label: Broker Type
+        type: TEXT
+        required: true
+      - name: broker_name
+        label: Broker Name
+        type: TEXT
+        required: true
+      - name: add1
+        label: Address 1
+        type: TEXT
+      - name: add2
+        label: Address 2
+        type: TEXT
+      - name: add3
+        label: Address 3
+        type: TEXT
+      - name: city
+        label: City
+        type: TEXT
+      - name: pincode
+        label: Pincode
+        type: TEXT
+      - name: person_name
+        label: Contact Person
+        type: TEXT
+      - name: telephone
+        label: Telephone
+        type: TEXT
+      - name: email
+        label: Email
+        type: TEXT
+      - name: salesman
+        label: Salesman
+        type: TEXT
+      - name: pan_no
+        label: PAN No
+        type: TEXT
+      - name: cr_limit
+        label: Credit Limit
+        type: TEXT
+      - name: cr_days
+        label: Credit Days
+        type: TEXT
+      - name: gstno
+        label: GST No
+        type: TEXT
+      - name: aadhar_no
+        label: Aadhaar No
+        type: TEXT
+      - name: sales_head
+        label: Sales Head
+        type: TEXT
+      - name: director
+        label: Director
+        type: TEXT
+      - name: manager
+        label: Manager
+        type: TEXT
+      - name: country_id
+        label: Country
+        type: SELECT
+        required: true
+        multi: false
+        selectConfig:
+          resource: list-countries
+          selectHandler: converter
+          currentSelection:
+            - key: country_id
+              as: country_id
+          selectParser: converter
+          fields_to_extract:
+            - key: country_id
+              as: country_id
+            - key: country_name
+              as: country_name
+      - name: state_id
+        label: State
+        type: SELECT
+        required: true
+        multi: false
+        selectConfig:
+          resource: list-states
+          selectHandler: converter
+          currentSelection:
+            - key: state_id
+              as: state_id
+          selectParser: converter
+          fields_to_extract:
+            - key: state_id
+              as: state_id
+            - key: state_name
+              as: state_name
+      - name: city_district_id
+        label: City District
+        type: SELECT
+        required: true
+        multi: false
+        selectConfig:
+          resource: list-city-districts
+          selectHandler: converter
+          currentSelection:
+            - key: city_district_id
+              as: city_district_id
+          selectParser: converter
+          fields_to_extract:
+            - key: city_district_id
+              as: city_district_id
+            - key: city_district_name
+              as: city_district_name

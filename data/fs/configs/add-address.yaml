@@ -1,0 +1,122 @@
+sections:
+  - sectionType: FIELDS
+    sectionName: Address Details
+    queryInfo:
+      returnType: SINGLE_ROW
+      query: |
+        SELECT
+          a.id as address_id,
+          a.adr1 as adr1,
+          a.adr2 as adr2,
+          a.adr3 as adr3,
+          a.country_id as country_id,
+          cm.name as country_name,
+          a.state_id as state_id,
+          sm.name as state_name,
+          a.city_district_id as city_district_id,
+          cd.name as city_district_name
+        FROM
+          wms.address a
+          LEFT JOIN wms.country cm ON a.country_id = cm.id
+          LEFT JOIN wms.state sm ON a.state_id = sm.id
+          LEFT JOIN wms.city_district cd ON a.city_district_id = cd.id
+        WHERE
+          a.id = $1
+      payload:
+        - address_id
+      path:
+        - sections
+        - 0
+    applicableActions:
+      - SAVE
+      - CANCEL
+    actionConfig:
+      SAVE:
+        label: Create Address
+        actionType: EXECUTE_QUERY
+        queryInfo:
+          returnType: SCALAR
+          query: |
+            SELECT wms.insert_address($1, $2, $3, $4, $5, $6, $7) as id;
+          payload:
+            - adr1
+            - adr2
+            - adr3
+            - country_id
+            - state_id
+            - city_district_id
+          contextParams:
+            - current_user_id
+          path:
+            - sections
+            - 0
+            - actionConfig
+            - SAVE
+        onSuccess: exitAndComplete
+        onFailure: showErrorSnackbar
+      CANCEL:
+        label: Discard Changes
+    fields:
+      - name: adr1
+        label: Address 1
+        type: TEXT
+        required: true
+      - name: adr2
+        label: Address 2
+        type: TEXT
+        required: true
+      - name: adr3
+        label: Address 3
+        type: TEXT
+        required: true
+      - name: country_id
+        label: Country
+        type: SELECT
+        required: true
+        multi: false
+        selectConfig:
+          resource: list-countries
+          selectHandler: converter
+          currentSelection:
+            - key: country_id
+              as: country_id
+          selectParser: converter
+          fields_to_extract:
+            - key: country_id
+              as: country_id
+            - key: country_name
+              as: country_name
+      - name: state_id
+        label: State
+        type: SELECT
+        required: true
+        multi: false
+        selectConfig:
+          resource: list-states
+          selectHandler: converter
+          currentSelection:
+            - key: state_id
+              as: state_id
+          selectParser: converter
+          fields_to_extract:
+            - key: state_id
+              as: state_id
+            - key: state_name
+              as: state_name
+      - name: city_district_id
+        label: City District
+        type: SELECT
+        required: true
+        multi: false
+        selectConfig:
+          resource: list-city-districts
+          selectHandler: converter
+          currentSelection:
+            - key: city_district_id
+              as: city_district_id
+          selectParser: converter
+          fields_to_extract:
+            - key: city_district_id
+              as: city_district_id
+            - key: city_district_name
+              as: city_district_name

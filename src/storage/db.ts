@@ -70,6 +70,7 @@ export default class DBClient {
         "broker.sql",
         // party
         "party.sql",
+        "vendor.sql",
         // purchase_order
         "purchase_order_header.sql",
         "purchase_order_details.sql",

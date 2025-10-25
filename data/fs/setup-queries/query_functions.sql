@@ -1204,3 +1204,901 @@ BEGIN
     WHERE header_id = header_id_to_delete;
 END;
 $$ LANGUAGE plpgsql;
+
+
+---------------------------** Address **---------------------------
+
+-- Function to insert in address
+CREATE OR REPLACE FUNCTION wms.insert_address(
+    adr1 VARCHAR(255),
+    adr2 VARCHAR(255),
+    adr3 VARCHAR(255),
+    country_id INTEGER,
+    state_id INTEGER,
+    city_district_id INTEGER,
+    current_user_id INTEGER
+)RETURNS INT AS $$
+DECLARE new_address_id INT;
+BEGIN
+    INSERT INTO wms.address (adr1, adr2, adr3, country_id, state_id, city_district_id, lub)
+    VALUES (adr1, adr2, adr3, country_id, state_id, city_district_id, current_user_id)
+    RETURNING id INTO new_address_id;
+    RETURN new_address_id;
+END;
+$$ LANGUAGE plpgsql;
+
+--Function to update address
+CREATE OR REPLACE FUNCTION wms.update_address(
+    address_id INT,
+    adr1 VARCHAR(255),
+    adr2 VARCHAR(255),
+    adr3 VARCHAR(255),
+    country_id INTEGER,
+    state_id INTEGER,
+    city_district_id INTEGER,
+    current_user_id INTEGER
+) RETURNS INT AS $$
+BEGIN
+    UPDATE wms.address
+    SET adr1 = adr1,
+        adr2 = adr2,
+        adr3 = adr3,
+        country_id = country_id,
+        state_id = state_id,
+        city_district_id = city_district_id,
+        lub = current_user_id
+    WHERE id = address_id;
+    RETURN address_id;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Function to delete address
+CREATE OR REPLACE FUNCTION wms.delete_address(
+    address_id_to_delete INTEGER,
+    deleted_by_user_id INTEGER
+)
+RETURNS INT AS $$
+BEGIN
+    -- Delete address
+    UPDATE wms.address
+    SET is_active = false, lub = deleted_by_user_id
+    WHERE id = address_id_to_delete;
+    RETURN address_id_to_delete;
+END;
+$$ LANGUAGE plpgsql;
+
+
+---------------------------** City  Master **---------------------------
+
+
+-- Function to insert in city
+CREATE OR REPLACE FUNCTION wms.insert_city(
+    city_name VARCHAR(100),
+    city_code VARCHAR(3),
+    descr VARCHAR(255),
+    current_user_id INTEGER
+) RETURNS INT AS $$
+DECLARE new_city_id INT;
+BEGIN
+    INSERT INTO wms.city (name, code, descr, lub)
+    VALUES (city_name, city_code, descr, current_user_id)
+    RETURNING id INTO new_city_id;
+    RETURN new_city_id;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Function to update city
+CREATE OR REPLACE FUNCTION wms.update_city(
+    city_id INT,
+    city_name VARCHAR(100),
+    city_code VARCHAR(3),
+    descr VARCHAR(255),
+    current_user_id INTEGER
+) RETURNS INT AS $$
+BEGIN
+    UPDATE wms.city
+    SET name = city_name,
+        code = city_code,
+        descr = descr,
+        lub = current_user_id
+    WHERE id = city_id;
+    RETURN city_id;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Function to delete city
+CREATE OR REPLACE FUNCTION wms.delete_city(
+    city_id_to_delete INTEGER,
+    deleted_by_user_id INTEGER
+)
+RETURNS INT AS $$
+BEGIN 
+    -- Delete City
+    UPDATE wms.city
+    SET is_active = false, lub = deleted_by_user_id
+    WHERE id = city_id_to_delete;
+    RETURN city_id_to_delete;
+END;
+$$ LANGUAGE plpgsql;
+
+
+---------------------------** District Master **---------------------------
+
+
+CREATE OR REPLACE FUNCTION wms.insert_district(
+    district_name VARCHAR(100),
+    district_code VARCHAR(3),
+    descr VARCHAR(255),
+    current_user_id INTEGER
+) RETURNS INT AS $$
+DECLARE new_district_id INT;
+BEGIN 
+    INSERT INTO wms.district (name, code, descr, lub)
+    VALUES (district_name, district_code, descr, current_user_id)
+    RETURNING id INTO new_district_id;
+    RETURN new_district_id;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Function to update district
+CREATE OR REPLACE FUNCTION wms.update_district(
+    district_id INT,
+    district_name VARCHAR(100),
+    district_code VARCHAR(3),
+    descr VARCHAR(255),
+    current_user_id INTEGER
+) RETURNS INT AS $$
+BEGIN
+    UPDATE wms.district
+    SET name = district_name,
+        code = district_code,
+        descr = descr,
+        lub = current_user_id
+    WHERE id = district_id;
+    RETURN district_id;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Funtion to delete district
+CREATE OR REPLACE FUNCTION wms.delete_district(
+    district_id_to_delete INTEGER,
+    deleted_by_user_id INTEGER
+)
+RETURNS INT AS $$
+BEGIN
+    UPDATE wms.district
+    SET is_active = false, lub = deleted_by_user_id
+    WHERE id = district_id_to_delete;
+    RETURN district_id_to_delete;
+END;
+$$ LANGUAGE plpgsql;
+
+
+--------------------------** City District Master **---------------------------
+
+-- Function to insert in city_district
+CREATE OR REPLACE FUNCTION wms.insert_city_district(
+    city_id INT,
+    district_id INT,
+    state_id INT,
+    descr VARCHAR(255),
+    current_user_id INTEGER
+) RETURNS INT AS $$
+DECLARE new_city_district_id INT;
+BEGIN
+    INSERT INTO wms.city_district (city_id, district_id, state_id, descr, lub)
+    VALUES (city_id, district_id, state_id, descr, current_user_id)
+    RETURNING id INTO new_city_district_id;
+    RETURN new_city_district_id;
+END;
+$$ LANGUAGE plpgsql;
+
+
+-- Function to update city_district
+CREATE OR REPLACE FUNCTION wms.update_city_district(
+    city_district_id INT,
+    city_id INT,
+    district_id INT,
+    state_id INT,
+    descr VARCHAR(255),
+    current_user_id INTEGER
+) RETURNS INT AS $$
+BEGIN
+    UPDATE wms.city_district
+    SET city_id = city_id,
+        district_id = district_id,
+        state_id = state_id,
+        descr = descr,
+        lub = current_user_id,
+        lua = NOW()
+    WHERE id = city_district_id;
+    RETURN city_district_id;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Function to delete city_district 
+CREATE OR REPLACE FUNCTION wms.delete_city_district(
+    city_district_id_to_delete INTEGER,
+    deleted_by_user_id INTEGER
+) RETURNS INT AS $$
+BEGIN
+    UPDATE wms.city_district
+    SET is_active = false,
+        lub = deleted_by_user_id
+    WHERE id = city_district_id_to_delete;
+
+    RETURN city_district_id_to_delete;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Function to delete all city_district by state
+CREATE OR REPLACE FUNCTION wms.delete_city_district_by_state(
+    state_id_to_delete INTEGER,
+    deleted_by_user_id INTEGER
+) RETURNS VOID AS $$
+BEGIN
+    UPDATE wms.city_district
+    SET is_active = false,
+        lub = deleted_by_user_id
+    WHERE state_id = state_id_to_delete;
+END;
+$$ LANGUAGE plpgsql;
+
+---------------------------** Party Master **---------------------------
+
+-- Function to insert party
+CREATE OR REPLACE FUNCTION wms.insert_party(
+    party_type VARCHAR(50),
+    party_name VARCHAR(50),
+    add1 VARCHAR(50),
+    add2 VARCHAR(50),
+    add3 VARCHAR(50),
+    city VARCHAR(50),
+    pincode VARCHAR(50),
+    person_name VARCHAR(50),
+    telephone VARCHAR(50),
+    email VARCHAR(50),
+    udate VARCHAR(50),
+    salesman VARCHAR(50),
+    pan_no VARCHAR(50),
+    cr_limit NUMERIC,
+    cr_days INTEGER,
+    gstno VARCHAR(50),
+    country_id INTEGER,
+    aadhar_no VARCHAR(50),
+    sales_head VARCHAR(50),
+    director VARCHAR(50),
+    manager VARCHAR(50),
+    city_district_id INTEGER,
+    state_id INTEGER,
+    current_user_id INTEGER
+) RETURNS INT AS $$
+DECLARE new_party_id INT;
+BEGIN
+    INSERT INTO wms.party (
+        party_type,
+        name, 
+        add1, 
+        add2, 
+        add3, 
+        city, 
+        pincode, 
+        person_name,
+        telephone, 
+        email, 
+        udate, 
+        salesman, 
+        pan_no, 
+        cr_limit, 
+        cr_days, 
+        gstno,
+        country_id, 
+        aadhar_no, 
+        sales_head, 
+        director, 
+        manager, 
+        city_district_id,
+        state_id, lub
+    )
+    VALUES (
+        party_type, 
+        party_name, 
+        add1, 
+        add2, 
+        add3, 
+        city, 
+        pincode, 
+        person_name,
+        telephone, 
+        p_email, 
+        udate, 
+        salesman, 
+        pan_no, 
+        cr_limit, 
+        cr_days, 
+        gstno,
+        country_id, 
+        aadhar_no, 
+        sales_head, 
+        director, 
+        manager, 
+        city_district_id,
+        state_id, 
+        current_user_id
+    )
+    RETURNING id INTO new_party_id;
+
+    RETURN new_party_id;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Function to update party
+
+CREATE OR REPLACE FUNCTION wms.update_party(
+    party_id INT,
+    party_type VARCHAR(50),
+    party_name VARCHAR(50),
+    add1 VARCHAR(50),
+    add2 VARCHAR(50),
+    add3 VARCHAR(50),
+    city VARCHAR(50),
+    pincode VARCHAR(50),
+    person_name VARCHAR(50),
+    telephone VARCHAR(50),
+    email VARCHAR(50),
+    udate VARCHAR(50),
+    salesman VARCHAR(50),
+    pan_no VARCHAR(50),
+    cr_limit NUMERIC,
+    cr_days INTEGER,
+    gstno VARCHAR(50),
+    country_id INTEGER,
+    aadhar_no VARCHAR(50),
+    sales_head VARCHAR(50),
+    director VARCHAR(50),
+    manager VARCHAR(50),
+    city_district_id INTEGER,
+    state_id INTEGER,
+    current_user_id INTEGER
+) RETURNS INT AS $$
+BEGIN
+    UPDATE wms.party
+    SET party_type = party_type,
+        name = party_name,
+        add1 = add1,
+        add2 = add2,
+        add3 = add3,
+        city = city,
+        pincode = pincode,
+        person_name = person_name,
+        telephone = telephone,
+        email = email,
+        udate = udate,
+        salesman = salesman,
+        pan_no = pan_no,
+        cr_limit = cr_limit,
+        cr_days = cr_days,
+        gstno = gstno,
+        country_id = country_id,
+        aadhar_no = aadhar_no,
+        sales_head = sales_head,
+        director = director,
+        manager = manager,
+        city_district_id = city_district_id,
+        state_id = state_id,
+        lub = current_user_id
+    WHERE id = party_id;
+
+    RETURN party_id;
+END;
+$$ LANGUAGE plpgsql;
+
+--Function to delete party
+CREATE OR REPLACE FUNCTION wms.delete_party(
+    party_id_to_delete INTEGER,
+    deleted_by_user_id INTEGER
+)
+RETURNS INT  AS $$
+BEGIN
+    -- Delete party
+    UPDATE wms.party
+    SET is_active = false, lub = deleted_by_user_id
+    WHERE id = party_id_to_delete;
+    RETURN party_id_to_delete;
+END;
+$$ LANGUAGE plpgsql;
+
+
+---------------------------** Transport Master **--------------------------
+
+-- Function to insert in transport
+CREATE OR REPLACE FUNCTION wms.insert_transport(
+    transport_name VARCHAR(255),
+    descr VARCHAR(255),
+    current_user_id INTEGER
+) RETURNS INT AS $$
+DECLARE new_transport_id INT;
+BEGIN
+    INSERT INTO wms.transport (name, descr, lub)
+    VALUES (transport_name, descr, current_user_id)
+    RETURNING id INTO new_transport_id;
+    RETURN new_transport_id;
+END;
+$$ LANGUAGE plpgsql;
+
+
+-- Function to update transport
+CREATE OR REPLACE FUNCTION wms.update_transport(
+    transport_id INT,
+    transport_name VARCHAR(255),
+    descr VARCHAR(255),
+    current_user_id INTEGER
+) RETURNS INT AS $$
+BEGIN
+    UPDATE wms.transport
+    SET name = transport_name,
+        descr = descr,
+        lub = current_user_id
+    WHERE id = transport_id;
+    RETURN transport_id;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Function to delete transport
+CREATE OR REPLACE FUNCTION wms.delete_transport(
+    transport_id_to_delete INTEGER,
+    deleted_by_user_id INTEGER
+) 
+RETURNS INT AS $$
+BEGIN
+    -- delete transport
+    UPDATE wms.transport
+    SET is_active = false,
+        lub = deleted_by_user_id
+    WHERE id = transport_id;
+    RETURN transpory_id_to_delete;
+END;
+$$ LANGUAGE plpgsql;
+
+
+---------------------------** UOM  Master **--------------------------
+
+-- Function to insert in UOM
+CREATE OR REPLACE FUNCTION wms.insert_uom(
+    uom_name VARCHAR(255),
+    descr VARCHAR(255),
+    current_user_id INTEGER
+) RETURNS INT AS $$
+DECLARE new_uom_id INT;
+BEGIN
+    INSERT INTO wms.uom (name, descr, lub)
+    VALUES (uom_name, descr, current_user_id)
+    RETURNING id INTO new_uom_id;
+    RETURN new_uom_id;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Function to update  UOM
+CREATE OR REPLACE FUNCTION wms.update_uom(
+    uom_id INT,
+    uomname VARCHAR(255),
+    descr VARCHAR(255),
+    current_user_id INTEGER
+) RETURNS INT AS $$
+BEGIN
+    UPDATE wms.uom
+    SET name = uom_name,
+        descr = descr,
+        lub = current_user_id
+    WHERE id = uom_id;
+    RETURN uom_id;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Function to delete  UOM
+CREATE OR REPLACE FUNCTION wms.delete_uom(
+    uom_id_to_delete INTEGER,
+    deleted_by_user_id INTEGER
+)
+RETURNS INT AS $$
+BEGIN
+    UPDATE wms.uom
+    SET is_active = false,
+        lub = deleted_by_user_id
+    WHERE id = uom_id_to_delete;
+    RETURN uom_id_to_delete;
+END;
+$$ LANGUAGE plpgsql;
+
+
+---------------------------** vendor Master **---------------------------
+
+-- Function to insert vendor
+CREATE OR REPLACE FUNCTION wms.insert_vendor(
+    vendor_type VARCHAR(50),
+    vendor_name VARCHAR(50),
+    add1 VARCHAR(50),
+    add2 VARCHAR(50),
+    add3 VARCHAR(50),
+    city VARCHAR(50),
+    pincode VARCHAR(50),
+    person_name VARCHAR(50),
+    telephone VARCHAR(50),
+    email VARCHAR(50),
+    udate VARCHAR(50),
+    salesman VARCHAR(50),
+    pan_no VARCHAR(50),
+    cr_limit NUMERIC,
+    cr_days INTEGER,
+    gstno VARCHAR(50),
+    country_id INTEGER,
+    aadhar_no VARCHAR(50),
+    sales_head VARCHAR(50),
+    director VARCHAR(50),
+    manager VARCHAR(50),
+    city_district_id INTEGER,
+    state_id INTEGER,
+    current_user_id INTEGER
+) RETURNS INT AS $$
+DECLARE new_vendor_id INT;
+BEGIN
+    INSERT INTO wms.vendor (
+        vendor_type,
+        name, 
+        add1, 
+        add2, 
+        add3, 
+        city, 
+        pincode, 
+        person_name,
+        telephone, 
+        email, 
+        udate, 
+        salesman, 
+        pan_no, 
+        cr_limit, 
+        cr_days, 
+        gstno,
+        country_id, 
+        aadhar_no, 
+        sales_head, 
+        director, 
+        manager, 
+        city_district_id,
+        state_id, lub
+    )
+    VALUES (
+        vendor_type, 
+        vendor_name, 
+        add1, 
+        add2, 
+        add3, 
+        city, 
+        pincode, 
+        person_name,
+        telephone, 
+        p_email, 
+        udate, 
+        salesman, 
+        pan_no, 
+        cr_limit, 
+        cr_days, 
+        gstno,
+        country_id, 
+        aadhar_no, 
+        sales_head, 
+        director, 
+        manager, 
+        city_district_id,
+        state_id, 
+        current_user_id
+    )
+    RETURNING id INTO new_vendor_id;
+
+    RETURN new_vendor_id;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Function to update vendor
+
+CREATE OR REPLACE FUNCTION wms.update_vendor(
+    vendor_id INT,
+    vendor_type VARCHAR(50),
+    vendor_name VARCHAR(50),
+    add1 VARCHAR(50),
+    add2 VARCHAR(50),
+    add3 VARCHAR(50),
+    city VARCHAR(50),
+    pincode VARCHAR(50),
+    person_name VARCHAR(50),
+    telephone VARCHAR(50),
+    email VARCHAR(50),
+    udate VARCHAR(50),
+    salesman VARCHAR(50),
+    pan_no VARCHAR(50),
+    cr_limit NUMERIC,
+    cr_days INTEGER,
+    gstno VARCHAR(50),
+    country_id INTEGER,
+    aadhar_no VARCHAR(50),
+    sales_head VARCHAR(50),
+    director VARCHAR(50),
+    manager VARCHAR(50),
+    city_district_id INTEGER,
+    state_id INTEGER,
+    current_user_id INTEGER
+) RETURNS INT AS $$
+BEGIN
+    UPDATE wms.vendor
+    SET vendor_type = vendor_type,
+        name = vendor_name,
+        add1 = add1,
+        add2 = add2,
+        add3 = add3,
+        city = city,
+        pincode = pincode,
+        person_name = person_name,
+        telephone = telephone,
+        email = email,
+        udate = udate,
+        salesman = salesman,
+        pan_no = pan_no,
+        cr_limit = cr_limit,
+        cr_days = cr_days,
+        gstno = gstno,
+        country_id = country_id,
+        aadhar_no = aadhar_no,
+        sales_head = sales_head,
+        director = director,
+        manager = manager,
+        city_district_id = city_district_id,
+        state_id = state_id,
+        lub = current_user_id
+    WHERE id = vendor_id;
+
+    RETURN vendor_id;
+END;
+$$ LANGUAGE plpgsql;
+
+--Function to delete vendor
+CREATE OR REPLACE FUNCTION wms.delete_vendor(
+    vendor_id_to_delete INTEGER,
+    deleted_by_user_id INTEGER
+)
+RETURNS INT  AS $$
+BEGIN
+    -- Delete vendor
+    UPDATE wms.vendor
+    SET is_active = false, lub = deleted_by_user_id
+    WHERE id = vendor_id_to_delete;
+    RETURN vendor_id_to_delete;
+END;
+$$ LANGUAGE plpgsql;
+
+
+---------------------------** Broker Master **---------------------------
+
+-- Function to insert broker
+CREATE OR REPLACE FUNCTION wms.insert_broker(
+    broker_type VARCHAR(50),
+    broker_name VARCHAR(50),
+    add1 VARCHAR(50),
+    add2 VARCHAR(50),
+    add3 VARCHAR(50),
+    city VARCHAR(50),
+    pincode VARCHAR(50),
+    person_name VARCHAR(50),
+    telephone VARCHAR(50),
+    email VARCHAR(50),
+    udate VARCHAR(50),
+    salesman VARCHAR(50),
+    pan_no VARCHAR(50),
+    cr_limit NUMERIC,
+    cr_days INTEGER,
+    gstno VARCHAR(50),
+    country_id INTEGER,
+    aadhar_no VARCHAR(50),
+    sales_head VARCHAR(50),
+    director VARCHAR(50),
+    manager VARCHAR(50),
+    city_district_id INTEGER,
+    state_id INTEGER,
+    current_user_id INTEGER
+) RETURNS INT AS $$
+DECLARE new_broker_id INT;
+BEGIN
+    INSERT INTO wms.broker (
+        broker_type,
+        name, 
+        add1, 
+        add2, 
+        add3, 
+        city, 
+        pincode, 
+        person_name,
+        telephone, 
+        email, 
+        udate, 
+        salesman, 
+        pan_no, 
+        cr_limit, 
+        cr_days, 
+        gstno,
+        country_id, 
+        aadhar_no, 
+        sales_head, 
+        director, 
+        manager, 
+        city_district_id,
+        state_id, lub
+    )
+    VALUES (
+        broker_type, 
+        broker_name, 
+        add1, 
+        add2, 
+        add3, 
+        city, 
+        pincode, 
+        person_name,
+        telephone, 
+        p_email, 
+        udate, 
+        salesman, 
+        pan_no, 
+        cr_limit, 
+        cr_days, 
+        gstno,
+        country_id, 
+        aadhar_no, 
+        sales_head, 
+        director, 
+        manager, 
+        city_district_id,
+        state_id, 
+        current_user_id
+    )
+    RETURNING id INTO new_broker_id;
+
+    RETURN new_broker_id;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Function to update broker
+
+CREATE OR REPLACE FUNCTION wms.update_broker(
+    broker_id INT,
+    broker_type VARCHAR(50),
+    broker_name VARCHAR(50),
+    add1 VARCHAR(50),
+    add2 VARCHAR(50),
+    add3 VARCHAR(50),
+    city VARCHAR(50),
+    pincode VARCHAR(50),
+    person_name VARCHAR(50),
+    telephone VARCHAR(50),
+    email VARCHAR(50),
+    udate VARCHAR(50),
+    salesman VARCHAR(50),
+    pan_no VARCHAR(50),
+    cr_limit NUMERIC,
+    cr_days INTEGER,
+    gstno VARCHAR(50),
+    country_id INTEGER,
+    aadhar_no VARCHAR(50),
+    sales_head VARCHAR(50),
+    director VARCHAR(50),
+    manager VARCHAR(50),
+    city_district_id INTEGER,
+    state_id INTEGER,
+    current_user_id INTEGER
+) RETURNS INT AS $$
+BEGIN
+    UPDATE wms.broker
+    SET broker_type = broker_type,
+        name = broker_name,
+        add1 = add1,
+        add2 = add2,
+        add3 = add3,
+        city = city,
+        pincode = pincode,
+        person_name = person_name,
+        telephone = telephone,
+        email = email,
+        udate = udate,
+        salesman = salesman,
+        pan_no = pan_no,
+        cr_limit = cr_limit,
+        cr_days = cr_days,
+        gstno = gstno,
+        country_id = country_id,
+        aadhar_no = aadhar_no,
+        sales_head = sales_head,
+        director = director,
+        manager = manager,
+        city_district_id = city_district_id,
+        state_id = state_id,
+        lub = current_user_id
+    WHERE id = broker_id;
+
+    RETURN broker_id;
+END;
+$$ LANGUAGE plpgsql;
+
+--Function to delete broker
+CREATE OR REPLACE FUNCTION wms.delete_broker(
+    broker_id_to_delete INTEGER,
+    deleted_by_user_id INTEGER
+)
+RETURNS INT  AS $$
+BEGIN
+    -- Delete broker
+    UPDATE wms.broker
+    SET is_active = false, lub = deleted_by_user_id
+    WHERE id = broker_id_to_delete;
+    RETURN broker_id_to_delete;
+END;
+$$ LANGUAGE plpgsql;
+
+
+---------------------------** Material Master **---------------------------
+
+-- Function to insert in  material
+CREATE OR REPLACE FUNCTION wms.insert_material(
+    material_name VARCHAR(255),
+    descr VARCHAR(255),
+    brand_id INT,
+    uom_pc_id INT,
+    uom_package_id INT,
+    pc_in_package NUMERIC,
+    current_user_id INTEGER
+) RETURNS INT AS $$
+DECLARE new_material_id INT;
+BEGIN
+    INSERT INTO wms.material (name, descr, brand_id, uom_pc_id, uom_package_id, pc_in_package, lub)
+    VALUES (material_name, descr, brand_id, uom_pc_id, uom_package_id, pc_in_package, current_user_id)
+    RETURNING id INTO new_material_id;
+    RETURN new_material_id;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Function to update a material
+CREATE OR REPLACE FUNCTION wms.update_material(
+    material_id INT,
+    material_name VARCHAR(255),
+    descr VARCHAR(255),
+    brand_id INT,
+    uom_pc_id INT,
+    uom_package_id INT,
+    pc_in_package NUMERIC,
+    current_user_id INT
+) RETURNS INT AS $$
+BEGIN
+    UPDATE wms.material
+    SET name = material_name,
+        descr = descr,
+        brand_id = brand_id,
+        uom_pc_id = uom_pc_id,
+        uom_package_id = uom_package_id,
+        pc_in_package = pc_in_package,
+        lub = current_user_id
+    WHERE id = material_id;
+    RETURN material_id;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Function to delete material
+CREATE OR REPLACE FUNCTION wms.delete_material(
+    material_id_to_delete INTEGER,
+    deleted_by_user_id INTEGER
+) RETURNS INT AS $$
+BEGIN
+    UPDATE wms.material
+    SET is_active = false,
+        lub = deleted_by_user_id
+    WHERE id = material_id_to_delete;
+    RETURN material_id_to_delete;
+END;
+$$ LANGUAGE plpgsql;
+
+

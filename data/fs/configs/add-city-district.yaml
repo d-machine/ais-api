@@ -1,0 +1,109 @@
+sections:
+  - sectionType: FIELDS
+    sectionName: City-District Details
+    queryInfo:
+      returnType: SINGLE_ROW
+      query: |
+        SELECT
+          cd.id as city_district_id,
+          cd.city_id as city_id,
+          cm.name as city_name,
+          cd.district_id as district_id,
+          dm.name as district_name,
+          cd.state_id as state_id,
+          sm.name as state_name,
+          cd.descr as descr
+        FROM
+          wms.city_district cd
+          LEFT JOIN wms.city cm ON cd.city_id = cm.id
+          LEFT JOIN wms.district dm ON cd.district_id = dm.id
+          LEFT JOIN wms.state sm ON cd.state_id = sm.id
+        WHERE
+          cd.id = $1
+      payload:
+        - city_district_id
+      path:
+        - sections
+        - 0
+    applicableActions:
+      - SAVE
+      - CANCEL
+    actionConfig:
+      SAVE:
+        label: Create City-District
+        actionType: EXECUTE_QUERY
+        queryInfo:
+          returnType: SCALAR
+          query: |
+            SELECT wms.insert_city_district($1,$2,$3,$4) as id;
+          payload:
+            - city_id
+            - district_id
+            - state_id
+            - descr
+          contextParams:
+            - current_user_id
+          path:
+            - sections
+            - 0
+            - actionConfig
+            - SAVE
+        onSuccess: exitAndComplete
+        onFailure: showErrorSnackbar
+      CANCEL:
+        label: Discard Changes
+    fields:
+      - name: state_id
+        label: State
+        type: SELECT
+        required: true
+        multi: false
+        selectConfig:
+          resource: list-states
+          selectHandler: converter
+          currentSelection:
+            - key: state_id
+              as: state_id
+          selectParser: converter
+          fields_to_extract:
+            - key: state_id
+              as: state_id
+            - key: state_name
+              as: state_name
+      - name: district_id
+        label: District
+        type: SELECT
+        required: true
+        multi: false
+        selectConfig:
+          resource: list-districts
+          selectHandler: converter
+          currentSelection:
+            - key: district_id
+              as: district_id
+          selectParser: converter
+          fields_to_extract:
+            - key: district_id
+              as: district_id
+            - key: district_name
+              as: district_name
+      - name: city_id
+        label: City
+        type: SELECT
+        required: true
+        multi: false
+        selectConfig:
+          resource: list-cities
+          selectHandler: converter
+          currentSelection:
+            - key: city_id
+              as: city_id
+          selectParser: converter
+          fields_to_extract:
+            - key: city_id
+              as: city_id
+            - key: city_name
+              as: city_name
+      - name: descr
+        label: Desc
+        type: TEXTAREA

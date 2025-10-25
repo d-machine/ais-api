@@ -1,0 +1,93 @@
+queryInfo:
+  returnType: MULTIPLE_ROWS
+  query: |
+    SELECT * FROM (
+      SELECT
+        a.id as address_id,
+        a.adr1 as adr1,
+        a.adr2 as adr2,
+        a.adr3 as adr3,
+        cm.name as country_name,
+        sm.name as state_name,
+        cd.name as city_district_name,
+        a.lua as last_updated_at,
+        TRIM(CONCAT(u.first_name, ' ', u.last_name)) as last_updated_by_name
+      FROM
+        wms.address a
+        LEFT JOIN wms.country cm ON a.country_id = cm.id
+        LEFT JOIN wms.state sm ON a.state_id = sm.id
+        LEFT JOIN wms.city_district cd ON a.city_district_id = cd.id
+        LEFT JOIN administration.user u ON a.lub = u.id
+      WHERE
+        a.is_active = true
+    ) as addresses
+  options:
+    applyFiltering: true
+    applySorting: true
+    applyPagenation: true
+  path:
+    - queryInfo
+
+applicableActions:
+  - NEW
+  - EDIT
+  - DELETE
+
+actionConfig:
+  NEW:
+    label: Add Address
+    resourcePath: address-master
+    accessTypeRequired: ADDRESS-CREATE
+  EDIT:
+    label: Edit Address
+    resourcePath: address-master
+    accessTypeRequired: ADDRESS-UPDATE
+    targetParams:
+      - key: address_id
+        as: address_id
+  DELETE:
+    label: Delete Address
+    actionType: EXECUTE_QUERY
+    accessTypeRequired: ADDRESS-DELETE
+    queryInfo:
+      returnType: SCALAR
+      query: |
+        SELECT wms.delete_address($1, $2);
+      payload:
+        - address_id
+      contextParams:
+        - current_user_id
+      path:
+        - actionConfig
+        - DELETE
+    onSuccess: refreshList
+    onFailure: showErrorSnackbar
+
+columns:
+  - name: address_id
+    label: ID
+    visible: false
+  - name: adr1
+    label: Address 1
+    visible: true
+  - name: adr2
+    label: Address 2
+    visible: true
+  - name: adr3
+    label: Address 3
+    visible: true
+  - name: country_name
+    label: Country
+    visible: true
+  - name: state_name
+    label: State
+    visible: true
+  - name: city_district_name
+    label: City District
+    visible: true
+  - name: lua
+    label: Last Updated At
+    visible: true
+  - name: last_updated_by_name
+    label: Last Updated By
+    visible: true

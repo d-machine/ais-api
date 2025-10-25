@@ -1,0 +1,76 @@
+actionType: EXECUTE_QUERY
+queryInfo:
+  returnType: MULTIPLE_ROWS
+  query: |
+    SELECT * FROM (
+      SELECT
+        p.id as palette_id,
+        p.descr as descr,
+        p.lua as last_updated_at,
+        TRIM(CONCAT(u.first_name, ' ', u.last_name)) AS last_updated_by_name
+      FROM
+        wms.palette p
+        LEFT JOIN administration.user u ON p.lub = u.id
+      WHERE
+        p.is_active = true
+    ) as palettes
+  options:
+    applyAccessLevelRestrictions: false
+    applyFiltering: true
+    applySorting: true
+    applyPagenation: true
+    onSuccess: refresh
+    onFailure: showErrorPage
+
+applicableActions:
+  - add
+  - edit
+  - delete
+
+actionConfig:
+  add:
+    label: Add Palette
+    actionType: DISPLAY_FORM
+    formConfig: add-palette
+    onSuccess: refresh
+    accessTypeRequired: 7-ADD
+
+  edit:
+    label: Edit Palette
+    actionType: DISPLAY_FORM
+    formConfig: add-palette
+    accessTypeRequired: 7-EDIT
+    payload:
+      - palette_id
+    onSuccess: refresh
+
+  delete:
+    label: Delete Palette
+    actionType: EXECUTE_QUERY
+    accessTypeRequired: 7-DELETE
+    queryInfo:
+      returnType: SINGLE_ROW
+      query: SELECT wms.delete_palette($1, $2);
+      payload:
+        - palette_id
+      contextParams:
+        - current_user_id
+      path:
+        - actionConfig
+        - DELETE
+    onSuccess: refresh
+    onFailure: showErrorSnackbar
+
+columns:
+  - name: palette_id
+    label: ID
+    visible: false
+  - name: descr
+    label: Descr
+    visible: true
+  - name: last_updated_at
+    label: Last Updated At
+    visible: true
+  - name: last_updated_by_name
+    label: Last Updated By
+    visible: true

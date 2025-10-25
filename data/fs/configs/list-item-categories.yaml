@@ -2,23 +2,24 @@ actionType: EXECUTE_QUERY
 queryInfo:
   returnType: MULTIPLE_ROWS
   query: |
-    SELECT
-      icm.id as item_category_id,
-      icm.name as item_category_name,
-      icm.descr as descr,
-      icm.lua as last_updated_at,
-      TRIM(CONCAT(u.first_name,' ',u.last_name)) as last_updated_by_name
-    FROM
-      wms.item_category icm
-      LEFT JOIN administration.user u ON icm.lub = u.id
-    WHERE 
-      icm.is_active = true
-    ORDER BY
-      icm.name
+    SELECT * FROM (
+      SELECT
+        icm.id as item_category_id,
+        icm.name as item_category_name,
+        icm.descr as descr,
+        icm.lua as last_updated_at,
+        TRIM(CONCAT(u.first_name, ' ', u.last_name)) as last_updated_by_name
+      FROM
+        wms.item_category icm
+        LEFT JOIN administration.user u ON icm.lub = u.id
+      WHERE 
+        icm.is_active = true
+    ) as item_categories
   options:
     applyAccessLevelRestrictions: false
     applyFiltering: true
     applysorting: true
+    applyPagenation: true
     onSuccess: refresh
     onFailure: showErrorPage
 applicableActions:
@@ -67,7 +68,7 @@ columns:
     lable: Item Category Name
     visible: true
   - name: descr
-    lable: descr
+    lable: Descr
     visible: true
   - name: last_updated_at
     label: Last Updated At

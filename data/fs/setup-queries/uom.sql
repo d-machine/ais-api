@@ -54,18 +54,3 @@ CREATE TRIGGER uom_update_trigger
     AFTER UPDATE ON wms.uom
     FOR EACH ROW
     EXECUTE FUNCTION wms.log_uom_changes();
-
--- Custom function to perform a "soft delete" by setting is_active to false
-CREATE OR REPLACE FUNCTION wms.delete_uom(
-    uom_id_to_delete INTEGER,
-    deleted_by_user_id INTEGER
-)
-RETURNS VOID AS $$
-BEGIN
-    UPDATE wms.uom
-    SET is_active = false,
-        lub = deleted_by_user_id,
-        lua = NOW()
-    WHERE id = uom_id_to_delete;
-END;
-$$ LANGUAGE plpgsql;

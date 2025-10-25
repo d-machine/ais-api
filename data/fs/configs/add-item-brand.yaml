@@ -1,0 +1,73 @@
+sections:
+  - sectionType: FIELDS
+    sectionName: Item Brand Details
+    queryInfo:
+      returnType: SINGLE_ROW
+      query: |
+        SELECT
+          ib.id as brand_id,
+          ib.brand_name as brand_name,
+          ib.category_id as category_id,
+          icm.name as category_name,
+          ib.descr as descr
+        FROM
+          wms.item_brand ib
+          LEFT JOIN wms.item_category icm ON ib.category_id = icm.id
+        WHERE
+          ib.id = $1
+      payload:
+        - brand_id
+      path:
+        - sections
+        - 0
+    applicableActions:
+      - SAVE
+      - CANCEL
+    actionConfig:
+      SAVE:
+        label: Create Brand
+        actionType: EXECUTE_QUERY
+        queryInfo:
+          returnType: SCALAR
+          query: |
+            SELECT wms.insert_item_brand($1, $2, $3) as id;
+          payload:
+            - brand_name
+            - category_id
+            - descr
+          contextParams:
+            - current_user_id
+          path:
+            - sections
+            - 0
+            - actionConfig
+            - SAVE
+        onSuccess: exitAndComplete
+        onFailure: showErrorSnackbar
+      CANCEL:
+        label: Discard Changes
+    fields:
+      - name: brand_name
+        label: Brand Name
+        type: TEXT
+        required: true
+      - name: category_id
+        label: Category
+        type: SELECT
+        required: true
+        multi: false
+        selectConfig:
+          resource: list-item-categories
+          selectHandler: converter
+          currentSelection:
+            - key: category_id
+              as: category_id
+          selectParser: converter
+          fields_to_extract:
+            - key: category_id
+              as: category_id
+            - key: category_name
+              as: category_name
+      - name: descr
+        label: Descr
+        type: TEXTAREA

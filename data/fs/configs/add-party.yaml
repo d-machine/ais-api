@@ -1,0 +1,202 @@
+sections:
+  - sectionType: FIELDS
+    sectionName: Party Details
+    queryInfo:
+      returnType: SINGLE_ROW
+      query: |
+        SELECT
+          p.id as party_id,
+          p.party_type as party_type,
+          p.name as party_name,
+          p.add1 as add1,
+          p.add2 as add2,
+          p.add3 as add3,
+          p.city as city,
+          p.pincode as pincode,
+          p.person_name as person_name,
+          p.telephone as telephone,
+          p.email as email,
+          p.salesman as salesman,
+          p.pan_no as pan_no,
+          p.cr_limit as cr_limit,
+          p.cr_days as cr_days,
+          p.gstno as gstno,
+          p.aadhar_no as aadhar_no,
+          p.sales_head as sales_head,
+          p.director as director,
+          p.manager as manager,
+          p.city_district_id as city_district_id,
+          cd.name as city_district_name,
+          p.state_id as state_id,
+          sm.name as state_name,
+          p.country_id as country_id,
+          cm.name as country_name
+        FROM
+          wms.party p
+          LEFT JOIN wms.city_district cd ON p.city_district_id = cd.id
+          LEFT JOIN wms.state sm ON p.state_id = sm.id
+          LEFT JOIN wms.country cm ON p.country_id = cm.id
+        WHERE
+          p.id = $1
+      payload:
+        - party_id
+      path:
+        - sections
+        - 0
+    applicableActions:
+      - SAVE
+      - CANCEL
+    actionConfig:
+      SAVE:
+        label: Create Party
+        actionType: EXECUTE_QUERY
+        queryInfo:
+          returnType: SCALAR
+          query: |
+            SELECT wms.insert_party(
+              $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20) as id;
+          payload:
+            - party_type
+            - party_name
+            - add1
+            - add2
+            - add3
+            - city
+            - pincode
+            - person_name
+            - telephone
+            - email
+            - salesman
+            - pan_no
+            - cr_limit
+            - cr_days
+            - gstno
+            - aadhar_no
+            - sales_head
+            - director
+            - manager
+            - city_district_id
+            - state_id
+            - country_id
+          contextParams:
+            - current_user_id
+          path:
+            - sections
+            - 0
+            - actionConfig
+            - SAVE
+        onSuccess: exitAndComplete
+        onFailure: showErrorSnackbar
+      CANCEL:
+        label: Discard Changes
+    fields:
+      - name: party_type
+        label: Party Type
+        type: TEXT
+        required: true
+      - name: party_name
+        label: Party Name
+        type: TEXT
+        required: true
+      - name: add1
+        label: Address 1
+        type: TEXT
+      - name: add2
+        label: Address 2
+        type: TEXT
+      - name: add3
+        label: Address 3
+        type: TEXT
+      - name: city
+        label: City
+        type: TEXT
+      - name: pincode
+        label: Pincode
+        type: TEXT
+      - name: person_name
+        label: Contact Person
+        type: TEXT
+      - name: telephone
+        label: Telephone
+        type: TEXT
+      - name: email
+        label: Email
+        type: TEXT
+      - name: salesman
+        label: Salesman
+        type: TEXT
+      - name: pan_no
+        label: PAN No
+        type: TEXT
+      - name: cr_limit
+        label: Credit Limit
+        type: TEXT
+      - name: cr_days
+        label: Credit Days
+        type: TEXT
+      - name: gstno
+        label: GST No
+        type: TEXT
+      - name: aadhar_no
+        label: Aadhaar No
+        type: TEXT
+      - name: sales_head
+        label: Sales Head
+        type: TEXT
+      - name: director
+        label: Director
+        type: TEXT
+      - name: manager
+        label: Manager
+        type: TEXT
+      - name: country_id
+        label: Country
+        type: SELECT
+        required: true
+        multi: false
+        selectConfig:
+          resource: list-countries
+          selectHandler: converter
+          currentSelection:
+            - key: country_id
+              as: country_id
+          selectParser: converter
+          fields_to_extract:
+            - key: country_id
+              as: country_id
+            - key: country_name
+              as: country_name
+      - name: state_id
+        label: State
+        type: SELECT
+        required: true
+        multi: false
+        selectConfig:
+          resource: list-states
+          selectHandler: converter
+          currentSelection:
+            - key: state_id
+              as: state_id
+          selectParser: converter
+          fields_to_extract:
+            - key: state_id
+              as: state_id
+            - key: state_name
+              as: state_name
+      - name: city_district_id
+        label: City District
+        type: SELECT
+        required: true
+        multi: false
+        selectConfig:
+          resource: list-city-districts
+          selectHandler: converter
+          currentSelection:
+            - key: city_district_id
+              as: city_district_id
+          selectParser: converter
+          fields_to_extract:
+            - key: city_district_id
+              as: city_district_id
+            - key: city_district_name
+              as: city_district_name

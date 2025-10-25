@@ -1,85 +1,80 @@
+actionType: EXECUTE_QUERY
 queryInfo:
   returnType: MULTIPLE_ROWS
   query: |
     SELECT * FROM (
       SELECT
-        sm.id as state_id,
-        sm.name as state_name,
-        sm.code as state_code,
-        sm.descr as descr,
-        cm.id as country_id,
-        cm.name as country_name,
-        sm.lua as last_updated_at,
+        t.id as transport_id,
+        t.name as transport_name,
+        t.descr as descr,
+        t.lua as last_updated_at,
         TRIM(CONCAT(u.first_name, ' ', u.last_name)) as last_updated_by_name
       FROM
-        wms.state sm
-        LEFT JOIN wms.country cm ON sm.country_id = cm.id
-        LEFT JOIN administration.user u ON sm.lub = u.id
+        wms.transport t
+        LEFT JOIN administration.user u ON t.lub = u.id
       WHERE
-        sm.is_active = true
-      ) as states
+        t.is_active = true
+    ) as transports
   options:
+    applyAccessLevelRestrictions: false
     applyFiltering: true
     applySorting: true
     applyPagenation: true
-  path:
-    - queryInfo
+    onSuccess: refresh
+    onFailure: showErrorPage
+
 applicableActions:
   - add
   - edit
   - delete
+
 actionConfig:
   add:
-    label: Add State
+    label: Add Transport
     actionType: DISPLAY_FORM
-    formConfig: add-state
+    formConfig: add-transport
     onSuccess: refresh
     accessTypeRequired: 7-ADD
+
   edit:
-    label: Edit State
+    label: Edit Transport
     actionType: DISPLAY_FORM
-    formConfig: add-state
+    formConfig: add-transport
     accessTypeRequired: 7-EDIT
     payload:
-      - state_id
+      - transport_id
     onSuccess: refresh
+
   delete:
-    label: Delete State
+    label: Delete Transport
     actionType: EXECUTE_QUERY
     accessTypeRequired: 7-DELETE
     queryInfo:
-      returnType: SCALAR
-      query: |
-        SELECT wms.delete_state($1, $2) as id;
+      returnType: SINGLE_ROW
+      query: SELECT wms.delete_transport($1, $2) as id;
       payload:
-        - state_id
+        - transport_id
       contextParams:
         - current_user_id
       path:
         - actionConfig
         - DELETE
-    onSuccess: refreshList
+    onSuccess: refresh
     onFailure: showErrorSnackbar
 
 columns:
-  - name: state_id
+  - name: transport_id
     label: ID
     visible: false
-  - name: state_name
-    label: State Name
-    visible: true
-  - name: state_code
-    label: State Code
+  - name: transport_name
+    label: Transport Name
     visible: true
   - name: descr
     label: Descr
     visible: true
-  - name: country_name
-    label: Country
-    visible: true
-  - name: lua
+  - name: last_updated_at
     label: Last Updated At
     visible: true
   - name: last_updated_by_name
     label: Last Updated By
-    visible: true 
+    visible: true

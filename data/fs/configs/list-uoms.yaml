@@ -1,0 +1,79 @@
+actionType: EXECUTE_QUERY
+queryInfo:
+  returnType: MULTIPLE_ROWS
+  query: |
+    SELECT * FROM (
+      SELECT
+        um.id as uom_id,
+        um.name as uom_name,
+        um.descr as descr,
+        um.lua as last_updated_at,
+        TRIM(CONCAT(u.first_name, ' ', u.last_name)) as last_updated_by_name
+      FROM
+        wms.uom um
+        LEFT JOIN administration.user u ON um.lub = u.id
+      WHERE
+        um.is_active = true
+    ) as uoms
+  options:
+    applyAccessLevelRestrictions: false
+    applyFiltering: true
+    applySorting: true
+    applyPagenation: true
+    onSuccess: refresh
+    onFailure: showErrorPage
+applicableActions:
+  - add
+  - edit
+  - delete
+actionConfig:
+  add:
+    label: Add UOM
+    actionType: DISPLAY_FORM
+    formConfig: add-uom
+    onSuccess: refresh
+    accessTypeRequired: 7-ADD
+  edit:
+    label: Edit UOM
+    actionType: DISPLAY_FORM
+    formConfig: add-uom
+    accessTypeRequired: 7-EDIT
+    payload:
+      - uom_id
+    onSuccess: refresh
+  delete:
+    label: Delete UOM
+    actionType: EXECUTE_QUERY
+    accessTypeRequired: 7-DELETE
+    queryInfo: 
+      returnType: SINGLE_ROW
+      query: SELECT wms.delete_uom_master($1,$2) as id;
+      payload:
+        - uom_id
+      contextParams:
+         - current_user_id
+      path:
+        - actionConfig
+        - DELETE
+    onSuccess: refresh
+    onFailure: showErrorSnackbar
+  
+columns:
+  - name: uom_id
+    label: ID
+    visible: false
+  - name: uom_name
+    label: UOM Name
+    visible: true
+  - name: descr
+    label: Descr
+    visible: true
+  - name: last_updated_at
+    label: Last Updated At
+    visible: true
+  - name: last_updated_by_name
+    label: Last Updated BY
+    visible: true
+
+
+
