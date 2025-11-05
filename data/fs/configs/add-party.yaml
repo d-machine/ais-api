@@ -16,7 +16,8 @@ sections:
           p.person_name as person_name,
           p.telephone as telephone,
           p.email as email,
-          p.salesman as salesman,
+          p.udate as udate,
+          p.salesman as salesman, 
           p.pan_no as pan_no,
           p.cr_limit as cr_limit,
           p.cr_days as cr_days,
@@ -53,8 +54,7 @@ sections:
         queryInfo:
           returnType: SCALAR
           query: |
-            SELECT wms.insert_party(
-              $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20) as id;
+            SELECT wms.insert_party($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24) as id;
           payload:
             - party_type
             - party_name
@@ -66,6 +66,7 @@ sections:
             - person_name
             - telephone
             - email
+            - udate
             - salesman
             - pan_no
             - cr_limit
@@ -101,88 +102,75 @@ sections:
       - name: add1
         label: Address 1
         type: TEXT
+        required: true
       - name: add2
         label: Address 2
         type: TEXT
+        required: true
       - name: add3
         label: Address 3
         type: TEXT
+        required: true
       - name: city
         label: City
         type: TEXT
+        required: true
       - name: pincode
         label: Pincode
         type: TEXT
+        required: true
       - name: person_name
         label: Contact Person
         type: TEXT
+        required: true
       - name: telephone
         label: Telephone
         type: TEXT
+        required: true
       - name: email
         label: Email
         type: TEXT
+        required: true
+      - name: udate
+        label: Udate
+        type: TEXT
+        required: true
       - name: salesman
         label: Salesman
         type: TEXT
+        required: true
       - name: pan_no
         label: PAN No
         type: TEXT
+        required: true
       - name: cr_limit
         label: Credit Limit
         type: TEXT
+        required: true
       - name: cr_days
         label: Credit Days
         type: TEXT
+        required: true
       - name: gstno
         label: GST No
         type: TEXT
+        required: true
       - name: aadhar_no
         label: Aadhaar No
         type: TEXT
+        required: true
       - name: sales_head
         label: Sales Head
         type: TEXT
+        required: true
       - name: director
         label: Director
         type: TEXT
+        required: true
       - name: manager
         label: Manager
         type: TEXT
-      - name: country_id
-        label: Country
-        type: SELECT
         required: true
-        multi: false
-        selectConfig:
-          resource: list-countries
-          selectHandler: converter
-          currentSelection:
-            - key: country_id
-              as: country_id
-          selectParser: converter
-          fields_to_extract:
-            - key: country_id
-              as: country_id
-            - key: country_name
-              as: country_name
-      - name: state_id
-        label: State
-        type: SELECT
-        required: true
-        multi: false
-        selectConfig:
-          resource: list-states
-          selectHandler: converter
-          currentSelection:
-            - key: state_id
-              as: state_id
-          selectParser: converter
-          fields_to_extract:
-            - key: state_id
-              as: state_id
-            - key: state_name
-              as: state_name
       - name: city_district_id
         label: City District
         type: SELECT
@@ -200,3 +188,37 @@ sections:
               as: city_district_id
             - key: city_district_name
               as: city_district_name
+      - name: state_id
+        label: State
+        type: SELECT
+        required: true
+        multi: false
+        selectConfig:
+          resource: list-states
+          selectHandler: converter
+          currentSelection:
+            - key: state_id
+              as: state_id
+          selectParser: converter
+          fields_to_extract:
+            - key: state_id
+              as: state_id
+            - key: state_name
+              as: state_name
+      - name: country_id
+        label: Country
+        type: SELECT
+        required: true
+        multi: false
+        selectConfig:
+          resource: list-countries
+          selectHandler: converter
+          currentSelection:
+            - key: country_id
+              as: country_id
+          selectParser: converter
+          fields_to_extract:
+            - key: country_id
+              as: country_id
+            - key: country_name
+              as: country_name

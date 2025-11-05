@@ -1,4 +1,4 @@
-CREATE TABLE  wms.broker (
+CREATE TABLE IF NOT EXISTS wms.broker (
   id SERIAL PRIMARY KEY,
   broker_type VARCHAR(50),
   name VARCHAR(50),
@@ -24,12 +24,12 @@ CREATE TABLE  wms.broker (
   state_id INTEGER REFERENCES wms.state(id),
   country_id INTEGER REFERENCES wms.country(id),
   is_active boolean not null default true,
-  lub int REFERENCES administration.user(id),
+  lub INTEGER REFERENCES administration.user(id),
   lua TIMESTAMP NOT NULL DEFAULT NOW()
 );
 CREATE TABLE IF NOT EXISTS wms.broker_history (
     history_id SERIAL PRIMARY KEY,
-    id INTEGER REFERENCES wms.broker(id),
+    broker_id INTEGER NOT NULL,
     broker_type VARCHAR(50),
     name VARCHAR(50),
     add1 VARCHAR(50),
@@ -37,8 +37,6 @@ CREATE TABLE IF NOT EXISTS wms.broker_history (
     add3 VARCHAR(50),
     city VARCHAR(50),
     pincode VARCHAR(50),
-    city_district_id INTEGER REFERENCES wms.city_district(id),
-    state_id INTEGER REFERENCES wms.state(id),
     person_name VARCHAR(50),
     telephone VARCHAR(50),
     email VARCHAR(50),
@@ -48,11 +46,13 @@ CREATE TABLE IF NOT EXISTS wms.broker_history (
     cr_limit NUMERIC, 
     cr_days INTEGER,
     gstno VARCHAR(50),
-    country_id INTEGER REFERENCES wms.country(id),
     aadhar_no VARCHAR(50),
     sales_head VARCHAR(50),
     director VARCHAR(50),
     manager VARCHAR(50),
+    city_district_id INTEGER NOT NULL,
+    state_id INTEGER NOT NULL,
+    country_id INTEGER NOT NULL,
     is_active boolean NOT NULL,
     operation VARCHAR(10),
     operation_at TIMESTAMP,
@@ -60,11 +60,11 @@ CREATE TABLE IF NOT EXISTS wms.broker_history (
 );
 -----create trigger function for broker-----
 CREATE OR REPLACE FUNCTION wms.broker_trigger()
-    RETURNS TRIGGER AS $$
+RETURNS TRIGGER AS $$
 BEGIN
-    IF TG_OP = 'INSERT' THEN
-        INSERT INTO broker_history (
-            id,
+    IF (TG_OP = 'INSERT') THEN
+        INSERT INTO wms.broker_history (
+            broker_id,
             broker_type,
             name,
             add1,
@@ -72,8 +72,6 @@ BEGIN
             add3,
             city,
             pincode,
-            city_district_id,
-            state_id,
             person_name,
             telephone,
             email,
@@ -83,11 +81,13 @@ BEGIN
             cr_limit,
             cr_days,
             gstno,
-            country_id,
             aadhar_no,
             sales_head,
             director,
             manager,
+            city_district_id,
+            state_id,
+            country_id,
             is_active,
             operation, operation_at, operation_by
         )
@@ -100,8 +100,6 @@ BEGIN
             NEW.add3,
             NEW.city,
             NEW.pincode,
-            NEW.city_district_id,
-            NEW.state_id,
             NEW.person_name,
             NEW.telephone,
             NEW.email,
@@ -111,18 +109,20 @@ BEGIN
             NEW.cr_limit,
             NEW.cr_days,
             NEW.gstno,
-            NEW.country_id,
             NEW.aadhar_no,
             NEW.sales_head,
             NEW.director,
             NEW.manager,
+            NEW.city_district_id,
+            NEW.state_id,
+            NEW.country_id,
             NEW.is_active,
             'INSERT', NEW.lua, NEW.lub
         );
     ELSIF TG_OP = 'UPDATE' THEN
         IF (OLD.is_active = true AND NEW.is_active = false) THEN
-            INSERT INTO broker_history (
-                id,
+            INSERT INTO wms.broker_history (
+                broker_id,
                 broker_type,
                 name,
                 add1,
@@ -130,8 +130,6 @@ BEGIN
                 add3,
                 city,
                 pincode,
-                city_district_id,
-                state_id,
                 person_name,
                 telephone,
                 email,
@@ -141,11 +139,13 @@ BEGIN
                 cr_limit,
                 cr_days,
                 gstno,
-                country_id,
                 aadhar_no,
                 sales_head,
                 director,
                 manager,
+                city_district_id,
+                state_id,
+                country_id,
                 is_active,
                 operation,operation_at,operation_by
             )
@@ -158,8 +158,6 @@ BEGIN
                 NEW.add3,
                 NEW.city,
                 NEW.pincode,
-                NEW.city_district_id,
-                NEW.state_id,
                 NEW.person_name,
                 NEW.telephone,
                 NEW.email,
@@ -169,17 +167,19 @@ BEGIN
                 NEW.cr_limit,
                 NEW.cr_days,
                 NEW.gstno,
-                NEW.country_id,
                 NEW.aadhar_no,
                 NEW.sales_head,
                 NEW.director,
                 NEW.manager,
+                NEW.city_district_id,
+                NEW.state_id,
+                NEW.country_id,
                 NEW.is_active,
                 'DELETE',NEW.lua,NEW.lub
             );
         ELSE
-            INSERT INTO broker_history (
-                id,
+            INSERT INTO wms.broker_history (
+                broker_id,
                 broker_type,
                 name,
                 add1,
@@ -187,8 +187,6 @@ BEGIN
                 add3,
                 city,
                 pincode,
-                city_district_id,
-                state_id,
                 person_name,
                 telephone,
                 email,
@@ -198,11 +196,13 @@ BEGIN
                 cr_limit,
                 cr_days,
                 gstno,
-                country_id,
                 aadhar_no,
                 sales_head,
                 director,
                 manager,
+                city_district_id,
+                state_id,
+                country_id,
                 is_active,
                 operation,operation_at,operation_by
             )
@@ -215,8 +215,6 @@ BEGIN
                 NEW.add3,
                 NEW.city,
                 NEW.pincode,
-                NEW.city_district_id,
-                NEW.state_id,
                 NEW.person_name,
                 NEW.telephone,
                 NEW.email,
@@ -226,11 +224,13 @@ BEGIN
                 NEW.cr_limit,
                 NEW.cr_days,
                 NEW.gstno,
-                NEW.country_id,
                 NEW.aadhar_no,
                 NEW.sales_head,
                 NEW.director,
                 NEW.manager,
+                NEW.city_district_id,
+                NEW.state_id,
+                NEW.country_id,
                 NEW.is_active,
                 'UPDATE',NEW.lua,NEW.lub
             );
@@ -241,8 +241,20 @@ END;
 $$ LANGUAGE plpgsql;
 
 -- create trigger for broker
-DROP TRIGGER IF EXISTS broker_trigger ON wms.broker;
-CREATE TRIGGER broker_trigger
-    AFTER INSERT OR UPDATE ON wms.broker
-    FOR EACH ROW
-    EXECUTE FUNCTION wms.broker_trigger();
+DROP TRIGGER IF EXISTS broker_insert_trigger ON wms.broker;
+CREATE TRIGGER broker_insert_trigger
+AFTER INSERT ON wms.broker
+FOR EACH ROW
+EXECUTE FUNCTION wms.broker_trigger();
+
+DROP TRIGGER IF EXISTS broker_update_trigger ON wms.broker;
+CREATE TRIGGER broker_update_trigger
+AFTER UPDATE ON wms.broker
+FOR EACH ROW
+EXECUTE FUNCTION wms.broker_trigger();  
+-- Create function to delete broker
+DROP TRIGGER IF EXISTS broker_delete_trigger ON wms.broker;
+CREATE TRIGGER broker_delete_trigger
+AFTER DELETE ON wms.broker
+FOR EACH ROW
+EXECUTE FUNCTION wms.broker_trigger();

@@ -5,7 +5,7 @@ sections:
       returnType: SINGLE_ROW
       query: |
         SELECT
-          id as city_id, name as city_name, code as city_code, descr as descr
+          id as city_id, name as city_name, descr as descr
         FROM
           wms.city
         WHERE

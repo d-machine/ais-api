@@ -24,10 +24,13 @@ queryInfo:
         b.sales_head as sales_head,
         b.director as director,
         b.manager as manager,
+        cd.id as city_district_id,
         cd.name as city_district_name,
+        sm.id as state_id,
         sm.name as state_name,
+        cm.id as country_id,
         cm.name as country_name,
-        b.lua as last_updated_by_name,
+        b.lua as last_updated_at,
         TRIM(CONCAT(u.first_name, ' ', u.last_name)) as last_updated_by_name
       FROM
         wms.broker b
@@ -41,37 +44,36 @@ queryInfo:
   options:
     applyFiltering: true
     applySorting: true
-    applyPagenation: true
+    applyPagenation: true   
   path:
     - queryInfo
-
 applicableActions:
-  - NEW
-  - EDIT
-  - DELETE
-
+  - add
+  - edit
+  - delete
 actionConfig:
-  NEW:
+  add:
     label: Add Broker
-    resourcePath: broker-master
-    accessTypeRequired: BROKER-CREATE
-  EDIT:
+    actionType: DISPLAY_FORM
+    formConfig: add-broker
+    onSuccess: refresh
+    accessTypeRequired: 7-ADD 
+  edit:
     label: Edit Broker
-    resourcePath: broker-master
-    accessTypeRequired: BROKER-UPDATE
-    targetParams:
-      - key: broker_id
-        as: broker_id
-  DELETE:
+    actionType: DISPLAY_FORM
+    formConfig: add-broker
+    accessTypeRequired: 7-EDIT
+    payload:
+      - broker_id
+    onSuccess: refresh
+  delete:
     label: Delete Broker
     actionType: EXECUTE_QUERY
-    accessTypeRequired: BROKER-DELETE
+    accessTypeRequired: 7-DELETE
     queryInfo:
       returnType: SCALAR
       query: |
-        UPDATE wms.broker
-        SET is_active = false, lua = NOW()
-        WHERE id = $1;
+        SELECT wms.delete_broker($1, $2) as id;
       payload:
         - broker_id
       contextParams:
@@ -97,10 +99,10 @@ columns:
     visible: true
   - name: add2
     label: Address 2
-    visible: false
+    visible: true
   - name: add3
     label: Address 3
-    visible: false
+    visible: true
   - name: city
     label: City
     visible: true
@@ -115,6 +117,9 @@ columns:
     visible: true
   - name: email
     label: Email
+    visible: true
+  - name: udate
+    label: Udate
     visible: true
   - name: salesman
     label: Salesman
@@ -144,15 +149,15 @@ columns:
     label: Manager
     visible: true
   - name: city_district_name
-    label: City District
+    label: City District Name
     visible: true
   - name: state_name
-    label: State
+    label: State Name
     visible: true
   - name: country_name
-    label: Country
+    label: Country Name
     visible: true
-  - name: lua
+  - name: last_updated_at
     label: Last Updated At
     visible: true
   - name: last_updated_by_name

@@ -48,8 +48,6 @@ $$ LANGUAGE plpgsql;
 -- Create trigger for item_brand
 DROP TRIGGER IF EXISTS item_brand_insert_trigger ON wms.item_brand;
 CREATE TRIGGER item_brand_insert_trigger
-
-
     AFTER INSERT ON wms.item_brand
     FOR EACH ROW
     EXECUTE FUNCTION wms.item_brand_trigger();
@@ -60,10 +58,8 @@ CREATE TRIGGER item_brand_update_trigger
     FOR EACH ROW
     EXECUTE FUNCTION wms.item_brand_trigger();  
 -- Create function to delete item_brand
-CREATE OR REPLACE FUNCTION wms.delete_item_brand(item_brand_id INTEGER)
-RETURNS VOID AS $$
-BEGIN
-    DELETE FROM wms.item_brand WHERE id = item_brand_id;
-    DELETE FROM wms.item_brand_history WHERE item_brand_id = item_brand_id;
-END;
-$$ LANGUAGE plpgsql;
+DROP TRIGGER IF EXISTS item_brand_delete_trigger ON wms.item_brand;
+CREATE TRIGGER item_brand_delete_trigger
+    AFTER DELETE ON wms.item_brand
+    FOR EACH ROW
+    EXECUTE FUNCTION wms.item_brand_trigger();

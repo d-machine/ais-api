@@ -1,7 +1,7 @@
 -- Rename table and related objects from state to state
 
 -- Create table for state
-CREATE TABLE wms.state (
+CREATE TABLE IF NOT EXISTS wms.state (
     id SERIAL PRIMARY KEY,
     name VARCHAR(255) NOT NULL,
     descr VARCHAR(255),
@@ -13,7 +13,7 @@ CREATE TABLE wms.state (
 );
 
 -- Create temporal table for state
-CREATE TABLE wms.state_history (
+CREATE TABLE IF NOT EXISTS wms.state_history (
     history_id SERIAL PRIMARY KEY,
     state_id INT NOT NULL,
     name VARCHAR(255) NOT NULL,

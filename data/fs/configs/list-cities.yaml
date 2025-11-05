@@ -16,37 +16,39 @@ queryInfo:
       cm.is_active = true
     ) as cities
   options:
+    applyAccessLevelRestrictions: false
     applyFiltering: true
     applySorting: true
     applyPagenation: true
-  path:
-    - queryInfo
-
+    onSuccess: refresh
+    onFailure: showErrorPage
 applicableActions:
-  - NEW
-  - EDIT
-  - DELETE
+  - add
+  - edit
+  - delete
 
 actionConfig:
-  NEW:
+  add:
     label: Add City
-    resourcePath: city-master
-    accessTypeRequired: CITY-CREATE
-  EDIT:
+    actionType: DISPLAY_FORM
+    formConfig: add-city
+    onSuccess: refresh
+    accessTypeRequired: 7-ADD 
+  edit:
     label: Edit City
-    resourcePath: city-master
-    accessTypeRequired: CITY-UPDATE
-    targetParams:
-      - key: city_id
-        as: city_id
-  DELETE:
+    actionType: DISPLAY_FORM
+    formConfig: add-city
+    accessTypeRequired: 7-EDIT
+    payload:
+      - city_id
+    onSuccess: refresh
+  delete:
     label: Delete City
     actionType: EXECUTE_QUERY
-    accessTypeRequired: CITY-DELETE
+    accessTypeRequired: 7-DELETE
     queryInfo:
-      returnType: SCALAR
-      query: |
-        SELECT wms.delete_city($1, $2);
+      returnType: SINGLE_ROW
+      query: SELECT wms.delete_city($1, $2) as id;
       payload:
         - city_id
       contextParams:
@@ -54,7 +56,7 @@ actionConfig:
       path:
         - actionConfig
         - DELETE
-    onSuccess: refreshList
+    onSuccess: refresh
     onFailure: showErrorSnackbar
 
 columns:
@@ -67,10 +69,10 @@ columns:
   - name: city_code
     label: City Code
     visible: true
-  - name: descr
+  - name: descr 
     label: Descr
     visible: true
-  - name: lua
+  - name: last_updated_at
     label: Last Updated At
     visible: true
   - name: last_updated_by_name

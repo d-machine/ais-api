@@ -30,7 +30,7 @@ sections:
         queryInfo:
           returnType: SCALAR
           query: |
-            SELECT wms.insert_item_brand($1, $2, $3) as id;
+            SELECT wms.insert_item_brand($1, $2, $3, $4) as id;
           payload:
             - brand_name
             - category_id

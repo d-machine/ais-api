@@ -4,8 +4,8 @@ queryInfo:
   query: |
     SELECT * FROM (
       SELECT
-        icm.id as item_category_id,
-        icm.name as item_category_name,
+        icm.id as category_id,
+        icm.name as category_name,
         icm.descr as descr,
         icm.lua as last_updated_at,
         TRIM(CONCAT(u.first_name, ' ', u.last_name)) as last_updated_by_name
@@ -51,7 +51,7 @@ actionConfig:
       returnType: SINGLE_ROW
       query: SELECT wms.delete_item_category($1,$2) as id;
       payload:
-        - item_category_id
+        - category_id
       contextParams:
         - current_user_id
       path:
@@ -61,18 +61,18 @@ actionConfig:
     onFailure: showErrorSnackbar
 
 columns:
-  - name: item_category_id
+  - name: category_id
     label: ID
     visible: false
-  - name: item_category_name
-    lable: Item Category Name
+  - name: category_name
+    label: Item Category Name
     visible: true
   - name: descr
-    lable: Descr
+    label: Descr
     visible: true
   - name: last_updated_at
     label: Last Updated At
     visible: true
   - name: last_updated_by_name
-    lable: Last Updated BY
+    label: Last Updated BY
     visible: true

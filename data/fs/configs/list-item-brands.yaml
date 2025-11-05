@@ -5,9 +5,10 @@ queryInfo:
       SELECT
         ib.id as brand_id,
         ib.brand_name as brand_name,
+        icm.id as category_id,
         icm.name as category_name,
         ib.descr as descr,
-        ib.lua as last_updated_by_name,
+        ib.lua as last_updated_at,
         TRIM(CONCAT(u.first_name, ' ', u.last_name)) as last_updated_by_name
       FROM
         wms.item_brand ib
@@ -23,25 +24,28 @@ queryInfo:
   path:
     - queryInfo
 applicableActions:
-  - NEW
-  - EDIT
-  - DELETE
+  - add
+  - edit
+  - delete
 actionConfig:
-  NEW:
-    label: Add Brand 
-    resourcePath: item-brand 
-    accessTypeRequired: BRAND-CREATE
-  EDIT:
-    lable: Edit Brand
-    resourcePath: item-brand 
-    accessTypeRequired: BRAND-UPDATE 
-    targetParams:
-      - key: brand_id
-        as: brand_id
-  DELETE:
+  add:
+    label: Add Brand
+    actionType: DISPLAY_FORM 
+    formConfig: add-brand 
+    onSuccess: refresh
+    accessTypeRequired: 7-ADD
+  edit:
+    label: Edit Brand
+    actionType: DISPLAY_FORM
+    formConfig: add-brand
+    accessTypeRequired: 7-EDIT
+    payload:
+      - brand_id
+    onSuccess: refresh
+  delete:
     label: Delete Brand
     actionType: EXECUTE_QUERY
-    accessTypeRequired: BRAND-DELETE
+    accessTypeRequired: 7-DELETE
     queryInfo:
       returnType: SCALAR
       query: |
@@ -69,9 +73,9 @@ columns:
   - name: descr
     label: Descr
     visible: true
-  - name: lua
+  - name: last_updated_at
     label: Last Updated At
     visible: true
   - name: last_updated_by_name
-    lable: Last Updated BY
+    label: Last Updated BY
     visible: true

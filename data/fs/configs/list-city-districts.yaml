@@ -4,8 +4,12 @@ queryInfo:
     SELECT * FROM (
       SELECT
         cd.id as city_district_id,
+        cd.name as city_district_name,
+        cm.id as city_id,
         cm.name as city_name,
+        dm.id as district_id,
         dm.name as district_name,
+        sm.id as state_id,
         sm.name as state_name,
         cd.descr as descr,
         cd.lua as last_updated_at,
@@ -27,30 +31,33 @@ queryInfo:
     - queryInfo
 
 applicableActions:
-  - NEW
-  - EDIT
-  - DELETE
+  - add
+  - edit
+  - delete
 
 actionConfig:
-  NEW:
-    label: Add City-District
-    resourcePath: city-district-master
-    accessTypeRequired: CITY_DISTRICT-CREATE
-  EDIT:
+  add:
+    label: Add City-district
+    actionType: DISPLAY_FORM
+    formConfig: add-city-district
+    onSuccess: refresh
+    accessTypeRequired: 7-ADD
+  edit:
     label: Edit City-District
-    resourcePath: city-district-master
-    accessTypeRequired: CITY_DISTRICT-UPDATE
-    targetParams:
-      - key: city_district_id
-        as: city_district_id
-  DELETE:
+    actionType: DISPLAY_FORM
+    formConfig: add-city-district
+    accessTypeRequired: 7-EDIT
+    payload:
+      - city_district_id
+    onSuccess: refresh
+  delete:
     label: Delete City-District
     actionType: EXECUTE_QUERY
-    accessTypeRequired: CITY_DISTRICT-DELETE
+    accessTypeRequired: 7-DELETE
     queryInfo:
       returnType: SCALAR
       query: |
-        SELECT wms.delete_city_district($1, $2);
+        SELECT wms.delete_city_district($1, $2) as id;
       payload:
         - city_district_id
       contextParams:
@@ -77,7 +84,7 @@ columns:
   - name: descr
     label: Descr
     visible: true
-  - name: lua
+  - name: last_updated_at
     label: Last Updated At
     visible: true
   - name: last_updated_by_name

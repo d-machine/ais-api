@@ -1,4 +1,5 @@
-CREATE TABLE wms.district (
+--CREATE district table
+CREATE TABLE IF NOT EXISTS wms.district (
   id serial PRIMARY KEY,
   name varchar(100) NOT NULL,
   code VARCHAR(3) NOT NULL UNIQUE,
@@ -6,9 +7,9 @@ CREATE TABLE wms.district (
   is_active boolean NOT NULL DEFAULT true,
   lub INTEGER REFERENCES administration.user(id),
   lua TIMESTAMP NOT NULL DEFAULT NOW()
-  
 );
-CREATE TABLE wms.district_history (
+-- CREATE district history table
+CREATE TABLE IF NOT EXISTS wms.district_history (
   history_id serial PRIMARY KEY,
   district_id INTEGER REFERENCES wms.district(id),
   name varchar(100) NOT NULL,
@@ -40,9 +41,14 @@ END;
 $$ LANGUAGE plpgsql;
 
 --- create trigger for district---
-DROP TRIGGER IF EXISTS district_trigger ON wms.district;
-CREATE TRIGGER district_trigger
-  BEFORE INSERT OR UPDATE
-  ON wms.district
+DROP TRIGGER IF EXISTS district_insert_trigger ON wms.district;
+CREATE TRIGGER district_insert_trigger
+  AFTER INSERT ON wms.district
   FOR EACH ROW
   EXECUTE PROCEDURE wms.district_trigger();
+
+DROP TRIGGER IF EXISTS district_update_trigger ON wms.district;
+CREATE TRIGGER district_update_trigger
+  AFTER UPDATE ON wms.district
+  FOR EACH ROW
+  EXECUTE FUNCTION wms.district_trigger();
