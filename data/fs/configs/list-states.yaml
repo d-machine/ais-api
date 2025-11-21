@@ -1,3 +1,6 @@
+configType: LIST
+version: 1.0
+
 queryInfo:
   returnType: MULTIPLE_ROWS
   query: |
@@ -21,23 +24,32 @@ queryInfo:
   options:
     applyFiltering: true
     applySorting: true
-    applyPagenation: true
-  path:
-    - queryInfo
+    applyPagination: true
+    pageSize: 50
+    pageSizeOptions: [10, 25, 50, 100]
+    selectionShortcut: "Ctrl+M"
+    onSuccess: refresh
+    onFailure: showErrorPage
+  path: []
+
 applicableActions:
   - add
   - edit
   - delete
+
 actionConfig:
   add:
     label: Add State
     actionType: DISPLAY_FORM
+    shortcut: "F2"
     formConfig: add-state
     onSuccess: refresh
     accessTypeRequired: 7-ADD
   edit:
     label: Edit State
     actionType: DISPLAY_FORM
+    shortcut: "F4"
+    level: ROW
     formConfig: add-state
     accessTypeRequired: 7-EDIT
     payload:
@@ -46,6 +58,10 @@ actionConfig:
   delete:
     label: Delete State
     actionType: EXECUTE_QUERY
+    shortcut: "F8"
+    level: ROW
+    confirmationRequired: true
+    confirmationMessage: "Are you sure you want to delete '${row.state_name}'?"
     accessTypeRequired: 7-DELETE
     queryInfo:
       returnType: SCALAR
@@ -57,29 +73,42 @@ actionConfig:
         - current_user_id
       path:
         - actionConfig
-        - DELETE
-    onSuccess: refreshList
+        - delete
+        - queryInfo
+    onSuccess: refresh
     onFailure: showErrorSnackbar
 
 columns:
   - name: state_id
     label: ID
     visible: false
+    sortable: false
   - name: state_name
     label: State Name
     visible: true
+    sortable: true
+    filterable: true
+    width: 200
   - name: state_code
     label: State Code
     visible: true
+    sortable: true
+    width: 100
   - name: descr
-    label: Descr
+    label: Description
     visible: true
   - name: country_name
     label: Country
     visible: true
-  - name: lua
+    sortable: true
+    width: 150
+  - name: last_updated_at
     label: Last Updated At
     visible: true
+    dataType: datetime
+    format: "DD/MM/YYYY HH:mm"
+    sortable: true
+    defaultSort: DESC
   - name: last_updated_by_name
-    label: Last Updated By
-    visible: true 
+    label: Updated By
+    visible: true
