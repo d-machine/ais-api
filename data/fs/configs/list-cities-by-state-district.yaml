@@ -5,15 +5,18 @@ queryInfo:
   returnType: MULTIPLE_ROWS
   query: |
     SELECT * FROM (
-      SELECT
+      SELECT DISTINCT ON (c.id)
         c.id,
         c.name as city_name,
         c.code as city_code,
         c.descr,
+        cd.state_id,      -- Hidden column for State dependency
+        cd.district_id,   -- Hidden column for District dependency
         c.lua as last_updated_at,
         TRIM(CONCAT(u.first_name, ' ', u.last_name)) as last_updated_by_name
       FROM
         wms.city c
+        LEFT JOIN wms.city_district cd ON c.id = cd.city_id
         LEFT JOIN administration.user u ON c.lub = u.id
       WHERE
         c.is_active = true
@@ -28,57 +31,23 @@ queryInfo:
     onFailure: showErrorPage
   path: []
 
-applicableActions:
-  - add
-  - edit
-  - delete
-
-actionConfig:
-  add:
-    label: Add City
-    actionType: DISPLAY_FORM
-    shortcut: "F2"
-    formConfig: add-city
-    onSuccess: refresh
-    accessTypeRequired: 7-ADD
-  
-  edit:
-    label: Edit City
-    actionType: DISPLAY_FORM
-    shortcut: "F4"
-    level: ROW
-    formConfig: edit-city
-    payload:
-      - id
-    onSuccess: refresh
-    accessTypeRequired: 7-EDIT
-
-  delete:
-    label: Delete City
-    actionType: EXECUTE_QUERY
-    shortcut: "F8"
-    level: ROW
-    confirmationRequired: true
-    confirmationMessage: "Are you sure you want to delete '${row.city_name}'?"
-    accessTypeRequired: 7-DELETE
-    queryInfo:
-      returnType: SCALAR
-      query: SELECT wms.delete_city($1, $2) as id;
-      payload:
-        - id
-      contextParams:
-        - current_user_id
-      path:
-        - actionConfig
-        - delete
-    onSuccess: refresh
-    onFailure: showErrorSnackbar
+applicableActions: []
 
 columns:
   - name: id
     label: ID
     visible: false
     sortable: false
+  - name: state_id
+    label: State ID
+    visible: false
+    sortable: false
+    filterable: true
+  - name: district_id
+    label: District ID
+    visible: false
+    sortable: false
+    filterable: true
   - name: city_name
     label: City Name
     visible: true

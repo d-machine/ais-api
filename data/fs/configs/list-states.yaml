@@ -6,7 +6,7 @@ queryInfo:
   query: |
     SELECT * FROM (
       SELECT
-        sm.id as state_id,
+        sm.id as id,
         sm.name as state_name,
         sm.code as state_code,
         sm.descr as descr,
@@ -50,11 +50,11 @@ actionConfig:
     actionType: DISPLAY_FORM
     shortcut: "F4"
     level: ROW
-    formConfig: add-state
-    accessTypeRequired: 7-EDIT
+    formConfig: edit-state
     payload:
-      - state_id
+      - id
     onSuccess: refresh
+    accessTypeRequired: 7-EDIT
   delete:
     label: Delete State
     actionType: EXECUTE_QUERY
@@ -68,18 +68,17 @@ actionConfig:
       query: |
         SELECT wms.delete_state($1, $2) as id;
       payload:
-        - state_id
+        - id
       contextParams:
         - current_user_id
       path:
         - actionConfig
         - delete
-        - queryInfo
     onSuccess: refresh
     onFailure: showErrorSnackbar
 
 columns:
-  - name: state_id
+  - name: id
     label: ID
     visible: false
     sortable: false

@@ -5,15 +5,18 @@ queryInfo:
   returnType: MULTIPLE_ROWS
   query: |
     SELECT * FROM (
-      SELECT
+      SELECT DISTINCT ON (dm.id)
         dm.id,
         dm.name as district_name,
         dm.code as district_code,
         dm.descr,
+        cd.state_id,      -- Hidden column for State dependency
+        cd.city_id,       -- Hidden column for City dependency
         dm.lua as last_updated_at,
         TRIM(CONCAT(u.first_name, ' ', u.last_name)) as last_updated_by_name
       FROM
         wms.district dm
+        LEFT JOIN wms.city_district cd ON dm.id = cd.district_id
         LEFT JOIN administration.user u ON dm.lub = u.id 
       WHERE 
         dm.is_active = true
@@ -28,57 +31,23 @@ queryInfo:
     onFailure: showErrorPage
   path: []
 
-applicableActions:
-  - add
-  - edit
-  - delete
-
-actionConfig:
-  add:
-    label: Add District
-    actionType: DISPLAY_FORM
-    shortcut: "F2"
-    formConfig: add-district
-    onSuccess: refresh
-    accessTypeRequired: 7-ADD
-  
-  edit:
-    label: Edit District
-    actionType: DISPLAY_FORM
-    shortcut: "F4"
-    level: ROW
-    formConfig: edit-district
-    payload:
-      - id
-    onSuccess: refresh
-    accessTypeRequired: 7-EDIT
-
-  delete:
-    label: Delete District
-    actionType: EXECUTE_QUERY
-    shortcut: "F8"
-    level: ROW
-    confirmationRequired: true
-    confirmationMessage: "Are you sure you want to delete '${row.district_name}'?"
-    accessTypeRequired: 7-DELETE
-    queryInfo:
-      returnType: SCALAR
-      query: SELECT wms.delete_district($1, $2) as id;
-      payload:
-        - id
-      contextParams:
-        - current_user_id
-      path:
-        - actionConfig
-        - delete
-    onSuccess: refresh
-    onFailure: showErrorSnackbar
+applicableActions: []
 
 columns:
   - name: id
     label: ID
     visible: false
     sortable: false
+  - name: state_id
+    label: State ID
+    visible: false
+    sortable: false
+    filterable: true
+  - name: city_id
+    label: City ID
+    visible: false
+    sortable: false
+    filterable: true
   - name: district_name
     label: District Name
     visible: true

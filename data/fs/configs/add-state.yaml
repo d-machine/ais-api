@@ -1,3 +1,5 @@
+configType: FORM
+version: 1.0
 sections:
   - sectionType: FIELDS
     sectionName: State Details
@@ -10,14 +12,14 @@ sections:
           sm.code as state_code,
           sm.country_id as country_id,
           cm.name as country_name,
-          descr as descr
+          sm.descr as descr
         FROM
           wms.state sm
           LEFT JOIN wms.country cm ON sm.country_id = cm.id
         WHERE
           sm.id = $1
       payload:
-        - country_id
+        - id
       path:
         - sections
         - 0
@@ -48,6 +50,22 @@ sections:
         onFailure: showErrorSnackbar
       CANCEL:
         label: Discard Changes
+    
+    # Row-based layout
+    rows:
+      - columns:
+          - field: state_name
+            span: 6
+          - field: state_code
+            span: 6
+      - columns:
+          - field: country_id
+            span: 12
+      - columns:
+          - field: descr
+            span: 12
+    
+    # Field definitions
     fields:
       - name: state_name
         label: State Name
@@ -64,16 +82,17 @@ sections:
         multi: false
         selectConfig:
           resource: list-countries
+          displayField: country_name
           selectHandler: converter
           currentSelection:
             - key: country_id
               as: country_id
           selectParser: converter
           fields_to_extract:
-            - key: country_id
+            - key: id
               as: country_id
             - key: country_name
               as: country_name
       - name: descr
-        label: descr
+        label: Description
         type: TEXTAREA

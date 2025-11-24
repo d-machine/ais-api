@@ -337,17 +337,17 @@ $$ LANGUAGE plpgsql;
 
 -- Function to update country
 CREATE OR REPLACE FUNCTION wms.update_country(
-    country_id INT,
-    country_name VARCHAR(255),
-    country_code VARCHAR(3),
-    descr VARCHAR(255),
-    current_user_id INTEGER
+    _country_id INT,
+    _country_name VARCHAR(255),
+    _country_code VARCHAR(3),
+    _descr VARCHAR(255),
+    _current_user_id INTEGER
 ) RETURNS INT AS $$
 BEGIN
     UPDATE wms.country
-    SET name = country_name, code = country_code, descr = descr, lub = current_user_id
-    WHERE id = country_id;
-    RETURN country_id;
+    SET name = _country_name, code = _country_code, descr = _descr, lub = _current_user_id
+    WHERE id = _country_id;
+    RETURN _country_id;
 END;
 $$ LANGUAGE plpgsql;
 
@@ -390,18 +390,18 @@ $$ LANGUAGE plpgsql;
 
 -- Function to update state
 CREATE OR REPLACE FUNCTION wms.update_state(
-    state_id INT,
-    name VARCHAR(255),
-    code VARCHAR(3),
-    descr VARCHAR(255),
-    country_id INT,
-    current_user_id INTEGER
+    _state_id INT,
+    _name VARCHAR(255),
+    _code VARCHAR(3),
+    _descr VARCHAR(255),
+    _country_id INT,
+    _current_user_id INTEGER
 ) RETURNS INT AS $$
 BEGIN
     UPDATE wms.state
-    SET name = name, code = code, descr = descr, country_id = country_id, lub = current_user_id
-    WHERE id = state_id;
-    RETURN state_id;
+    SET name = _name, code = _code, descr = _descr, country_id = _country_id, lub = _current_user_id
+    WHERE id = _state_id;
+    RETURN _state_id;
 END;
 $$ LANGUAGE plpgsql;
 
@@ -424,7 +424,46 @@ CREATE OR REPLACE FUNCTION wms.delete_state_by_country(
     country_id_to_delete INTEGER,
     deleted_by_user_id INTEGER
 ) RETURNS VOID AS $$
+DECLARE
+    city_ids_to_delete INTEGER[];
+    district_ids_to_delete INTEGER[];
 BEGIN
+    -- Get all city IDs that are mapped to states in this country
+    SELECT ARRAY_AGG(DISTINCT city_id) INTO city_ids_to_delete
+    FROM wms.city_district
+    WHERE state_id IN (
+        SELECT id FROM wms.state WHERE country_id = country_id_to_delete
+    ) AND is_active = true;
+    
+    -- Get all district IDs that are mapped to states in this country
+    SELECT ARRAY_AGG(DISTINCT district_id) INTO district_ids_to_delete
+    FROM wms.city_district
+    WHERE state_id IN (
+        SELECT id FROM wms.state WHERE country_id = country_id_to_delete
+    ) AND is_active = true;
+    
+    -- Delete all city_district mappings for states in this country
+    UPDATE wms.city_district
+    SET is_active = false, lub = deleted_by_user_id
+    WHERE state_id IN (
+        SELECT id FROM wms.state WHERE country_id = country_id_to_delete
+    );
+    
+    -- Delete cities that were in the mappings
+    IF city_ids_to_delete IS NOT NULL THEN
+        UPDATE wms.city
+        SET is_active = false, lub = deleted_by_user_id
+        WHERE id = ANY(city_ids_to_delete);
+    END IF;
+    
+    -- Delete districts that were in the mappings
+    IF district_ids_to_delete IS NOT NULL THEN
+        UPDATE wms.district
+        SET is_active = false, lub = deleted_by_user_id
+        WHERE id = ANY(district_ids_to_delete);
+    END IF;
+    
+    -- Delete all states
     UPDATE wms.state
     SET is_active = false, lub = deleted_by_user_id
     WHERE country_id = country_id_to_delete;
@@ -452,16 +491,16 @@ $$ LANGUAGE plpgsql;
 
 -- Function to update item_category
 CREATE OR REPLACE FUNCTION wms.update_item_category(
-    item_category_id INT,
-    item_category_name VARCHAR(255),
-    descr VARCHAR(255),
-    current_user_id INTEGER
+    _item_category_id INT,
+    _item_category_name VARCHAR(255),
+    _descr VARCHAR(255),
+    _current_user_id INTEGER
 )RETURNS INT AS $$
 BEGIN
     UPDATE wms.item_category
-    SET name = item_category_name,descr = descr,lub = current_user_id
-    WHERE id =item_category_id;
-    RETURN item_category_id;
+    SET name = _item_category_name, descr = _descr, lub = _current_user_id
+    WHERE id = _item_category_id;
+    RETURN _item_category_id;
 END;
 $$ LANGUAGE plpgsql;
 
@@ -496,7 +535,7 @@ CREATE OR REPLACE FUNCTION wms.insert_item_brand(
 DECLARE new_brand_id INT;
 BEGIN 
     INSERT INTO wms.item_brand(brand_name,category_id,descr,lub)
-    VALUES (brand_name,category_id,descr,curren_user_id)
+    VALUES (brand_name,category_id,descr,current_user_id)
     RETURNING id INTO new_brand_id;
     RETURN new_brand_id;
 END;
@@ -504,17 +543,17 @@ $$ LANGUAGE plpgsql;
 
 -- Function to update item_brand
 CREATE OR REPLACE FUNCTION wms.update_item_brand(
-    item_brand_id INT,
-    brand_name VARCHAR(255),
-    category_id INTEGER,
-    descr VARCHAR(255),
-    current_user_id INTEGER
+    _item_brand_id INT,
+    _brand_name VARCHAR(255),
+    _category_id INTEGER,
+    _descr VARCHAR(255),
+    _current_user_id INTEGER
 )RETURNS INT AS $$
 BEGIN 
     UPDATE wms.item_brand
-    SET brand_name = brand_name,category_id = category_id,descr = descr,lub = curren_user_id
-    WHERE id = item_brand_id;
-    RETURN item_brand_id;
+    SET brand_name = _brand_name, category_id = _category_id, descr = _descr, lub = _current_user_id
+    WHERE id = _item_brand_id;
+    RETURN _item_brand_id;
 END;
 $$ LANGUAGE plpgsql;
 
@@ -1210,18 +1249,17 @@ $$ LANGUAGE plpgsql;
 
 -- Function to insert in address
 CREATE OR REPLACE FUNCTION wms.insert_address(
-    adr1 VARCHAR(255),
-    adr2 VARCHAR(255),
-    adr3 VARCHAR(255),
-    country_id INTEGER,
-    state_id INTEGER,
-    city_district_id INTEGER,
-    current_user_id INTEGER
-)RETURNS INT AS $$
+    _adr1 VARCHAR(255),
+    _adr2 VARCHAR(255),
+    _adr3 VARCHAR(255),
+    _city_id INTEGER,
+    _district_id INTEGER,
+    _current_user_id INTEGER
+) RETURNS INT AS $$
 DECLARE new_address_id INT;
 BEGIN
-    INSERT INTO wms.address (adr1, adr2, adr3, country_id, state_id, city_district_id, lub)
-    VALUES (adr1, adr2, adr3, country_id, state_id, city_district_id, current_user_id)
+    INSERT INTO wms.address (adr1, adr2, adr3, city_id, district_id, lub)
+    VALUES (_adr1, _adr2, _adr3, _city_id, _district_id, _current_user_id)
     RETURNING id INTO new_address_id;
     RETURN new_address_id;
 END;
@@ -1229,26 +1267,24 @@ $$ LANGUAGE plpgsql;
 
 --Function to update address
 CREATE OR REPLACE FUNCTION wms.update_address(
-    address_id INT,
-    adr1 VARCHAR(255),
-    adr2 VARCHAR(255),
-    adr3 VARCHAR(255),
-    country_id INTEGER,
-    state_id INTEGER,
-    city_district_id INTEGER,
-    current_user_id INTEGER
+    _address_id INT,
+    _adr1 VARCHAR(255),
+    _adr2 VARCHAR(255),
+    _adr3 VARCHAR(255),
+    _city_id INTEGER,
+    _district_id INTEGER,
+    _current_user_id INTEGER
 ) RETURNS INT AS $$
 BEGIN
     UPDATE wms.address
-    SET adr1 = adr1,
-        adr2 = adr2,
-        adr3 = adr3,
-        country_id = country_id,
-        state_id = state_id,
-        city_district_id = city_district_id,
-        lub = current_user_id
-    WHERE id = address_id;
-    RETURN address_id;
+    SET adr1 = _adr1,
+        adr2 = _adr2,
+        adr3 = _adr3,
+        city_id = _city_id,
+        district_id = _district_id,
+        lub = _current_user_id
+    WHERE id = _address_id;
+    RETURN _address_id;
 END;
 $$ LANGUAGE plpgsql;
 
@@ -1289,20 +1325,20 @@ $$ LANGUAGE plpgsql;
 
 -- Function to update city
 CREATE OR REPLACE FUNCTION wms.update_city(
-    city_id INT,
-    city_name VARCHAR(100),
-    city_code VARCHAR(3),
-    descr VARCHAR(255),
-    current_user_id INTEGER
+    _city_id INT,
+    _city_name VARCHAR(100),
+    _city_code VARCHAR(3),
+    _descr VARCHAR(255),
+    _current_user_id INTEGER
 ) RETURNS INT AS $$
 BEGIN
     UPDATE wms.city
-    SET name = city_name,
-        code = city_code,
-        descr = descr,
-        lub = current_user_id
-    WHERE id = city_id;
-    RETURN city_id;
+    SET name = _city_name,
+        code = _city_code,
+        descr = _descr,
+        lub = _current_user_id
+    WHERE id = _city_id;
+    RETURN _city_id;
 END;
 $$ LANGUAGE plpgsql;
 
@@ -1342,20 +1378,20 @@ $$ LANGUAGE plpgsql;
 
 -- Function to update district
 CREATE OR REPLACE FUNCTION wms.update_district(
-    district_id INT,
-    district_name VARCHAR(100),
-    district_code VARCHAR(3),
-    descr VARCHAR(255),
-    current_user_id INTEGER
+    _district_id INT,
+    _district_name VARCHAR(100),
+    _district_code VARCHAR(3),
+    _descr VARCHAR(255),
+    _current_user_id INTEGER
 ) RETURNS INT AS $$
 BEGIN
     UPDATE wms.district
-    SET name = district_name,
-        code = district_code,
-        descr = descr,
-        lub = current_user_id
-    WHERE id = district_id;
-    RETURN district_id;
+    SET name = _district_name,
+        code = _district_code,
+        descr = _descr,
+        lub = _current_user_id
+    WHERE id = _district_id;
+    RETURN _district_id;
 END;
 $$ LANGUAGE plpgsql;
 
@@ -1378,16 +1414,16 @@ $$ LANGUAGE plpgsql;
 
 -- Function to insert in city_district
 CREATE OR REPLACE FUNCTION wms.insert_city_district(
-    city_id INT,
-    district_id INT,
-    state_id INT,
-    descr VARCHAR(255),
-    current_user_id INTEGER
+    _city_id INT,
+    _district_id INT,
+    _state_id INT,
+    _descr VARCHAR(255),
+    _current_user_id INTEGER
 ) RETURNS INT AS $$
 DECLARE new_city_district_id INT;
 BEGIN
     INSERT INTO wms.city_district (city_id, district_id, state_id, descr, lub)
-    VALUES (city_id, district_id, state_id, descr, current_user_id)
+    VALUES (_city_id, _district_id, _state_id, _descr, _current_user_id)
     RETURNING id INTO new_city_district_id;
     RETURN new_city_district_id;
 END;
@@ -1396,23 +1432,23 @@ $$ LANGUAGE plpgsql;
 
 -- Function to update city_district
 CREATE OR REPLACE FUNCTION wms.update_city_district(
-    city_district_id INT,
-    city_id INT,
-    district_id INT,
-    state_id INT,
-    descr VARCHAR(255),
-    current_user_id INTEGER
+    _city_district_id INT,
+    _city_id INT,
+    _district_id INT,
+    _state_id INT,
+    _descr VARCHAR(255),
+    _current_user_id INTEGER
 ) RETURNS INT AS $$
 BEGIN
     UPDATE wms.city_district
-    SET city_id = city_id,
-        district_id = district_id,
-        state_id = state_id,
-        descr = descr,
-        lub = current_user_id,
+    SET city_id = _city_id,
+        district_id = _district_id,
+        state_id = _state_id,
+        descr = _descr,
+        lub = _current_user_id,
         lua = NOW()
-    WHERE id = city_district_id;
-    RETURN city_district_id;
+    WHERE id = _city_district_id;
+    RETURN _city_district_id;
 END;
 $$ LANGUAGE plpgsql;
 
@@ -1436,11 +1472,39 @@ CREATE OR REPLACE FUNCTION wms.delete_city_district_by_state(
     state_id_to_delete INTEGER,
     deleted_by_user_id INTEGER
 ) RETURNS VOID AS $$
+DECLARE
+    city_ids_to_delete INTEGER[];
+    district_ids_to_delete INTEGER[];
 BEGIN
+    -- Get all city IDs that are mapped to this state
+    SELECT ARRAY_AGG(DISTINCT city_id) INTO city_ids_to_delete
+    FROM wms.city_district
+    WHERE state_id = state_id_to_delete AND is_active = true;
+    
+    -- Get all district IDs that are mapped to this state
+    SELECT ARRAY_AGG(DISTINCT district_id) INTO district_ids_to_delete
+    FROM wms.city_district
+    WHERE state_id = state_id_to_delete AND is_active = true;
+    
+    -- Delete city_district mappings
     UPDATE wms.city_district
     SET is_active = false,
         lub = deleted_by_user_id
     WHERE state_id = state_id_to_delete;
+    
+    -- Delete cities that were in the mappings
+    IF city_ids_to_delete IS NOT NULL THEN
+        UPDATE wms.city
+        SET is_active = false, lub = deleted_by_user_id
+        WHERE id = ANY(city_ids_to_delete);
+    END IF;
+    
+    -- Delete districts that were in the mappings
+    IF district_ids_to_delete IS NOT NULL THEN
+        UPDATE wms.district
+        SET is_active = false, lub = deleted_by_user_id
+        WHERE id = ANY(district_ids_to_delete);
+    END IF;
 END;
 $$ LANGUAGE plpgsql;
 

@@ -42,7 +42,7 @@ $$ LANGUAGE plpgsql;
 --- create trigger for district---
 DROP TRIGGER IF EXISTS district_trigger ON wms.district;
 CREATE TRIGGER district_trigger
-  BEFORE INSERT OR UPDATE
+  AFTER INSERT OR UPDATE
   ON wms.district
   FOR EACH ROW
   EXECUTE PROCEDURE wms.district_trigger();

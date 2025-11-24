@@ -2,19 +2,17 @@ configType: FORM
 version: 1.0
 sections:
   - sectionType: FIELDS
-    sectionName: Country Details
+    sectionName: City Details
     queryInfo:
       returnType: SINGLE_ROW
       query: |
-        SELECT
-          id, 
-          name as country_name, 
-          code as country_code,
+        SELECT 
+          id,
+          name as city_name,
+          code as city_code,
           descr
-        FROM
-          wms.country
-        WHERE
-          id = $1
+        FROM wms.city
+        WHERE id = $1
       payload:
         - id
       path:
@@ -25,15 +23,15 @@ sections:
       - CANCEL
     actionConfig:
       SAVE:
-        label: Create Country
+        label: Update City
         actionType: EXECUTE_QUERY
         queryInfo:
           returnType: SCALAR
-          query: |
-            SELECT wms.insert_country($1, $2, $3, $4) as id;
+          query: SELECT wms.update_city($1, $2, $3, $4, $5) as id;
           payload:
-            - country_name
-            - country_code
+            - id
+            - city_name
+            - city_code
             - descr
           contextParams:
             - current_user_id
@@ -50,24 +48,25 @@ sections:
     # Row-based layout
     rows:
       - columns:
-          - field: country_name
-            span: 6
-          - field: country_code
-            span: 6
+          - field: city_name
+            span: 8
+          - field: city_code
+            span: 4
       - columns:
           - field: descr
             span: 12
     
     # Field definitions
     fields:
-      - name: country_name
-        label: Country Name
+      - name: city_name
+        label: City Name
         type: TEXT
         required: true
-      - name: country_code
-        label: Country Code
+      - name: city_code
+        label: City Code
         type: TEXT
         required: true
+        maxLength: 3
       - name: descr
         label: Description
         type: TEXTAREA

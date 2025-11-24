@@ -42,7 +42,7 @@ $$ LANGUAGE plpgsql;
 --- create trigger for city---
 DROP TRIGGER IF EXISTS city_trigger ON wms.city;
 CREATE TRIGGER city_trigger
-  BEFORE INSERT OR UPDATE
+  AFTER INSERT OR UPDATE
   ON wms.city
   FOR EACH ROW
   EXECUTE PROCEDURE wms.city_trigger();

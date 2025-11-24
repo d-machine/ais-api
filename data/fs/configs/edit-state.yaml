@@ -2,23 +2,24 @@ configType: FORM
 version: 1.0
 sections:
   - sectionType: FIELDS
-    sectionName: Item Brand Details
+    sectionName: State Details
     queryInfo:
       returnType: SINGLE_ROW
       query: |
         SELECT
-          ib.id as brand_id,
-          ib.brand_name,
-          ib.category_id,
-          icm.name as category_name,
-          ib.descr
+          sm.id as state_id,
+          sm.name as state_name,
+          sm.code as state_code,
+          sm.country_id as country_id,
+          cm.name as country_name,
+          sm.descr as descr
         FROM
-          wms.item_brand ib
-          LEFT JOIN wms.item_category icm ON ib.category_id = icm.id
+          wms.state sm
+          LEFT JOIN wms.country cm ON sm.country_id = cm.id
         WHERE
-          ib.id = $1
+          sm.id = $1
       payload:
-        - brand_id
+        - id
       path:
         - sections
         - 0
@@ -27,15 +28,18 @@ sections:
       - CANCEL
     actionConfig:
       SAVE:
-        label: Create Brand
+        label: Update State
         actionType: EXECUTE_QUERY
         queryInfo:
           returnType: SCALAR
-          query: SELECT wms.insert_item_brand($1, $2, $3, $4) as id;
+          query: |
+            SELECT wms.update_state($1, $2, $3, $4, $5, $6) as id;
           payload:
-            - brand_name
-            - category_id
+            - state_id
+            - state_name
+            - state_code
             - descr
+            - country_id
           contextParams:
             - current_user_id
           path:
@@ -51,38 +55,45 @@ sections:
     # Row-based layout
     rows:
       - columns:
-          - field: brand_name
+          - field: state_name
             span: 6
-          - field: category_id
+          - field: state_code
             span: 6
+      - columns:
+          - field: country_id
+            span: 12
       - columns:
           - field: descr
             span: 12
     
     # Field definitions
     fields:
-      - name: brand_name
-        label: Brand Name
+      - name: state_name
+        label: State Name
         type: TEXT
         required: true
-      - name: category_id
-        label: Category
+      - name: state_code
+        label: State Code
+        type: TEXT
+        required: true
+      - name: country_id
+        label: Country
         type: SELECT
         required: true
         multi: false
         selectConfig:
-          resource: list-item-categories
-          displayField: category_name
+          resource: list-countries
+          displayField: country_name
           selectHandler: converter
           currentSelection:
-            - key: category_id
-              as: category_id
+            - key: country_id
+              as: country_id
           selectParser: converter
           fields_to_extract:
             - key: id
-              as: category_id
-            - key: item_category_name
-              as: category_name
+              as: country_id
+            - key: country_name
+              as: country_name
       - name: descr
         label: Description
         type: TEXTAREA

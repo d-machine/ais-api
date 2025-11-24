@@ -9,21 +9,21 @@ sections:
         SELECT
           cd.id as city_district_id,
           cd.state_id,
-          sm.name as state_name,
+          s.name as state_name,
           cd.city_id,
-          cm.name as city_name,
+          c.name as city_name,
           cd.district_id,
-          dm.name as district_name,
+          d.name as district_name,
           cd.descr
         FROM
           wms.city_district cd
-          LEFT JOIN wms.city cm ON cd.city_id = cm.id
-          LEFT JOIN wms.district dm ON cd.district_id = dm.id
-          LEFT JOIN wms.state sm ON cd.state_id = sm.id
+          LEFT JOIN wms.state s ON cd.state_id = s.id
+          LEFT JOIN wms.city c ON cd.city_id = c.id
+          LEFT JOIN wms.district d ON cd.district_id = d.id
         WHERE
           cd.id = $1
       payload:
-        - id
+        - city_district_id
       path:
         - sections
         - 0
@@ -32,12 +32,13 @@ sections:
       - CANCEL
     actionConfig:
       SAVE:
-        label: Create Mapping
+        label: Update Mapping
         actionType: EXECUTE_QUERY
         queryInfo:
           returnType: SCALAR
-          query: SELECT wms.insert_city_district($1, $2, $3, $4, $5) as id;
+          query: SELECT wms.update_city_district($1, $2, $3, $4, $5, $6) as id;
           payload:
+            - city_district_id
             - city_id
             - district_id
             - state_id
@@ -79,7 +80,7 @@ sections:
           displayField: state_name
           selectHandler: converter
           currentSelection:
-            - key: state_id
+            - key: id
               as: state_id
           selectParser: converter
           fields_to_extract:

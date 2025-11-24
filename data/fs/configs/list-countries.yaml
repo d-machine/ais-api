@@ -6,7 +6,7 @@ queryInfo:
   query: |
     Select * from (
       SELECT
-        cm.id as country_id,
+        cm.id,
         cm.name as country_name,
         cm.code as country_code,
         cm.descr as descr,
@@ -47,11 +47,11 @@ actionConfig:
     actionType: DISPLAY_FORM
     shortcut: "F4"
     level: ROW
-    formConfig: add-country
-    accessTypeRequired: 7-EDIT
+    formConfig: edit-country
     payload:
-      - country_id
+      - id
     onSuccess: refresh
+    accessTypeRequired: 7-EDIT
   delete:
     label: Delete Country
     actionType: EXECUTE_QUERY
@@ -64,18 +64,17 @@ actionConfig:
       returnType: SINGLE_ROW
       query: SELECT wms.delete_country($1, $2) as id;
       payload:
-        - country_id
+        - id
       contextParams:
         - current_user_id
       path:
         - actionConfig
         - delete
-        - queryInfo
     onSuccess: refresh
     onFailure: showErrorSnackbar
 
 columns:
-  - name: country_id
+  - name: id
     label: ID
     visible: false
     sortable: false

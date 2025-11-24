@@ -30,6 +30,7 @@ INSERT INTO administration.resource (id, name, list_config_file, parent_id, lub)
 (43, 'City Master', 'list-cities', 31, 1),
 (44, 'District Master', 'list-districts', 31, 1),
 (45, 'City District Master', 'list-city-districts', 31, 1),
+(46, 'Address Master', 'list-addresses', 31, 1),
 -- 41 - 50 are for Geo location.
 (51, 'Rack Master', 'list-racks', 32, 1),
 -- 51 - 60 are for Warehouse Management.

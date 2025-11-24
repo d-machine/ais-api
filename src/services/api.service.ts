@@ -66,15 +66,18 @@ export default class ApiService extends BaseService {
 
     if (_has(config, "sections")) {
       config = config as IFormConfig;
-      configToReturn = _map(config.sections, (section) => {
-        const actionConfig = _get(section, "actionConfig");
-        const applicableActions = _get(section, "applicableActions");
+      configToReturn = {
+        ...config,
+        sections: _map(config.sections, (section) => {
+          const actionConfig = _get(section, "actionConfig");
+          const applicableActions = _get(section, "applicableActions");
 
-        return {
-          ...section,
-          ...this.parseActions(userId, actionConfig, applicableActions),
-        };
-      });
+          return {
+            ...section,
+            ...this.parseActions(userId, actionConfig, applicableActions),
+          };
+        }),
+      }
     } else {
       config = config as IListConfig;
       const actionConfig = _get(config, "actionConfig");

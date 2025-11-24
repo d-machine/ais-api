@@ -1,6 +1,5 @@
 CREATE TABLE wms.city_district (
 id serial PRIMARY KEY,
-name VARCHAR(255) NOT NULL,
 city_id INTEGER REFERENCES wms.city(id),
 district_id INTEGER REFERENCES wms.district(id),
 state_id INTEGER REFERENCES wms.state(id),
@@ -13,7 +12,6 @@ lua TIMESTAMP NOT NULL DEFAULT NOW()
 CREATE TABLE wms.city_district_history (
 history_id serial PRIMARY KEY,
 city_district_id INTEGER NOT NULL,
-name VARCHAR(255) NOT NULL,
 city_id INTEGER NOT NULL,
 district_id INTEGER NOT NULL,
 state_id INTEGER NOT NULL,
@@ -29,16 +27,16 @@ CREATE OR REPLACE FUNCTION wms.city_district_trigger()
 RETURNS TRIGGER AS $$
 BEGIN
   IF (TG_OP = 'INSERT') THEN
-    INSERT INTO wms.city_district_history (city_district_id, name, city_id, district_id, state_id, descr, is_active, operation, operation_at, operation_by)
-    VALUES (NEW.id, NEW.name, NEW.city_id, NEW.district_id, NEW.state_id, NEW.descr, NEW.is_active, 'INSERT', NEW.lua, NEW.lub);
+    INSERT INTO wms.city_district_history (city_district_id, city_id, district_id, state_id, descr, is_active, operation, operation_at, operation_by)
+    VALUES (NEW.id, NEW.city_id, NEW.district_id, NEW.state_id, NEW.descr, NEW.is_active, 'INSERT', NEW.lua, NEW.lub);
   ELSIF (TG_OP = 'UPDATE') THEN
     -- Check if is_active is being set to false (soft delete)
     IF (OLD.is_active = true AND NEW.is_active = false) THEN
-        INSERT INTO wms.city_district_history (city_district_id, name, city_id, district_id, state_id, descr, is_active, operation, operation_at, operation_by)
-        VALUES (NEW.id, NEW.name, NEW.city_id, NEW.district_id, NEW.state_id, NEW.descr, NEW.is_active, 'DELETE', NEW.lua, NEW.lub);
+        INSERT INTO wms.city_district_history (city_district_id, city_id, district_id, state_id, descr, is_active, operation, operation_at, operation_by)
+        VALUES (NEW.id, NEW.city_id, NEW.district_id, NEW.state_id, NEW.descr, NEW.is_active, 'DELETE', NEW.lua, NEW.lub);
     ELSE
-        INSERT INTO wms.city_district_history (city_district_id, name, city_id, district_id, state_id, descr, is_active, operation, operation_at, operation_by)
-        VALUES (NEW.id, NEW.name, NEW.city_id, NEW.district_id, NEW.state_id, NEW.descr, NEW.is_active, 'UPDATE', NEW.lua, NEW.lub);
+        INSERT INTO wms.city_district_history (city_district_id, city_id, district_id, state_id, descr, is_active, operation, operation_at, operation_by)
+        VALUES (NEW.id, NEW.city_id, NEW.district_id, NEW.state_id, NEW.descr, NEW.is_active, 'UPDATE', NEW.lua, NEW.lub);
     END IF;
   END IF;
   RETURN NEW;
@@ -48,6 +46,6 @@ $$ LANGUAGE plpgsql;
 ---create trigger for city_district---
 DROP TRIGGER IF EXISTS city_district_trigger ON wms.city_district;
 CREATE TRIGGER city_district_trigger
-BEFORE INSERT OR UPDATE ON wms.city_district
+AFTER INSERT OR UPDATE ON wms.city_district
 FOR EACH ROW
 EXECUTE FUNCTION wms.city_district_trigger();
