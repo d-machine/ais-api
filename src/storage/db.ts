@@ -63,6 +63,7 @@ export default class DBClient {
         "item_category.sql",
         "item_brand.sql",
         "uom.sql",
+        "uom_conversion.sql",
         "material.sql",
         // warehouse
         "palette.sql",

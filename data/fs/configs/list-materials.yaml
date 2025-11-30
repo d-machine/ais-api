@@ -1,93 +1,126 @@
+configType: LIST
+version: 1.0
+
 queryInfo:
   returnType: MULTIPLE_ROWS
   query: |
-    SELECT * FROM (
-      SELECT
-        m.id as material_id,
-        m.name as material_name,
-        m.descr as descr,
-        ib.name as brand_name,
-        um.uom_name as uom_pc,
-        um.uom_name as uom_package,
-        m.pc_in_package,
-        m.lua as last_updated_at,
-        TRIM(CONCAT(u.first_name, ' ', u.last_name)) AS last_updated_by_name
-      FROM
-        wms.material m
-        LEFT JOIN wms.item_brand ib ON m.brand_id = ib.id
-        LEFT JOIN wms.uom um ON m.uom_pc_id = um.id
-        LEFT JOIN wms.uom um ON m.uom_package_id = um.id
-        LEFT JOIN administration.user u ON m.lub = u.id
-      WHERE
-        m.is_active = true
-    ) as materials
+    SELECT
+      m.id,
+      m.name as material_name,
+      m.descr,
+      ic.name as category_name,
+      ib.brand_name,
+      u1.name as uom_pc_name,
+      u2.name as uom_package_name,
+      m.mrp,
+      m.selling_rate,
+      m.lua as last_updated_at,
+      TRIM(CONCAT(u.first_name, ' ', u.last_name)) as last_updated_by_name
+    FROM wms.material m
+    LEFT JOIN wms.item_category ic ON m.category_id = ic.id
+    LEFT JOIN wms.item_brand ib ON m.brand_id = ib.id
+    LEFT JOIN wms.uom u1 ON m.uom_pc_id = u1.id
+    LEFT JOIN wms.uom u2 ON m.uom_package_id = u2.id
+    LEFT JOIN administration.user u ON m.lub = u.id
+    WHERE m.is_active = true
   options:
     applyFiltering: true
     applySorting: true
-    applyPagenation: true
-  path:
-    - queryInfo
+    applyPagination: true
+    pageSize: 50
+  path: []
 
-applicableActions:
-  - NEW
-  - EDIT
-  - DELETE
+columns:
+  - name: id
+    label: ID
+    visible: false
+    sortable: false
+  - name: material_name
+    label: Material Name
+    visible: true
+    sortable: true
+    filterable: true
+    width: 200
+  - name: category_name
+    label: Category
+    visible: true
+    sortable: true
+    filterable: true
+    width: 150
+  - name: brand_name
+    label: Brand
+    visible: true
+    sortable: true
+    filterable: true
+    width: 150
+  - name: uom_pc_name
+    label: Base UOM
+    visible: true
+    width: 100
+  - name: uom_package_name
+    label: Package UOM
+    visible: true
+    width: 120
+  - name: mrp
+    label: MRP
+    visible: true
+    sortable: true
+    dataType: currency
+    width: 120
+  - name: selling_rate
+    label: Selling Rate
+    visible: true
+    sortable: true
+    dataType: currency
+    width: 120
+  - name: descr
+    label: Description
+    visible: false
+  - name: last_updated_at
+    label: Last Updated
+    visible: true
+    sortable: true
+    dataType: datetime
+    format: "DD/MM/YYYY HH:mm"
+    defaultSort: DESC
+    width: 150
+  - name: last_updated_by_name
+    label: Updated By
+    visible: true
+    width: 150
 
 actionConfig:
-  NEW:
+  add:
     label: Add Material
-    resourcePath: material-master
-    accessTypeRequired: MATERIAL-CREATE
-  EDIT:
-    label: Edit Material
-    resourcePath: material-master
-    accessTypeRequired: MATERIAL-UPDATE
-    targetParams:
-      - key: material_id
-        as: material_id
-  DELETE:
-    label: Delete Material
+    actionType: DISPLAY_FORM
+    shortcut: F2
+    formConfig: add-material
+    onSuccess: refresh
+  edit:
+    label: Edit
+    actionType: DISPLAY_FORM
+    shortcut: F4
+    level: ROW
+    formConfig: edit-material
+    payload:
+      - id
+    onSuccess: refresh
+  delete:
+    label: Delete
     actionType: EXECUTE_QUERY
-    accessTypeRequired: MATERIAL-DELETE
+    shortcut: F8
+    level: ROW
+    confirmationRequired: true
+    confirmationMessage: "Are you sure you want to delete '${row.material_name}'?"
     queryInfo:
       returnType: SCALAR
-      query: |
-        SELECT wms.delete_material($1, $2);
+      query: SELECT wms.delete_material($1, $2) as id;
       payload:
-        - material_id
+        - id
       contextParams:
         - current_user_id
       path:
         - actionConfig
-        - DELETE
-    onSuccess: refreshList
+        - delete
+    onSuccess: refresh
     onFailure: showErrorSnackbar
-
-columns:
-  - name: material_id
-    label: ID
-    visible: false
-  - name: material_name
-    label: Material Name
-    visible: true
-  - name: descr
-    label: Description
-    visible: true
-  - name: brand_name
-    label: Brand
-    visible: true
-  - name: uom_pc
-    label: UOM (Per Unit)
-    visible: true
-  - name: uom_package
-    label: UOM (Package)
-    visible: true
-  - name: pc_in_package
-    label: Units in Package
-    visible: true
-  - name: lua
-    label: Last Updated At
-    visible: true
-  - name: last_updated_by_name
-    label: Last Updated By
-    visible: true

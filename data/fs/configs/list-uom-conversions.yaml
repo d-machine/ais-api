@@ -1,0 +1,96 @@
+configType: LIST
+version: 1.0
+
+queryInfo:
+  returnType: MULTIPLE_ROWS
+  query: |
+    SELECT
+      uc.id,
+      u1.name as uom_each_name,
+      u2.name as uom_case_name,
+      uc.no_of_pcs,
+      uc.lua as last_updated_at,
+      TRIM(CONCAT(u.first_name, ' ', u.last_name)) as last_updated_by_name
+    FROM wms.uom_conversion uc
+    LEFT JOIN wms.uom u1 ON uc.uom_id_each = u1.id
+    LEFT JOIN wms.uom u2 ON uc.uom_id_case = u2.id
+    LEFT JOIN administration.user u ON uc.lub = u.id
+    WHERE uc.is_active = true
+  options:
+    applyFiltering: true
+    applySorting: true
+    applyPagination: true
+    pageSize: 50
+  path: []
+
+columns:
+  - name: id
+    label: ID
+    visible: false
+    sortable: false
+  - name: uom_each_name
+    label: Base UOM
+    visible: true
+    sortable: true
+    filterable: true
+    width: 200
+  - name: uom_case_name
+    label: Package UOM
+    visible: true
+    sortable: true
+    filterable: true
+    width: 200
+  - name: no_of_pcs
+    label: Conversion Factor
+    visible: true
+    sortable: true
+    dataType: number
+    width: 150
+  - name: last_updated_at
+    label: Last Updated
+    visible: true
+    sortable: true
+    dataType: datetime
+    format: "DD/MM/YYYY HH:mm"
+    defaultSort: DESC
+    width: 180
+  - name: last_updated_by_name
+    label: Updated By
+    visible: true
+    width: 180
+
+actionConfig:
+  add:
+    label: Add Conversion
+    actionType: DISPLAY_FORM
+    shortcut: F2
+    formConfig: add-uom-conversion
+    onSuccess: refresh
+  edit:
+    label: Edit
+    actionType: DISPLAY_FORM
+    shortcut: F4
+    level: ROW
+    formConfig: edit-uom-conversion
+    payload:
+      - id
+    onSuccess: refresh
+  delete:
+    label: Delete
+    actionType: EXECUTE_QUERY
+    shortcut: F8
+    level: ROW
+    confirmationRequired: true
+    confirmationMessage: "Are you sure you want to delete this UOM conversion?"
+    queryInfo:
+      returnType: SCALAR
+      query: SELECT wms.delete_uom_conversion($1, $2) as id;
+      payload:
+        - id
+      contextParams:
+        - current_user_id
+      path:
+        - actionConfig
+        - delete
+    onSuccess: refresh
+    onFailure: showErrorSnackbar

@@ -1,0 +1,102 @@
+configType: FORM
+version: 1.0
+sections:
+  - sectionType: FIELDS
+    sectionName: UOM Conversion Details
+    queryInfo:
+      returnType: SINGLE_ROW
+      query: |
+        SELECT
+          uc.id,
+          uc.uom_id_each,
+          u1.name as uom_each_name,
+          uc.uom_id_case,
+          u2.name as uom_case_name,
+          uc.no_of_pcs
+        FROM wms.uom_conversion uc
+        LEFT JOIN wms.uom u1 ON uc.uom_id_each = u1.id
+        LEFT JOIN wms.uom u2 ON uc.uom_id_case = u2.id
+        WHERE uc.id = $1
+      payload:
+        - id
+      path:
+        - sections
+        - 0
+    applicableActions:
+      - SAVE
+      - CANCEL
+    actionConfig:
+      SAVE:
+        label: Update Conversion
+        actionType: EXECUTE_QUERY
+        queryInfo:
+          returnType: SCALAR
+          query: SELECT wms.update_uom_conversion($1, $2, $3, $4, $5) as id;
+          payload:
+            - id
+            - uom_id_each
+            - uom_id_case
+            - no_of_pcs
+          contextParams:
+            - current_user_id
+          path:
+            - sections
+            - 0
+            - actionConfig
+            - SAVE
+        onSuccess: exitAndComplete
+        onFailure: showErrorSnackbar
+      CANCEL:
+        label: Discard Changes
+    
+    rows:
+      - columns:
+          - field: uom_id_each
+            span: 6
+          - field: uom_id_case
+            span: 6
+      - columns:
+          - field: no_of_pcs
+            span: 12
+    
+    fields:
+      - name: uom_id_each
+        label: Base UOM
+        type: SELECT
+        required: true
+        selectConfig:
+          resource: list-uoms
+          labelField: uom_name
+          displayField: uom_each_name
+          selectHandler: converter
+          currentSelection:
+            - key: uom_id_each
+              as: uom_id_each
+          selectParser: converter
+          fields_to_extract:
+            - key: id
+              as: uom_id_each
+            - key: uom_name
+              as: uom_each_name
+      - name: uom_id_case
+        label: Package UOM
+        type: SELECT
+        required: true
+        selectConfig:
+          resource: list-uoms
+          labelField: uom_name
+          displayField: uom_case_name
+          selectHandler: converter
+          currentSelection:
+            - key: uom_id_case
+              as: uom_id_case
+          selectParser: converter
+          fields_to_extract:
+            - key: id
+              as: uom_id_case
+            - key: uom_name
+              as: uom_case_name
+      - name: no_of_pcs
+        label: Conversion Factor (No. of Base Units in Package)
+        type: NUMBER
+        required: true

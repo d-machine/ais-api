@@ -3,17 +3,46 @@ version: 1.0
 sections:
   - sectionType: FIELDS
     sectionName: Material Details
+    queryInfo:
+      returnType: SINGLE_ROW
+      query: |
+        SELECT
+          m.id,
+          m.name as material_name,
+          m.descr,
+          m.category_id,
+          ic.name as category_name,
+          m.brand_id,
+          ib.brand_name,
+          m.uom_pc_id,
+          u1.name as uom_pc_name,
+          m.uom_package_id,
+          u2.name as uom_package_name,
+          m.mrp,
+          m.selling_rate
+        FROM wms.material m
+        LEFT JOIN wms.item_category ic ON m.category_id = ic.id
+        LEFT JOIN wms.item_brand ib ON m.brand_id = ib.id
+        LEFT JOIN wms.uom u1 ON m.uom_pc_id = u1.id
+        LEFT JOIN wms.uom u2 ON m.uom_package_id = u2.id
+        WHERE m.id = $1
+      payload:
+        - id
+      path:
+        - sections
+        - 0
     applicableActions:
       - SAVE
       - CANCEL
     actionConfig:
       SAVE:
-        label: Create Material
+        label: Update Material
         actionType: EXECUTE_QUERY
         queryInfo:
           returnType: SCALAR
-          query: SELECT wms.insert_material($1, $2, $3, $4, $5, $6, $7, $8, $9) as id;
+          query: SELECT wms.update_material($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) as id;
           payload:
+            - id
             - material_name
             - descr
             - category_id

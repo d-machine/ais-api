@@ -583,6 +583,131 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+---------------------------** UOM Conversion Master **---------------------------
+
+-- Function to insert UOM conversion
+CREATE OR REPLACE FUNCTION wms.insert_uom_conversion(
+    _uom_id_each INTEGER,
+    _uom_id_case INTEGER,
+    _no_of_pcs NUMERIC,
+    _current_user_id INTEGER
+) RETURNS INTEGER AS $$
+DECLARE
+    _id INTEGER;
+BEGIN
+    INSERT INTO wms.uom_conversion (uom_id_each, uom_id_case, no_of_pcs, lub)
+    VALUES (_uom_id_each, _uom_id_case, _no_of_pcs, _current_user_id)
+    RETURNING id INTO _id;
+    RETURN _id;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Function to update UOM conversion
+CREATE OR REPLACE FUNCTION wms.update_uom_conversion(
+    _id INTEGER,
+    _uom_id_each INTEGER,
+    _uom_id_case INTEGER,
+    _no_of_pcs NUMERIC,
+    _current_user_id INTEGER
+) RETURNS INTEGER AS $$
+BEGIN
+    UPDATE wms.uom_conversion
+    SET uom_id_each = _uom_id_each,
+        uom_id_case = _uom_id_case,
+        no_of_pcs = _no_of_pcs,
+        lub = _current_user_id,
+        lua = NOW()
+    WHERE id = _id;
+    RETURN _id;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Function to delete UOM conversion (soft delete)
+CREATE OR REPLACE FUNCTION wms.delete_uom_conversion(
+    _id INTEGER,
+    _current_user_id INTEGER
+) RETURNS INTEGER AS $$
+BEGIN
+    UPDATE wms.uom_conversion
+    SET is_active = false, lub = _current_user_id, lua = NOW()
+    WHERE id = _id;
+    RETURN _id;
+END;
+$$ LANGUAGE plpgsql;
+
+---------------------------** Material Master **---------------------------
+
+-- Function to insert material
+CREATE OR REPLACE FUNCTION wms.insert_material(
+    _name VARCHAR(255),
+    _descr VARCHAR(255),
+    _category_id INTEGER,
+    _brand_id INTEGER,
+    _uom_pc_id INTEGER,
+    _uom_package_id INTEGER,
+    _mrp NUMERIC(15,2),
+    _selling_rate NUMERIC(15,2),
+    _current_user_id INTEGER
+) RETURNS INTEGER AS $$
+DECLARE
+    _id INTEGER;
+BEGIN
+    INSERT INTO wms.material (
+        name, descr, category_id, brand_id, uom_pc_id, uom_package_id,
+        mrp, selling_rate, lub
+    )
+    VALUES (
+        _name, _descr, _category_id, _brand_id, _uom_pc_id, _uom_package_id,
+        _mrp, _selling_rate, _current_user_id
+    )
+    RETURNING id INTO _id;
+    RETURN _id;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Function to update material
+CREATE OR REPLACE FUNCTION wms.update_material(
+    _id INTEGER,
+    _name VARCHAR(255),
+    _descr VARCHAR(255),
+    _category_id INTEGER,
+    _brand_id INTEGER,
+    _uom_pc_id INTEGER,
+    _uom_package_id INTEGER,
+    _mrp NUMERIC(15,2),
+    _selling_rate NUMERIC(15,2),
+    _current_user_id INTEGER
+) RETURNS INTEGER AS $$
+BEGIN
+    UPDATE wms.material
+    SET name = _name,
+        descr = _descr,
+        category_id = _category_id,
+        brand_id = _brand_id,
+        uom_pc_id = _uom_pc_id,
+        uom_package_id = _uom_package_id,
+        mrp = _mrp,
+        selling_rate = _selling_rate,
+        lub = _current_user_id,
+        lua = NOW()
+    WHERE id = _id;
+    RETURN _id;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Function to delete material (soft delete)
+CREATE OR REPLACE FUNCTION wms.delete_material(
+    _id INTEGER,
+    _current_user_id INTEGER
+) RETURNS INTEGER AS $$
+BEGIN
+    UPDATE wms.material
+    SET is_active = false, lub = _current_user_id, lua = NOW()
+    WHERE id = _id;
+    RETURN _id;
+END;
+$$ LANGUAGE plpgsql;
+
 ---------------------------** Sales Order Header **---------------------------
 
 
@@ -2128,67 +2253,6 @@ BEGIN
     SET is_active = false, lub = deleted_by_user_id
     WHERE id = broker_id_to_delete;
     RETURN broker_id_to_delete;
-END;
-$$ LANGUAGE plpgsql;
-
-
----------------------------** Material Master **---------------------------
-
--- Function to insert in  material
-CREATE OR REPLACE FUNCTION wms.insert_material(
-    material_name VARCHAR(255),
-    descr VARCHAR(255),
-    brand_id INT,
-    uom_pc_id INT,
-    uom_package_id INT,
-    pc_in_package NUMERIC,
-    current_user_id INTEGER
-) RETURNS INT AS $$
-DECLARE new_material_id INT;
-BEGIN
-    INSERT INTO wms.material (name, descr, brand_id, uom_pc_id, uom_package_id, pc_in_package, lub)
-    VALUES (material_name, descr, brand_id, uom_pc_id, uom_package_id, pc_in_package, current_user_id)
-    RETURNING id INTO new_material_id;
-    RETURN new_material_id;
-END;
-$$ LANGUAGE plpgsql;
-
--- Function to update a material
-CREATE OR REPLACE FUNCTION wms.update_material(
-    material_id INT,
-    material_name VARCHAR(255),
-    descr VARCHAR(255),
-    brand_id INT,
-    uom_pc_id INT,
-    uom_package_id INT,
-    pc_in_package NUMERIC,
-    current_user_id INT
-) RETURNS INT AS $$
-BEGIN
-    UPDATE wms.material
-    SET name = material_name,
-        descr = descr,
-        brand_id = brand_id,
-        uom_pc_id = uom_pc_id,
-        uom_package_id = uom_package_id,
-        pc_in_package = pc_in_package,
-        lub = current_user_id
-    WHERE id = material_id;
-    RETURN material_id;
-END;
-$$ LANGUAGE plpgsql;
-
--- Function to delete material
-CREATE OR REPLACE FUNCTION wms.delete_material(
-    material_id_to_delete INTEGER,
-    deleted_by_user_id INTEGER
-) RETURNS INT AS $$
-BEGIN
-    UPDATE wms.material
-    SET is_active = false,
-        lub = deleted_by_user_id
-    WHERE id = material_id_to_delete;
-    RETURN material_id_to_delete;
 END;
 $$ LANGUAGE plpgsql;
 

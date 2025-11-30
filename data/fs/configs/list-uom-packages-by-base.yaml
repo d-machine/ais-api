@@ -1,0 +1,31 @@
+configType: LIST
+version: 1.0
+
+queryInfo:
+  returnType: MULTIPLE_ROWS
+  query: |
+    SELECT DISTINCT
+      uc.uom_id_case as id,
+      u.name as uom_name,
+      uc.no_of_pcs
+    FROM wms.uom_conversion uc
+    JOIN wms.uom u ON uc.uom_id_case = u.id
+    WHERE uc.uom_id_each = $1 AND uc.is_active = true
+  payload:
+    - uom_pc_id
+  path: []
+  options:
+    applyFiltering: false
+    applySorting: false
+    applyPagination: false
+
+columns:
+  - name: id
+    label: ID
+    visible: false
+  - name: uom_name
+    label: UOM Name
+    visible: true
+  - name: no_of_pcs
+    label: Conversion Factor
+    visible: true

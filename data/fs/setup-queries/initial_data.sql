@@ -42,11 +42,11 @@ INSERT INTO administration.resource (id, name, list_config_file, parent_id, lub)
 (72, 'Vendor Category Master', 'list-vendor-categories', 34, 1),
 (73, 'Vendor Broker Master', 'list-vendor-brokers', 34, 1),
 -- 71 - 80 are for Vendor Management.
-(81, 'Item Master', 'list-items', 35, 1),
-(82, 'Item Category Master', 'list-item-categories', 35, 1),
-(83, 'Item Brand Master', 'list-item-brands', 35, 1),
+(81, 'Material Master', 'list-materials', 35, 1),
+(82, 'Material Category Master', 'list-item-categories', 35, 1),
+(83, 'Material Brand Master', 'list-item-brands', 35, 1),
 (84, 'UOM Master', 'list-uoms', 35, 1),
-(85, 'Unit Conversion Master', 'list-unit-conversions', 35, 1),
+(85, 'UOM Conversion Master', 'list-uom-conversions', 35, 1),
 -- 81 - 90 are for Item Management.
 (91, 'Sales Order', 'list-sales-orders', 4, 1),
 (92, 'Picking List', 'list-picking-lists', 4, 1),

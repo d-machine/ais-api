@@ -73,6 +73,7 @@ sections:
         multi: false
         selectConfig:
           resource: list-item-categories
+          labelField: category_name
           displayField: category_name
           selectHandler: converter
           currentSelection:
