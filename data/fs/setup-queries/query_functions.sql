@@ -1254,12 +1254,14 @@ CREATE OR REPLACE FUNCTION wms.insert_address(
     _adr3 VARCHAR(255),
     _city_id INTEGER,
     _district_id INTEGER,
+    _state_id INTEGER,
+    _country_id INTEGER,
     _current_user_id INTEGER
 ) RETURNS INT AS $$
 DECLARE new_address_id INT;
 BEGIN
-    INSERT INTO wms.address (adr1, adr2, adr3, city_id, district_id, lub)
-    VALUES (_adr1, _adr2, _adr3, _city_id, _district_id, _current_user_id)
+    INSERT INTO wms.address (adr1, adr2, adr3, city_id, district_id, state_id, country_id, lub)
+    VALUES (_adr1, _adr2, _adr3, _city_id, _district_id, _state_id, _country_id, _current_user_id)
     RETURNING id INTO new_address_id;
     RETURN new_address_id;
 END;
@@ -1273,6 +1275,8 @@ CREATE OR REPLACE FUNCTION wms.update_address(
     _adr3 VARCHAR(255),
     _city_id INTEGER,
     _district_id INTEGER,
+    _state_id INTEGER,
+    _country_id INTEGER,
     _current_user_id INTEGER
 ) RETURNS INT AS $$
 BEGIN
@@ -1282,6 +1286,8 @@ BEGIN
         adr3 = _adr3,
         city_id = _city_id,
         district_id = _district_id,
+        state_id = _state_id,
+        country_id = _country_id,
         lub = _current_user_id
     WHERE id = _address_id;
     RETURN _address_id;
@@ -1508,152 +1514,164 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+---------------------------** Party Category Master **---------------------------
+
+-- Function to insert party category
+CREATE OR REPLACE FUNCTION wms.insert_party_category(
+    _name VARCHAR(100),
+    _discount_percentage NUMERIC(5,2),
+    _current_user_id INTEGER
+) RETURNS INTEGER AS $$
+DECLARE
+    _id INTEGER;
+BEGIN
+    INSERT INTO wms.party_category (name, discount_percentage, lub)
+    VALUES (_name, _discount_percentage, _current_user_id)
+    RETURNING id INTO _id;
+    RETURN _id;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Function to update party category
+CREATE OR REPLACE FUNCTION wms.update_party_category(
+    _id INTEGER,
+    _name VARCHAR(100),
+    _discount_percentage NUMERIC(5,2),
+    _current_user_id INTEGER
+) RETURNS INTEGER AS $$
+BEGIN
+    UPDATE wms.party_category
+    SET 
+        name = _name,
+        discount_percentage = _discount_percentage,
+        lub = _current_user_id,
+        lua = NOW()
+    WHERE id = _id;
+    RETURN _id;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Function to delete party category
+CREATE OR REPLACE FUNCTION wms.delete_party_category(
+    _id INTEGER,
+    _current_user_id INTEGER
+) RETURNS INTEGER AS $$
+BEGIN
+    UPDATE wms.party_category
+    SET is_active = false, lub = _current_user_id
+    WHERE id = _id;
+    RETURN _id;
+END;
+$$ LANGUAGE plpgsql;
+
 ---------------------------** Party Master **---------------------------
 
 -- Function to insert party
 CREATE OR REPLACE FUNCTION wms.insert_party(
-    party_type VARCHAR(50),
-    party_name VARCHAR(50),
-    add1 VARCHAR(50),
-    add2 VARCHAR(50),
-    add3 VARCHAR(50),
-    city VARCHAR(50),
-    pincode VARCHAR(50),
-    person_name VARCHAR(50),
-    telephone VARCHAR(50),
-    email VARCHAR(50),
-    udate VARCHAR(50),
-    salesman VARCHAR(50),
-    pan_no VARCHAR(50),
-    cr_limit NUMERIC,
-    cr_days INTEGER,
-    gstno VARCHAR(50),
-    country_id INTEGER,
-    aadhar_no VARCHAR(50),
-    sales_head VARCHAR(50),
-    director VARCHAR(50),
-    manager VARCHAR(50),
-    city_district_id INTEGER,
-    state_id INTEGER,
-    current_user_id INTEGER
-) RETURNS INT AS $$
-DECLARE new_party_id INT;
+    _category_id INTEGER,
+    _party_type VARCHAR(50),
+    _name VARCHAR(100),
+    _add1 VARCHAR(100),
+    _add2 VARCHAR(100),
+    _add3 VARCHAR(100),
+    _city_id INTEGER,
+    _district_id INTEGER,
+    _state_id INTEGER,
+    _country_id INTEGER,
+    _pincode VARCHAR(10),
+    _person_name VARCHAR(100),
+    _telephone VARCHAR(20),
+    _email VARCHAR(100),
+    _salesman VARCHAR(100),
+    _pan_no VARCHAR(20),
+    _cr_limit NUMERIC(15,2),
+    _cr_days INTEGER,
+    _gstno VARCHAR(20),
+    _aadhar_no VARCHAR(20),
+    _sales_head VARCHAR(100),
+    _director VARCHAR(100),
+    _manager VARCHAR(100),
+    _current_user_id INTEGER
+) RETURNS INTEGER AS $$
+DECLARE
+    _id INTEGER;
 BEGIN
     INSERT INTO wms.party (
-        party_type,
-        name, 
-        add1, 
-        add2, 
-        add3, 
-        city, 
-        pincode, 
-        person_name,
-        telephone, 
-        email, 
-        udate, 
-        salesman, 
-        pan_no, 
-        cr_limit, 
-        cr_days, 
-        gstno,
-        country_id, 
-        aadhar_no, 
-        sales_head, 
-        director, 
-        manager, 
-        city_district_id,
-        state_id, lub
-    )
-    VALUES (
-        party_type, 
-        party_name, 
-        add1, 
-        add2, 
-        add3, 
-        city, 
-        pincode, 
-        person_name,
-        telephone, 
-        p_email, 
-        udate, 
-        salesman, 
-        pan_no, 
-        cr_limit, 
-        cr_days, 
-        gstno,
-        country_id, 
-        aadhar_no, 
-        sales_head, 
-        director, 
-        manager, 
-        city_district_id,
-        state_id, 
-        current_user_id
-    )
-    RETURNING id INTO new_party_id;
-
-    RETURN new_party_id;
+        category_id, party_type, name, add1, add2, add3,
+        city_id, district_id, state_id, country_id, pincode,
+        person_name, telephone, email, salesman, pan_no,
+        cr_limit, cr_days, gstno, aadhar_no,
+        sales_head, director, manager, lub
+    ) VALUES (
+        _category_id, _party_type, _name, _add1, _add2, _add3,
+        _city_id, _district_id, _state_id, _country_id, _pincode,
+        _person_name, _telephone, _email, _salesman, _pan_no,
+        _cr_limit, _cr_days, _gstno, _aadhar_no,
+        _sales_head, _director, _manager, _current_user_id
+    ) RETURNING id INTO _id;
+    RETURN _id;
 END;
 $$ LANGUAGE plpgsql;
 
 -- Function to update party
 
 CREATE OR REPLACE FUNCTION wms.update_party(
-    party_id INT,
-    party_type VARCHAR(50),
-    party_name VARCHAR(50),
-    add1 VARCHAR(50),
-    add2 VARCHAR(50),
-    add3 VARCHAR(50),
-    city VARCHAR(50),
-    pincode VARCHAR(50),
-    person_name VARCHAR(50),
-    telephone VARCHAR(50),
-    email VARCHAR(50),
-    udate VARCHAR(50),
-    salesman VARCHAR(50),
-    pan_no VARCHAR(50),
-    cr_limit NUMERIC,
-    cr_days INTEGER,
-    gstno VARCHAR(50),
-    country_id INTEGER,
-    aadhar_no VARCHAR(50),
-    sales_head VARCHAR(50),
-    director VARCHAR(50),
-    manager VARCHAR(50),
-    city_district_id INTEGER,
-    state_id INTEGER,
-    current_user_id INTEGER
-) RETURNS INT AS $$
+    _id INTEGER,
+    _category_id INTEGER,
+    _party_type VARCHAR(50),
+    _name VARCHAR(100),
+    _add1 VARCHAR(100),
+    _add2 VARCHAR(100),
+    _add3 VARCHAR(100),
+    _city_id INTEGER,
+    _district_id INTEGER,
+    _state_id INTEGER,
+    _country_id INTEGER,
+    _pincode VARCHAR(10),
+    _person_name VARCHAR(100),
+    _telephone VARCHAR(20),
+    _email VARCHAR(100),
+    _salesman VARCHAR(100),
+    _pan_no VARCHAR(20),
+    _cr_limit NUMERIC(15,2),
+    _cr_days INTEGER,
+    _gstno VARCHAR(20),
+    _aadhar_no VARCHAR(20),
+    _sales_head VARCHAR(100),
+    _director VARCHAR(100),
+    _manager VARCHAR(100),
+    _current_user_id INTEGER
+) RETURNS INTEGER AS $$
 BEGIN
     UPDATE wms.party
-    SET party_type = party_type,
-        name = party_name,
-        add1 = add1,
-        add2 = add2,
-        add3 = add3,
-        city = city,
-        pincode = pincode,
-        person_name = person_name,
-        telephone = telephone,
-        email = email,
-        udate = udate,
-        salesman = salesman,
-        pan_no = pan_no,
-        cr_limit = cr_limit,
-        cr_days = cr_days,
-        gstno = gstno,
-        country_id = country_id,
-        aadhar_no = aadhar_no,
-        sales_head = sales_head,
-        director = director,
-        manager = manager,
-        city_district_id = city_district_id,
-        state_id = state_id,
-        lub = current_user_id
-    WHERE id = party_id;
-
-    RETURN party_id;
+    SET 
+        category_id = _category_id,
+        party_type = _party_type,
+        name = _name,
+        add1 = _add1,
+        add2 = _add2,
+        add3 = _add3,
+        city_id = _city_id,
+        district_id = _district_id,
+        state_id = _state_id,
+        country_id = _country_id,
+        pincode = _pincode,
+        person_name = _person_name,
+        telephone = _telephone,
+        email = _email,
+        salesman = _salesman,
+        pan_no = _pan_no,
+        cr_limit = _cr_limit,
+        cr_days = _cr_days,
+        gstno = _gstno,
+        aadhar_no = _aadhar_no,
+        sales_head = _sales_head,
+        director = _director,
+        manager = _manager,
+        lub = _current_user_id,
+        lua = NOW()
+    WHERE id = _id;
+    RETURN _id;
 END;
 $$ LANGUAGE plpgsql;
 
@@ -1775,167 +1793,176 @@ END;
 $$ LANGUAGE plpgsql;
 
 
----------------------------** vendor Master **---------------------------
+---------------------------** Vendor Category Master **---------------------------
+
+-- Function to insert vendor category
+CREATE OR REPLACE FUNCTION wms.insert_vendor_category(
+    _name VARCHAR(100),
+    _discount_percentage NUMERIC(5,2),
+    _current_user_id INTEGER
+) RETURNS INTEGER AS $$
+DECLARE
+    _id INTEGER;
+BEGIN
+    INSERT INTO wms.vendor_category (name, discount_percentage, lub)
+    VALUES (_name, _discount_percentage, _current_user_id)
+    RETURNING id INTO _id;
+    RETURN _id;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Function to update vendor category
+CREATE OR REPLACE FUNCTION wms.update_vendor_category(
+    _id INTEGER,
+    _name VARCHAR(100),
+    _discount_percentage NUMERIC(5,2),
+    _current_user_id INTEGER
+) RETURNS INTEGER AS $$
+BEGIN
+    UPDATE wms.vendor_category
+    SET 
+        name = _name,
+        discount_percentage = _discount_percentage,
+        lub = _current_user_id,
+        lua = NOW()
+    WHERE id = _id;
+    RETURN _id;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Function to delete vendor category
+CREATE OR REPLACE FUNCTION wms.delete_vendor_category(
+    _id INTEGER,
+    _current_user_id INTEGER
+) RETURNS INTEGER AS $$
+BEGIN
+    UPDATE wms.vendor_category
+    SET is_active = false, lub = _current_user_id, lua = NOW()
+    WHERE id = _id;
+    RETURN _id;
+END;
+$$ LANGUAGE plpgsql;
+
+---------------------------** Vendor Master **---------------------------
 
 -- Function to insert vendor
 CREATE OR REPLACE FUNCTION wms.insert_vendor(
-    vendor_type VARCHAR(50),
-    vendor_name VARCHAR(50),
-    add1 VARCHAR(50),
-    add2 VARCHAR(50),
-    add3 VARCHAR(50),
-    city VARCHAR(50),
-    pincode VARCHAR(50),
-    person_name VARCHAR(50),
-    telephone VARCHAR(50),
-    email VARCHAR(50),
-    udate VARCHAR(50),
-    salesman VARCHAR(50),
-    pan_no VARCHAR(50),
-    cr_limit NUMERIC,
-    cr_days INTEGER,
-    gstno VARCHAR(50),
-    country_id INTEGER,
-    aadhar_no VARCHAR(50),
-    sales_head VARCHAR(50),
-    director VARCHAR(50),
-    manager VARCHAR(50),
-    city_district_id INTEGER,
-    state_id INTEGER,
-    current_user_id INTEGER
-) RETURNS INT AS $$
-DECLARE new_vendor_id INT;
+    _category_id INTEGER,
+    _vendor_type VARCHAR(50),
+    _name VARCHAR(100),
+    _add1 VARCHAR(100),
+    _add2 VARCHAR(100),
+    _add3 VARCHAR(100),
+    _city_id INTEGER,
+    _district_id INTEGER,
+    _state_id INTEGER,
+    _country_id INTEGER,
+    _pincode VARCHAR(10),
+    _person_name VARCHAR(100),
+    _telephone VARCHAR(20),
+    _email VARCHAR(100),
+    _salesman VARCHAR(100),
+    _pan_no VARCHAR(20),
+    _cr_limit NUMERIC(15,2),
+    _cr_days INTEGER,
+    _gstno VARCHAR(20),
+    _aadhar_no VARCHAR(20),
+    _sales_head VARCHAR(100),
+    _director VARCHAR(100),
+    _manager VARCHAR(100),
+    _current_user_id INTEGER
+) RETURNS INTEGER AS $$
+DECLARE
+    _id INTEGER;
 BEGIN
     INSERT INTO wms.vendor (
-        vendor_type,
-        name, 
-        add1, 
-        add2, 
-        add3, 
-        city, 
-        pincode, 
-        person_name,
-        telephone, 
-        email, 
-        udate, 
-        salesman, 
-        pan_no, 
-        cr_limit, 
-        cr_days, 
-        gstno,
-        country_id, 
-        aadhar_no, 
-        sales_head, 
-        director, 
-        manager, 
-        city_district_id,
-        state_id, lub
-    )
-    VALUES (
-        vendor_type, 
-        vendor_name, 
-        add1, 
-        add2, 
-        add3, 
-        city, 
-        pincode, 
-        person_name,
-        telephone, 
-        p_email, 
-        udate, 
-        salesman, 
-        pan_no, 
-        cr_limit, 
-        cr_days, 
-        gstno,
-        country_id, 
-        aadhar_no, 
-        sales_head, 
-        director, 
-        manager, 
-        city_district_id,
-        state_id, 
-        current_user_id
-    )
-    RETURNING id INTO new_vendor_id;
-
-    RETURN new_vendor_id;
+        category_id, vendor_type, name, add1, add2, add3,
+        city_id, district_id, state_id, country_id, pincode,
+        person_name, telephone, email, salesman, pan_no,
+        cr_limit, cr_days, gstno, aadhar_no,
+        sales_head, director, manager, lub
+    ) VALUES (
+        _category_id, _vendor_type, _name, _add1, _add2, _add3,
+        _city_id, _district_id, _state_id, _country_id, _pincode,
+        _person_name, _telephone, _email, _salesman, _pan_no,
+        _cr_limit, _cr_days, _gstno, _aadhar_no,
+        _sales_head, _director, _manager, _current_user_id
+    ) RETURNING id INTO _id;
+    RETURN _id;
 END;
 $$ LANGUAGE plpgsql;
 
 -- Function to update vendor
-
 CREATE OR REPLACE FUNCTION wms.update_vendor(
-    vendor_id INT,
-    vendor_type VARCHAR(50),
-    vendor_name VARCHAR(50),
-    add1 VARCHAR(50),
-    add2 VARCHAR(50),
-    add3 VARCHAR(50),
-    city VARCHAR(50),
-    pincode VARCHAR(50),
-    person_name VARCHAR(50),
-    telephone VARCHAR(50),
-    email VARCHAR(50),
-    udate VARCHAR(50),
-    salesman VARCHAR(50),
-    pan_no VARCHAR(50),
-    cr_limit NUMERIC,
-    cr_days INTEGER,
-    gstno VARCHAR(50),
-    country_id INTEGER,
-    aadhar_no VARCHAR(50),
-    sales_head VARCHAR(50),
-    director VARCHAR(50),
-    manager VARCHAR(50),
-    city_district_id INTEGER,
-    state_id INTEGER,
-    current_user_id INTEGER
-) RETURNS INT AS $$
+    _id INTEGER,
+    _category_id INTEGER,
+    _vendor_type VARCHAR(50),
+    _name VARCHAR(100),
+    _add1 VARCHAR(100),
+    _add2 VARCHAR(100),
+    _add3 VARCHAR(100),
+    _city_id INTEGER,
+    _district_id INTEGER,
+    _state_id INTEGER,
+    _country_id INTEGER,
+    _pincode VARCHAR(10),
+    _person_name VARCHAR(100),
+    _telephone VARCHAR(20),
+    _email VARCHAR(100),
+    _salesman VARCHAR(100),
+    _pan_no VARCHAR(20),
+    _cr_limit NUMERIC(15,2),
+    _cr_days INTEGER,
+    _gstno VARCHAR(20),
+    _aadhar_no VARCHAR(20),
+    _sales_head VARCHAR(100),
+    _director VARCHAR(100),
+    _manager VARCHAR(100),
+    _current_user_id INTEGER
+) RETURNS INTEGER AS $$
 BEGIN
     UPDATE wms.vendor
-    SET vendor_type = vendor_type,
-        name = vendor_name,
-        add1 = add1,
-        add2 = add2,
-        add3 = add3,
-        city = city,
-        pincode = pincode,
-        person_name = person_name,
-        telephone = telephone,
-        email = email,
-        udate = udate,
-        salesman = salesman,
-        pan_no = pan_no,
-        cr_limit = cr_limit,
-        cr_days = cr_days,
-        gstno = gstno,
-        country_id = country_id,
-        aadhar_no = aadhar_no,
-        sales_head = sales_head,
-        director = director,
-        manager = manager,
-        city_district_id = city_district_id,
-        state_id = state_id,
-        lub = current_user_id
-    WHERE id = vendor_id;
-
-    RETURN vendor_id;
+    SET 
+        category_id = _category_id,
+        vendor_type = _vendor_type,
+        name = _name,
+        add1 = _add1,
+        add2 = _add2,
+        add3 = _add3,
+        city_id = _city_id,
+        district_id = _district_id,
+        state_id = _state_id,
+        country_id = _country_id,
+        pincode = _pincode,
+        person_name = _person_name,
+        telephone = _telephone,
+        email = _email,
+        salesman = _salesman,
+        pan_no = _pan_no,
+        cr_limit = _cr_limit,
+        cr_days = _cr_days,
+        gstno = _gstno,
+        aadhar_no = _aadhar_no,
+        sales_head = _sales_head,
+        director = _director,
+        manager = _manager,
+        lub = _current_user_id,
+        lua = NOW()
+    WHERE id = _id;
+    RETURN _id;
 END;
 $$ LANGUAGE plpgsql;
 
---Function to delete vendor
+-- Function to delete vendor
 CREATE OR REPLACE FUNCTION wms.delete_vendor(
-    vendor_id_to_delete INTEGER,
-    deleted_by_user_id INTEGER
-)
-RETURNS INT  AS $$
+    _id INTEGER,
+    _current_user_id INTEGER
+) RETURNS INTEGER AS $$
 BEGIN
-    -- Delete vendor
     UPDATE wms.vendor
-    SET is_active = false, lub = deleted_by_user_id
-    WHERE id = vendor_id_to_delete;
-    RETURN vendor_id_to_delete;
+    SET is_active = false, lub = _current_user_id, lua = NOW()
+    WHERE id = _id;
+    RETURN _id;
 END;
 $$ LANGUAGE plpgsql;
 

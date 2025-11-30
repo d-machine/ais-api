@@ -20,9 +20,8 @@ queryInfo:
         wms.address a
         LEFT JOIN wms.city c ON a.city_id = c.id
         LEFT JOIN wms.district d ON a.district_id = d.id
-        LEFT JOIN wms.city_district cd ON a.city_id = cd.city_id AND a.district_id = cd.district_id
-        LEFT JOIN wms.state s ON cd.state_id = s.id
-        LEFT JOIN wms.country co ON s.country_id = co.id
+        LEFT JOIN wms.state s ON a.state_id = s.id
+        LEFT JOIN wms.country co ON a.country_id = co.id
         LEFT JOIN administration.user u ON a.lub = u.id
       WHERE
         a.is_active = true

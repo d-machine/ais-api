@@ -1,160 +1,200 @@
+configType: LIST
+version: 1.0
 queryInfo:
   returnType: MULTIPLE_ROWS
   query: |
-    SELECT * FROM (
-      SELECT
-        v.id as vendor_id,
-        v.vendor_type as vendor_type,
-        v.name as vendor_name,
-        v.add1 as add1,
-        v.add2 as add2,
-        v.add3 as add3,
-        v.city as city,
-        v.pincode as pincode,
-        v.person_name as person_name,
-        v.telephone as telephone,
-        v.email as email,
-        v.udate as udate,
-        v.salesman as salesman,
-        v.pan_no as pan_no,
-        v.cr_limit as cr_limit,
-        v.cr_days as cr_days,
-        v.gstno as gstno,
-        v.aadhar_no as aadhar_no,
-        v.sales_head as sales_head,
-        v.director as director,
-        v.manager as manager,
-        cd.name as city_district_name,
-        sm.name as state_name,
-        cm.name as country_name,
-        v.lua as last_updated_at,
-        TRIM(CONCAT(u.first_name, ' ', u.last_name)) as last_updated_by_name
-      FROM
-        wms.vendor v
-        LEFT JOIN wms.city_district cd ON v.city_district_id = cd.id
-        LEFT JOIN wms.state sm ON v.state_id = sm.id
-        LEFT JOIN wms.country cm ON v.country_id = cm.id
-        LEFT JOIN administration.user u ON v.lub = u.id
-      WHERE
-        v.is_active = true
-    ) as vendors
+    SELECT
+      v.id,
+      v.name as vendor_name,
+      vc.name as category_name,
+      v.vendor_type,
+      v.add1,
+      v.add2,
+      v.add3,
+      c.name as city_name,
+      d.name as district_name,
+      s.name as state_name,
+      co.name as country_name,
+      v.pincode,
+      v.person_name,
+      v.telephone,
+      v.email,
+      v.salesman,
+      v.pan_no,
+      v.cr_limit,
+      v.cr_days,
+      v.gstno,
+      v.aadhar_no,
+      v.sales_head,
+      v.director,
+      v.manager,
+      v.is_active,
+      v.lua as last_updated_at,
+      TRIM(CONCAT(u.first_name, ' ', u.last_name)) as last_updated_by_name
+    FROM wms.vendor v
+    LEFT JOIN wms.vendor_category vc ON v.category_id = vc.id
+    LEFT JOIN wms.city c ON v.city_id = c.id
+    LEFT JOIN wms.district d ON v.district_id = d.id
+    LEFT JOIN wms.state s ON v.state_id = s.id
+    LEFT JOIN wms.country co ON v.country_id = co.id
+    LEFT JOIN administration.user u ON v.lub = u.id
+    WHERE v.is_active = true
   options:
     applyFiltering: true
     applySorting: true
-    applyPagenation: true
-  path:
-    - queryInfo
-
-applicableActions:
-  - NEW
-  - EDIT
-  - DELETE
-
-actionConfig:
-  NEW:
-    label: Add Vendor
-    resourcePath: vendor-master
-    accessTypeRequired: VENDOR-CREATE
-  EDIT:
-    label: Edit vendor
-    resourcePath: vendor-master
-    accessTypeRequired: VENDOR-UPDATE
-    targetParams:
-      - key: vendor_id
-        as: vendor_id
-  DELETE:
-    label: Delete Vendor
-    actionType: EXECUTE_QUERY
-    accessTypeRequired: VENDOR-DELETE
-    queryInfo:
-      returnType: SCALAR
-      query: |
-        UPDATE wms.vendor
-        SET is_active = false, lua = NOW()
-        WHERE id = $1;
-      payload:
-        - vendor_id
-      contextParams:
-        - current_user_id
-      path:
-        - actionConfig
-        - DELETE
-    onSuccess: refreshList
-    onFailure: showErrorSnackbar
+    applyPagination: true
+    pageSize: 50
+  path: []
 
 columns:
-  - name: vendor_id
+  - name: id
     label: ID
     visible: false
-  - name: vendor_type
-    label: Vendor Type
-    visible: true
+    sortable: false
   - name: vendor_name
     label: Vendor Name
     visible: true
+    sortable: true
+    filterable: true
+    width: 200
+  - name: category_name
+    label: Category
+    visible: true
+    sortable: true
+    filterable: true
+    width: 150
+  - name: vendor_type
+    label: Type
+    visible: true
+    sortable: true
+    filterable: true
+    width: 100
   - name: add1
     label: Address 1
     visible: true
+    width: 150
   - name: add2
     label: Address 2
     visible: false
   - name: add3
     label: Address 3
     visible: false
-  - name: city
+  - name: city_name
     label: City
     visible: true
+    sortable: true
+    filterable: true
+    width: 120
+  - name: district_name
+    label: District
+    visible: true
+    sortable: true
+    filterable: true
+    width: 120
+  - name: state_name
+    label: State
+    visible: true
+    sortable: true
+    filterable: true
+    width: 120
+  - name: country_name
+    label: Country
+    visible: true
+    sortable: true
+    filterable: true
+    width: 100
   - name: pincode
     label: Pincode
     visible: true
+    width: 80
   - name: person_name
     label: Contact Person
     visible: true
+    width: 150
   - name: telephone
     label: Telephone
     visible: true
+    width: 120
   - name: email
     label: Email
     visible: true
+    width: 180
   - name: salesman
     label: Salesman
-    visible: true
+    visible: false
   - name: pan_no
     label: PAN No
     visible: true
+    width: 120
   - name: cr_limit
     label: Credit Limit
     visible: true
+    sortable: true
+    dataType: currency
+    width: 120
   - name: cr_days
     label: Credit Days
     visible: true
+    sortable: true
+    width: 100
   - name: gstno
     label: GST No
     visible: true
+    width: 150
   - name: aadhar_no
     label: Aadhaar No
-    visible: true
+    visible: false
   - name: sales_head
     label: Sales Head
-    visible: true
+    visible: false
   - name: director
     label: Director
-    visible: true
+    visible: false
   - name: manager
     label: Manager
+    visible: false
+  - name: last_updated_at
+    label: Last Updated
     visible: true
-  - name: city_district_name
-    label: City District Name
-    visible: true
-  - name: state_name
-    label: State Name
-    visible: true
-  - name: country_name
-    label: Country Name
-    visible: true
-  - name: lua
-    label: Last Updated At
-    visible: true
+    sortable: true
+    dataType: datetime
+    format: "DD/MM/YYYY HH:mm"
+    defaultSort: DESC
+    width: 150
   - name: last_updated_by_name
-    label: Last Updated By
+    label: Updated By
     visible: true
+    width: 150
+
+actionConfig:
+  add-vendor:
+    label: Add Vendor
+    actionType: DISPLAY_FORM
+    formConfig: add-vendor
+    shortcut: F2
+  edit-vendor:
+    label: Edit
+    actionType: DISPLAY_FORM
+    level: ROW
+    formConfig: edit-vendor
+    payload:
+      - id
+  delete-vendor:
+    label: Delete
+    actionType: EXECUTE_QUERY
+    level: ROW
+    confirmationRequired: true
+    confirmationMessage: Are you sure you want to delete this vendor?
+    queryInfo:
+      returnType: SCALAR
+      query: |
+        UPDATE wms.vendor 
+        SET is_active = false, lub = $2, lua = NOW()
+        WHERE id = $1
+        RETURNING id;
+      payload:
+        - id
+      contextParams:
+        - current_user_id
+    onSuccess: refresh
+    onFailure: showErrorSnackbar

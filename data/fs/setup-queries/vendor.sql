@@ -1,248 +1,131 @@
-CREATE TABLE  wms.vendor (
-  id SERIAL PRIMARY KEY,
-  vendor_type VARCHAR(50),
-  name VARCHAR(50),
-  add1 VARCHAR(50),
-  add2 VARCHAR(50),
-  add3 VARCHAR(50),
-  city VARCHAR(50),
-  pincode VARCHAR(50),
-  person_name VARCHAR(50),
-  telephone VARCHAR(50),
-  email VARCHAR(50),
-  udate VARCHAR(50),
-  salesman VARCHAR(50),
-  pan_no VARCHAR(50),
-  cr_limit NUMERIC, 
-  cr_days INTEGER,
-  gstno VARCHAR(50),
-  aadhar_no VARCHAR(50),
-  sales_head VARCHAR(50),
-  director VARCHAR(50),
-  manager VARCHAR(50),
-  city_district_id INTEGER REFERENCES wms.city_district(id),
-  state_id INTEGER REFERENCES wms.state(id),
-  country_id INTEGER REFERENCES wms.country(id),
-  is_active boolean not null default true,
-  lub int REFERENCES administration.user(id),
-  lua TIMESTAMP NOT NULL DEFAULT NOW()
+-- Drop old vendor tables if they exist (assuming clean slate or migration handled otherwise, but adhering to pattern)
+DROP TABLE IF EXISTS wms.vendor_history CASCADE;
+DROP TABLE IF EXISTS wms.vendor CASCADE;
+
+-- Create vendor table with normalized address fields
+CREATE TABLE wms.vendor (
+    id SERIAL PRIMARY KEY,
+    category_id INTEGER REFERENCES wms.vendor_category(id),
+    vendor_type VARCHAR(50),
+    name VARCHAR(100) NOT NULL,
+    
+    -- Address fields (denormalized for performance)
+    add1 VARCHAR(100),
+    add2 VARCHAR(100),
+    add3 VARCHAR(100),
+    city_id INTEGER REFERENCES wms.city(id),
+    district_id INTEGER REFERENCES wms.district(id),
+    state_id INTEGER REFERENCES wms.state(id),
+    country_id INTEGER REFERENCES wms.country(id),
+    pincode VARCHAR(10),
+    
+    -- Contact fields
+    person_name VARCHAR(100),
+    telephone VARCHAR(20),
+    email VARCHAR(100),
+    
+    -- Business fields
+    salesman VARCHAR(100),
+    pan_no VARCHAR(20),
+    cr_limit NUMERIC(15,2),
+    cr_days INTEGER,
+    gstno VARCHAR(20),
+    aadhar_no VARCHAR(20),
+    sales_head VARCHAR(100),
+    director VARCHAR(100),
+    manager VARCHAR(100),
+    
+    -- Audit fields
+    is_active BOOLEAN NOT NULL DEFAULT true,
+    lub INTEGER REFERENCES administration.user(id),
+    lua TIMESTAMP NOT NULL DEFAULT NOW()
 );
-CREATE TABLE IF NOT EXISTS wms.vendor_history (
+
+-- Create history table for vendor
+CREATE TABLE wms.vendor_history (
     history_id SERIAL PRIMARY KEY,
     id INTEGER REFERENCES wms.vendor(id),
+    category_id INTEGER,
     vendor_type VARCHAR(50),
-    name VARCHAR(50),
-    add1 VARCHAR(50),
-    add2 VARCHAR(50),
-    add3 VARCHAR(50),
-    city VARCHAR(50),
-    pincode VARCHAR(50),
-    city_district_id INTEGER REFERENCES wms.city_district(id),
-    state_id INTEGER REFERENCES wms.state(id),
-    person_name VARCHAR(50),
-    telephone VARCHAR(50),
-    email VARCHAR(50),
-    udate VARCHAR(50),
-    salesman VARCHAR(50),
-    pan_no VARCHAR(50),
-    cr_limit NUMERIC, 
+    name VARCHAR(100),
+    add1 VARCHAR(100),
+    add2 VARCHAR(100),
+    add3 VARCHAR(100),
+    city_id INTEGER,
+    district_id INTEGER,
+    state_id INTEGER,
+    country_id INTEGER,
+    pincode VARCHAR(10),
+    person_name VARCHAR(100),
+    telephone VARCHAR(20),
+    email VARCHAR(100),
+    salesman VARCHAR(100),
+    pan_no VARCHAR(20),
+    cr_limit NUMERIC(15,2),
     cr_days INTEGER,
-    gstno VARCHAR(50),
-    country_id INTEGER REFERENCES wms.country(id),
-    aadhar_no VARCHAR(50),
-    sales_head VARCHAR(50),
-    director VARCHAR(50),
-    manager VARCHAR(50),
-    is_active boolean NOT NULL,
+    gstno VARCHAR(20),
+    aadhar_no VARCHAR(20),
+    sales_head VARCHAR(100),
+    director VARCHAR(100),
+    manager VARCHAR(100),
+    is_active BOOLEAN NOT NULL,
     operation VARCHAR(10),
     operation_at TIMESTAMP,
-    operation_by INTEGER REFERENCES administration.user(id)
+    operation_by INTEGER
 );
------create trigger function for vendor-----
+
+-- Create trigger function for vendor
+DROP FUNCTION IF EXISTS wms.vendor_trigger();
 CREATE OR REPLACE FUNCTION wms.vendor_trigger()
-    RETURNS TRIGGER AS $$
+RETURNS TRIGGER AS $$
 BEGIN
-    IF TG_OP = 'INSERT' THEN
-        INSERT INTO vendor_history (
-            id,
-            vendor_type,
-            name,
-            add1,
-            add2,
-            add3,
-            city,
-            pincode,
-            city_district_id,
-            state_id,
-            person_name,
-            telephone,
-            email,
-            udate,
-            salesman,
-            pan_no,
-            cr_limit,
-            cr_days,
-            gstno,
-            country_id,
-            aadhar_no,
-            sales_head,
-            director,
-            manager,
-            is_active,
+    IF (TG_OP = 'INSERT') THEN
+        INSERT INTO wms.vendor_history (
+            id, category_id, vendor_type, name, add1, add2, add3,
+            city_id, district_id, state_id, country_id, pincode,
+            person_name, telephone, email, salesman, pan_no,
+            cr_limit, cr_days, gstno, aadhar_no,
+            sales_head, director, manager, is_active,
             operation, operation_at, operation_by
-        )
-        VALUES (
-            NEW.id,
-            NEW.vendor_type,
-            NEW.name,
-            NEW.add1,
-            NEW.add2,
-            NEW.add3,
-            NEW.city,
-            NEW.pincode,
-            NEW.city_district_id,
-            NEW.state_id,
-            NEW.person_name,
-            NEW.telephone,
-            NEW.email,
-            NEW.udate,
-            NEW.salesman,
-            NEW.pan_no,
-            NEW.cr_limit,
-            NEW.cr_days,
-            NEW.gstno,
-            NEW.country_id,
-            NEW.aadhar_no,
-            NEW.sales_head,
-            NEW.director,
-            NEW.manager,
-            NEW.is_active,
+        ) VALUES (
+            NEW.id, NEW.category_id, NEW.vendor_type, NEW.name, NEW.add1, NEW.add2, NEW.add3,
+            NEW.city_id, NEW.district_id, NEW.state_id, NEW.country_id, NEW.pincode,
+            NEW.person_name, NEW.telephone, NEW.email, NEW.salesman, NEW.pan_no,
+            NEW.cr_limit, NEW.cr_days, NEW.gstno, NEW.aadhar_no,
+            NEW.sales_head, NEW.director, NEW.manager, NEW.is_active,
             'INSERT', NEW.lua, NEW.lub
         );
-    ELSIF TG_OP = 'UPDATE' THEN
-        IF (OLD.is_active = true AND NEW.is_active = false) THEN
-            INSERT INTO vendor_history (
-                id,
-                vendor_type,
-                name,
-                add1,
-                add2,
-                add3,
-                city,
-                pincode,
-                city_district_id,
-                state_id,
-                person_name,
-                telephone,
-                email,
-                udate,
-                salesman,
-                pan_no,
-                cr_limit,
-                cr_days,
-                gstno,
-                country_id,
-                aadhar_no,
-                sales_head,
-                director,
-                manager,
-                is_active,
-                operation,operation_at,operation_by
-            )
-            VALUES (
-                NEW.id,
-                NEW.vendor_type,
-                NEW.name,
-                NEW.add1,
-                NEW.add2,
-                NEW.add3,
-                NEW.city,
-                NEW.pincode,
-                NEW.city_district_id,
-                NEW.state_id,
-                NEW.person_name,
-                NEW.telephone,
-                NEW.email,
-                NEW.udate,
-                NEW.salesman,
-                NEW.pan_no,
-                NEW.cr_limit,
-                NEW.cr_days,
-                NEW.gstno,
-                NEW.country_id,
-                NEW.aadhar_no,
-                NEW.sales_head,
-                NEW.director,
-                NEW.manager,
-                NEW.is_active,
-                'DELETE',NEW.lua,NEW.lub
-            );
-        ELSE
-            INSERT INTO vendor_history (
-                id,
-                vendor_type,
-                name,
-                add1,
-                add2,
-                add3,
-                city,
-                pincode,
-                city_district_id,
-                state_id,
-                person_name,
-                telephone,
-                email,
-                udate,
-                salesman,
-                pan_no,
-                cr_limit,
-                cr_days,
-                gstno,
-                country_id,
-                aadhar_no,
-                sales_head,
-                director,
-                manager,
-                is_active,
-                operation,operation_at,operation_by
-            )
-            VALUES (
-                NEW.id,
-                NEW.vendor_type,
-                NEW.name,
-                NEW.add1,
-                NEW.add2,
-                NEW.add3,
-                NEW.city,
-                NEW.pincode,
-                NEW.city_district_id,
-                NEW.state_id,
-                NEW.person_name,
-                NEW.telephone,
-                NEW.email,
-                NEW.udate,
-                NEW.salesman,
-                NEW.pan_no,
-                NEW.cr_limit,
-                NEW.cr_days,
-                NEW.gstno,
-                NEW.country_id,
-                NEW.aadhar_no,
-                NEW.sales_head,
-                NEW.director,
-                NEW.manager,
-                NEW.is_active,
-                'UPDATE',NEW.lua,NEW.lub
-            );
-        END IF;
+    ELSIF (TG_OP = 'UPDATE') THEN
+        INSERT INTO wms.vendor_history (
+            id, category_id, vendor_type, name, add1, add2, add3,
+            city_id, district_id, state_id, country_id, pincode,
+            person_name, telephone, email, salesman, pan_no,
+            cr_limit, cr_days, gstno, aadhar_no,
+            sales_head, director, manager, is_active,
+            operation, operation_at, operation_by
+        ) VALUES (
+            NEW.id, NEW.category_id, NEW.vendor_type, NEW.name, NEW.add1, NEW.add2, NEW.add3,
+            NEW.city_id, NEW.district_id, NEW.state_id, NEW.country_id, NEW.pincode,
+            NEW.person_name, NEW.telephone, NEW.email, NEW.salesman, NEW.pan_no,
+            NEW.cr_limit, NEW.cr_days, NEW.gstno, NEW.aadhar_no,
+            NEW.sales_head, NEW.director, NEW.manager, NEW.is_active,
+            CASE WHEN OLD.is_active = true AND NEW.is_active = false THEN 'DELETE' ELSE 'UPDATE' END,
+            NEW.lua, NEW.lub
+        );
     END IF;
     RETURN NEW;
 END;
 $$ LANGUAGE plpgsql;
 
--- create trigger for vendor
-DROP TRIGGER IF EXISTS vendor_trigger ON wms.vendor;
-CREATE TRIGGER vendor_trigger
-    AFTER INSERT OR UPDATE ON wms.vendor
+-- Create triggers for vendor
+DROP TRIGGER IF EXISTS vendor_insert_trigger ON wms.vendor;
+CREATE TRIGGER vendor_insert_trigger
+    AFTER INSERT ON wms.vendor
+    FOR EACH ROW
+    EXECUTE FUNCTION wms.vendor_trigger();
+
+DROP TRIGGER IF EXISTS vendor_update_trigger ON wms.vendor;
+CREATE TRIGGER vendor_update_trigger
+    AFTER UPDATE ON wms.vendor
     FOR EACH ROW
     EXECUTE FUNCTION wms.vendor_trigger();

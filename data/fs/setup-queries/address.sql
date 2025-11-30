@@ -1,4 +1,4 @@
--- Create address table (normalized - no redundant country_id, state_id)
+-- Create address table (denormalized with state_id and country_id for performance)
 CREATE TABLE IF NOT EXISTS wms.address (
     id SERIAL PRIMARY KEY,
     adr1 VARCHAR(255) NOT NULL,
@@ -6,6 +6,8 @@ CREATE TABLE IF NOT EXISTS wms.address (
     adr3 VARCHAR(255),
     city_id INTEGER NOT NULL REFERENCES wms.city(id),
     district_id INTEGER NOT NULL REFERENCES wms.district(id),
+    state_id INTEGER REFERENCES wms.state(id),
+    country_id INTEGER REFERENCES wms.country(id),
     lub INTEGER REFERENCES administration.user(id),
     lua TIMESTAMP NOT NULL DEFAULT NOW(),
     is_active boolean NOT NULL DEFAULT true
@@ -21,6 +23,8 @@ CREATE TABLE IF NOT EXISTS wms.address_history (
     adr3 VARCHAR(255),
     city_id INTEGER,
     district_id INTEGER,
+    state_id INTEGER,
+    country_id INTEGER,
     is_active boolean NOT NULL,
     operation VARCHAR(10),
     operation_at TIMESTAMP,
@@ -34,22 +38,22 @@ RETURNS TRIGGER AS $$
 BEGIN
     IF (TG_OP = 'INSERT') THEN
         INSERT INTO wms.address_history(
-            address_id, adr1, adr2, adr3, city_id, district_id, is_active, operation, operation_at, operation_by
+            address_id, adr1, adr2, adr3, city_id, district_id, state_id, country_id, is_active, operation, operation_at, operation_by
         ) VALUES (
-            NEW.id, NEW.adr1, NEW.adr2, NEW.adr3, NEW.city_id, NEW.district_id, NEW.is_active, 'INSERT', NEW.lua, NEW.lub
+            NEW.id, NEW.adr1, NEW.adr2, NEW.adr3, NEW.city_id, NEW.district_id, NEW.state_id, NEW.country_id, NEW.is_active, 'INSERT', NEW.lua, NEW.lub
         );
     ELSIF (TG_OP = 'UPDATE') THEN
         IF (OLD.is_active = true AND NEW.is_active = false) THEN
             INSERT INTO wms.address_history(
-                address_id, adr1, adr2, adr3, city_id, district_id, is_active, operation, operation_at, operation_by
+                address_id, adr1, adr2, adr3, city_id, district_id, state_id, country_id, is_active, operation, operation_at, operation_by
             ) VALUES (
-                NEW.id, NEW.adr1, NEW.adr2, NEW.adr3, NEW.city_id, NEW.district_id, NEW.is_active, 'DELETE', NEW.lua, NEW.lub
+                NEW.id, NEW.adr1, NEW.adr2, NEW.adr3, NEW.city_id, NEW.district_id, NEW.state_id, NEW.country_id, NEW.is_active, 'DELETE', NEW.lua, NEW.lub
             );
         ELSE
             INSERT INTO wms.address_history(
-                address_id, adr1, adr2, adr3, city_id, district_id, is_active, operation, operation_at, operation_by
+                address_id, adr1, adr2, adr3, city_id, district_id, state_id, country_id, is_active, operation, operation_at, operation_by
             ) VALUES (
-                NEW.id, NEW.adr1, NEW.adr2, NEW.adr3, NEW.city_id, NEW.district_id, NEW.is_active, 'UPDATE', NEW.lua, NEW.lub
+                NEW.id, NEW.adr1, NEW.adr2, NEW.adr3, NEW.city_id, NEW.district_id, NEW.state_id, NEW.country_id, NEW.is_active, 'UPDATE', NEW.lua, NEW.lub
             );
         END IF;
     END IF;

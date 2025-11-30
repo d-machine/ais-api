@@ -40,7 +40,7 @@ sections:
         actionType: EXECUTE_QUERY
         queryInfo:
           returnType: SCALAR
-          query: SELECT wms.update_address($1, $2, $3, $4, $5, $6, $7) as id;
+          query: SELECT wms.update_address($1, $2, $3, $4, $5, $6, $7, $8, $9) as id;
           payload:
             - id
             - adr1
@@ -48,6 +48,8 @@ sections:
             - adr3
             - city_id
             - district_id
+            - state_id
+            - country_id
           contextParams:
             - current_user_id
           path:

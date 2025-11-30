@@ -3,17 +3,63 @@ version: 1.0
 sections:
   - sectionType: FIELDS
     sectionName: Vendor Details
+    queryInfo:
+      returnType: SINGLE_ROW
+      query: |
+        SELECT
+          v.id,
+          v.category_id,
+          vc.name as category_name,
+          v.vendor_type,
+          v.name as vendor_name,
+          v.add1,
+          v.add2,
+          v.add3,
+          v.city_id,
+          c.name as city_name,
+          v.district_id,
+          d.name as district_name,
+          v.state_id,
+          s.name as state_name,
+          v.country_id,
+          co.name as country_name,
+          v.pincode,
+          v.person_name,
+          v.telephone,
+          v.email,
+          v.pan_no,
+          v.gstno,
+          v.cr_limit,
+          v.cr_days,
+          v.salesman,
+          v.aadhar_no,
+          v.sales_head,
+          v.director,
+          v.manager
+        FROM wms.vendor v
+        LEFT JOIN wms.vendor_category vc ON v.category_id = vc.id
+        LEFT JOIN wms.city c ON v.city_id = c.id
+        LEFT JOIN wms.district d ON v.district_id = d.id
+        LEFT JOIN wms.state s ON v.state_id = s.id
+        LEFT JOIN wms.country co ON v.country_id = co.id
+        WHERE v.id = $1
+      payload:
+        - id
+      path:
+        - sections
+        - 0
     applicableActions:
       - SAVE
       - CANCEL
     actionConfig:
       SAVE:
-        label: Create Vendor
+        label: Update Vendor
         actionType: EXECUTE_QUERY
         queryInfo:
           returnType: SCALAR
-          query: SELECT wms.insert_vendor($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24) as id;
+          query: SELECT wms.update_vendor($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25) as id;
           payload:
+            - id
             - category_id
             - vendor_type
             - vendor_name
