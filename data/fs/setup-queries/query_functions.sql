@@ -1822,54 +1822,52 @@ END;
 $$ LANGUAGE plpgsql;
 
 
----------------------------** Transport Master **--------------------------
+---------------------------** Transport Master **---------------------------
 
--- Function to insert in transport
+-- Function to insert transport
 CREATE OR REPLACE FUNCTION wms.insert_transport(
-    transport_name VARCHAR(255),
-    descr VARCHAR(255),
-    current_user_id INTEGER
-) RETURNS INT AS $$
-DECLARE new_transport_id INT;
+    _name VARCHAR(255),
+    _descr VARCHAR(255),
+    _current_user_id INTEGER
+) RETURNS INTEGER AS $$
+DECLARE
+    _id INTEGER;
 BEGIN
     INSERT INTO wms.transport (name, descr, lub)
-    VALUES (transport_name, descr, current_user_id)
-    RETURNING id INTO new_transport_id;
-    RETURN new_transport_id;
+    VALUES (_name, _descr, _current_user_id)
+    RETURNING id INTO _id;
+    RETURN _id;
 END;
 $$ LANGUAGE plpgsql;
-
 
 -- Function to update transport
 CREATE OR REPLACE FUNCTION wms.update_transport(
-    transport_id INT,
-    transport_name VARCHAR(255),
-    descr VARCHAR(255),
-    current_user_id INTEGER
-) RETURNS INT AS $$
+    _id INTEGER,
+    _name VARCHAR(255),
+    _descr VARCHAR(255),
+    _current_user_id INTEGER
+) RETURNS INTEGER AS $$
 BEGIN
     UPDATE wms.transport
-    SET name = transport_name,
-        descr = descr,
-        lub = current_user_id
-    WHERE id = transport_id;
-    RETURN transport_id;
+    SET name = _name,
+        descr = _descr,
+        lub = _current_user_id,
+        lua = NOW()
+    WHERE id = _id;
+    RETURN _id;
 END;
 $$ LANGUAGE plpgsql;
 
--- Function to delete transport
+-- Function to delete transport (soft delete)
 CREATE OR REPLACE FUNCTION wms.delete_transport(
-    transport_id_to_delete INTEGER,
-    deleted_by_user_id INTEGER
-) 
-RETURNS INT AS $$
+    _id INTEGER,
+    _current_user_id INTEGER
+) RETURNS INTEGER AS $$
 BEGIN
-    -- delete transport
     UPDATE wms.transport
-    SET is_active = false,
-        lub = deleted_by_user_id
-    WHERE id = transport_id;
-    RETURN transpory_id_to_delete;
+    SET is_active = false, lub = _current_user_id, lua = NOW()
+    WHERE id = _id;
+    RETURN _id;
 END;
 $$ LANGUAGE plpgsql;
 

@@ -1,4 +1,6 @@
-actionType: EXECUTE_QUERY
+configType: LIST
+version: 1.0
+
 queryInfo:
   returnType: MULTIPLE_ROWS
   query: |
@@ -19,9 +21,12 @@ queryInfo:
     applyAccessLevelRestrictions: false
     applyFiltering: true
     applySorting: true
-    applyPagenation: true
+    applyPagination: true
+    pageSize: 50
+    pageSizeOptions: [10, 25, 50, 100]
     onSuccess: refresh
     onFailure: showErrorPage
+  path: []
 
 applicableActions:
   - add
@@ -39,7 +44,8 @@ actionConfig:
   edit:
     label: Edit Transport
     actionType: DISPLAY_FORM
-    formConfig: add-transport
+    formConfig: edit-transport
+    level: ROW
     accessTypeRequired: 7-EDIT
     payload:
       - id
@@ -48,6 +54,7 @@ actionConfig:
   delete:
     label: Delete Transport
     actionType: EXECUTE_QUERY
+    level: ROW
     accessTypeRequired: 7-DELETE
     queryInfo:
       returnType: SINGLE_ROW
@@ -69,12 +76,19 @@ columns:
   - name: transport_name
     label: Transport Name
     visible: true
+    sortable: true
+    filterable: true
+    width: 200
   - name: descr
-    label: Descr
+    label: Description
     visible: true
   - name: last_updated_at
     label: Last Updated At
     visible: true
+    dataType: datetime
+    format: "DD/MM/YYYY HH:mm"
+    sortable: true
+    defaultSort: DESC
   - name: last_updated_by_name
-    label: Last Updated By
+    label: Updated By
     visible: true
