@@ -713,7 +713,6 @@ $$ LANGUAGE plpgsql;
 
 -- Function to insert in sales_order_header
 CREATE OR REPLACE FUNCTION wms.insert_sales_order_header(
-    entry_no VARCHAR(6),
     entry_dt TIMESTAMP,
     party_id INTEGER,
     broker_id INTEGER,
@@ -724,9 +723,18 @@ CREATE OR REPLACE FUNCTION wms.insert_sales_order_header(
     status VARCHAR(255),
     remarks VARCHAR(255),
     current_user_id INTEGER
-) RETURNS INT AS $$
-DECLARE new_sales_header_id INT;
+) RETURNS TABLE (id INTEGER, entry_no VARCHAR) AS $$
+DECLARE 
+    new_sales_header_id INT;
+    new_entry_no VARCHAR(6);
+    max_entry_no INT;
 BEGIN
+    -- Auto-generate entry_no
+    SELECT COALESCE(MAX(CAST(sh.entry_no AS INTEGER)), 0) INTO max_entry_no 
+    FROM wms.sales_order_header sh;
+    
+    new_entry_no := LPAD((max_entry_no + 1)::TEXT, 6, '0');
+
     INSERT INTO wms.sales_order_header(
         entry_no,
         entry_dt,
@@ -741,7 +749,7 @@ BEGIN
         lub
     )
     VALUES (
-        entry_no, 
+        new_entry_no, 
         entry_dt,
         party_id,
         broker_id,
@@ -753,168 +761,166 @@ BEGIN
         remarks,
         current_user_id
     )
-    RETURNING id INTO new_sales_header_id;
-    RETURN new_sales_header_id;
+    RETURNING wms.sales_order_header.id INTO new_sales_header_id;
+    
+    RETURN QUERY SELECT new_sales_header_id, new_entry_no;
 END;
 $$ LANGUAGE plpgsql;
 
---Function to update sales_order_header
-CREATE OR  REPLACE FUNCTION wms.update_sales_order_header(
-    sales_order_header_id INT,
-    entry_no VARCHAR(6),
-    entry_dt TIMESTAMP,
-    party_id INTEGER,
-    broker_id INTEGER,
-    delivery_at_id INTEGER,
-    trsp_id INTEGER,
-    year_code VARCHAR(4),
-    delivery_dt TIMESTAMP,
-    status VARCHAR(255),
-    remarks VARCHAR(255),
-    current_user_id INTEGER
-)RETURNS INT AS $$
+-- Function to update sales_order_header
+CREATE OR REPLACE FUNCTION wms.update_sales_order_header(
+    _id INTEGER,
+    _entry_dt TIMESTAMP,
+    _party_id INTEGER,
+    _broker_id INTEGER,
+    _delivery_at_id INTEGER,
+    _trsp_id INTEGER,
+    _delivery_dt TIMESTAMP,
+    _status VARCHAR(255),
+    _remarks VARCHAR(255),
+    _current_user_id INTEGER
+) RETURNS INTEGER AS $$
 BEGIN
-    UPDATE  wms.sales_order_header
-    SET entry_no = entry_no,
-        entry_dt = entry_dt,
-        party_id = party_id,
-        broker_id = broker_id,
-        delivery_at_id = delivery_at_id,
-        trsp_id = trsp_id,
-        year_code = year_code,
-        delivery_dt = delivery_dt,
-        status =status,
-        remarks = remarks,
-        lub = current_user_id
-    WHERE id = sales_order_header_id;
-    RETURN sales_order_header_id;
-END;
-$$ LANGUAGE plpgsql;
-
---Function to delete sales_order_header
-CREATE OR REPLACE FUNCTION wms.delete_sales_order_header(
-    header_id_to_delete INTEGER,
-    deleted_by_user_id INTEGER
-)RETURNS INT AS $$
-BEGIN
-    --Delete all sales details associated with this sales header
-    PERFORM wms.delete_sales_details_by_sales_header(sales_order_header_id_to_delete,deleted_by_user_id);
-
-    -- Delete sales order header
     UPDATE wms.sales_order_header
-    SET is_active = false,
-        lub = deleted_by_user_id
-    WHERE id = sales_order_header_id_to_delete;
-    RETURN sales_order_header_id_to_delete;
+    SET entry_dt = _entry_dt,
+        party_id = _party_id,
+        broker_id = _broker_id,
+        delivery_at_id = _delivery_at_id,
+        trsp_id = _trsp_id,
+        delivery_dt = _delivery_dt,
+        status = _status,
+        remarks = _remarks,
+        lub = _current_user_id,
+        lua = NOW()
+    WHERE id = _id;
+    RETURN _id;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Function to delete sales_order_header
+CREATE OR REPLACE FUNCTION wms.delete_sales_order_header(
+    _id INTEGER,
+    _current_user_id INTEGER
+) RETURNS INTEGER AS $$
+BEGIN
+    UPDATE wms.sales_order_header
+    SET is_active = false, lub = _current_user_id, lua = NOW()
+    WHERE id = _id;
+    
+    -- Also delete details
+    UPDATE wms.sales_order_details
+    SET is_active = false, lub = _current_user_id, lua = NOW()
+    WHERE header_id = _id;
+    
+    RETURN _id;
 END;
 $$ LANGUAGE plpgsql;
 
 
 ---------------------------** Sales Order Details **---------------------------
 
-
---Function to insert in sales_ order_details
+-- Function to insert sales_order_details
 CREATE OR REPLACE FUNCTION wms.insert_sales_order_details(
-    header_id INTEGER,
-    item_id INTEGER,
-    uom_pc_id INTEGER,
-    uom_package_id INTEGER,
-    rate_per_pc DOUBLE PRECISION,
-    no_of_pc INTEGER,
-    amount DOUBLE PRECISION,
-    status VARCHAR(255),
-    remarks VARCHAR(255),
-    current_user_id INTEGER
-)RETURNS INT AS $$
-DECLARE new_sales_details_id INT;
+    _header_id INTEGER,
+    _item_id INTEGER,
+    _uom_pc_id INTEGER,
+    _uom_package_id INTEGER,
+    _rate_per_pc DOUBLE PRECISION,
+    _no_of_pc INTEGER,
+    _amount DOUBLE PRECISION,
+    _status VARCHAR(255),
+    _remarks VARCHAR(255),
+    _current_user_id INTEGER
+) RETURNS INTEGER AS $$
+DECLARE _id INTEGER;
 BEGIN
     INSERT INTO wms.sales_order_details(
-        header_id,
-        item_id,
-        uom_pc_id,
-        uom_package_id,
-        rate_per_pc,
-        no_of_pc,
-        amount,
-        status,
-        remarks,
-        lub
+        header_id, item_id, uom_pc_id, uom_package_id, 
+        rate_per_pc, no_of_pc, amount, status, remarks, lub
     )
     VALUES (
-        header_id,
-        item_id,
-        uom_pc_id,
-        uom_package_id,
-        rate_per_pc,
-        no_of_pc,
-        amount,
-        status,
-        remarks,
-        current_user_id
+        _header_id, _item_id, _uom_pc_id, _uom_package_id,
+        _rate_per_pc, _no_of_pc, _amount, _status, _remarks, _current_user_id
     )
-    RETURNING id INTO new_sales_details_id;
-    RETURN new_sales_details_id;
+    RETURNING id INTO _id;
+    RETURN _id;
 END;
 $$ LANGUAGE plpgsql;
 
---Function to update sales_order_details
+-- Function to update sales_order_details
 CREATE OR REPLACE FUNCTION wms.update_sales_order_details(
-    sales_order_details_id INTEGER,
-    header_id INTEGER,
-    item_id INTEGER,
-    uom_pc_id INTEGER,
-    uom_package_id INTEGER,
+    _id INTEGER,
+    _item_id INTEGER,
+    _uom_pc_id INTEGER,
+    _uom_package_id INTEGER,
+    _rate_per_pc DOUBLE PRECISION,
+    _no_of_pc INTEGER,
+    _amount DOUBLE PRECISION,
+    _status VARCHAR(255),
+    _remarks VARCHAR(255),
+    _current_user_id INTEGER
+) RETURNS INTEGER AS $$
+BEGIN
+    UPDATE wms.sales_order_details
+    SET item_id = _item_id,
+        uom_pc_id = _uom_pc_id,
+        uom_package_id = _uom_package_id,
+        rate_per_pc = _rate_per_pc,
+        no_of_pc = _no_of_pc,
+        amount = _amount,
+        status = _status,
+        remarks = _remarks,
+        lub = _current_user_id,
+        lua = NOW()
+    WHERE id = _id;
+    RETURN _id;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Function to delete sales_order_details
+CREATE OR REPLACE FUNCTION wms.delete_sales_order_details(
+    _id INTEGER,
+    _current_user_id INTEGER
+) RETURNS INTEGER AS $$
+BEGIN
+    UPDATE wms.sales_order_details
+    SET is_active = false, lub = _current_user_id, lua = NOW()
+    WHERE id = _id;
+    RETURN _id;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Function to get sales_order_details (optional, mostly handled by list query)
+CREATE OR REPLACE FUNCTION wms.get_sales_order_details(
+    _header_id INTEGER
+) RETURNS TABLE (
+    id INTEGER,
+    item_name VARCHAR,
+    uom_pc_name VARCHAR,
+    uom_package_name VARCHAR,
     rate_per_pc DOUBLE PRECISION,
     no_of_pc INTEGER,
-    amount DOUBLE PRECISION,
-    status VARCHAR(255),
-    remarks VARCHAR(255),
-    current_user_id INTEGER
-)RETURNS INT AS $$
+    amount DOUBLE PRECISION
+) AS $$
 BEGIN
-    UPDATE wms.sales_order_details
-    SET header_id = header_id,
-        item_id = item_id,
-        uom_pc_id = uom_pc_id,
-        uom_package_id = uom_package_id,
-        rate_per_pc = rate_per_pc,
-        no_of_pc = no_of_pc,
-        amount = amount,
-        status = status,
-        remarks = remarks,
-        lub = current_user_id
-    WHERE id = sales_order_details_id;
-    RETURN sales_order_details_id;
+    RETURN QUERY
+    SELECT 
+        d.id,
+        m.name as item_name,
+        u1.name as uom_pc_name,
+        u2.name as uom_package_name,
+        d.rate_per_pc,
+        d.no_of_pc,
+        d.amount
+    FROM wms.sales_order_details d
+    LEFT JOIN wms.material m ON d.item_id = m.id
+    LEFT JOIN wms.uom u1 ON d.uom_pc_id = u1.id
+    LEFT JOIN wms.uom u2 ON d.uom_package_id = u2.id
+    WHERE d.header_id = _header_id AND d.is_active = true;
 END;
 $$ LANGUAGE plpgsql;
 
---Function to delete sales_order_details
-CREATE OR REPLACE FUNCTION wms.delete_sales_order_details(
-    sales_order_details_id_to_delete INTEGER,
-    deleted_by_user_id INTEGER
-)RETURNS INT AS $$
-BEGIN
-    --Delete Sales details
-    UPDATE wms.sales_order_details
-    SET is_active = false,
-        lub = deleted_by_user_id
-    WHERE id =  sales_order_details_id_to_delete;
-    RETURN sales_order_details_id_to_delete;
-END;
-$$ LANGUAGE plpgsql;
 
---Function to delete all sales details associated with a sales header
-CREATE OR REPLACE FUNCTION wms.delete_sales_details_by_sales_header(
-    header_id_to_delete INTEGER,
-    deleted_by_user_id INTEGER
-)RETURNS VOID AS $$
-BEGIN 
-    UPDATE wms.sales_order_details
-    SET is_active = false,
-    lub = deleted_by_user_id
-    WHERE header_id = header_id_to_delete;
-END;
-$$ LANGUAGE plpgsql;
 
 ---------------------------** Picking List Header **---------------------------
 

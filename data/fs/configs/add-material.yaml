@@ -87,22 +87,25 @@ sections:
           condition: isEmpty
           field: category_id
         selectConfig:
-          resource: list-brands-by-category
+          resource: list-item-brands
           labelField: brand_name
           displayField: brand_name
           selectHandler: converter
           currentSelection:
-            - key: brand_id
+            - key: id
               as: brand_id
           selectParser: converter
           fields_to_extract:
-            - key: brand_id
+            - key: id
               as: brand_id
             - key: brand_name
               as: brand_name
           dependencies:
-            - field: category_id
-              targetParam: category_id
+            - target: [category_id]
+              handler: filterByDependency
+              required: true
+              dependencyConfig:
+                targetParam: category_id
       - name: uom_pc_id
         label: Base UOM
         type: SELECT
@@ -129,8 +132,8 @@ sections:
           condition: isEmpty
           field: uom_pc_id
         selectConfig:
-          resource: list-uom-packages-by-base
-          labelField: uom_name
+          resource: list-uom-conversions
+          labelField: uom_case_name
           displayField: uom_package_name
           selectHandler: converter
           currentSelection:
@@ -138,13 +141,16 @@ sections:
               as: uom_package_id
           selectParser: converter
           fields_to_extract:
-            - key: id
+            - key: uom_id_case
               as: uom_package_id
-            - key: uom_name
+            - key: uom_case_name
               as: uom_package_name
           dependencies:
-            - field: uom_pc_id
-              targetParam: uom_pc_id
+            - target: [uom_pc_id]
+              handler: filterByDependency
+              required: true
+              dependencyConfig:
+                targetParam: uom_id_each
       - name: mrp
         label: MRP
         type: NUMBER

@@ -1,0 +1,127 @@
+configType: LIST
+version: 1.0
+
+queryInfo:
+  returnType: MULTIPLE_ROWS
+  query: |
+    SELECT
+      sh.id,
+      sh.entry_no,
+      sh.entry_dt,
+      p.party_name,
+      b.name as broker_name,
+      sh.status,
+      COALESCE(SUM(sd.no_of_pc), 0) as total_qty,
+      COALESCE(SUM(sd.amount), 0) as total_amount,
+      sh.lua as last_updated_at,
+      TRIM(CONCAT(u.first_name, ' ', u.last_name)) as last_updated_by_name
+    FROM wms.sales_order_header sh
+    LEFT JOIN wms.party p ON sh.party_id = p.id
+    LEFT JOIN wms.broker b ON sh.broker_id = b.id
+    LEFT JOIN wms.sales_order_details sd ON sh.id = sd.header_id AND sd.is_active = true
+    LEFT JOIN administration.user u ON sh.lub = u.id
+    WHERE sh.is_active = true
+    GROUP BY sh.id, sh.entry_no, sh.entry_dt, p.party_name, b.name, sh.status, sh.lua, u.first_name, u.last_name
+  options:
+    applyFiltering: true
+    applySorting: true
+    applyPagination: true
+    pageSize: 50
+  path: []
+
+columns:
+  - name: id
+    label: ID
+    visible: false
+    sortable: false
+  - name: entry_no
+    label: Entry No
+    visible: true
+    sortable: true
+    filterable: true
+    width: 100
+  - name: entry_dt
+    label: Entry Date
+    visible: true
+    sortable: true
+    dataType: datetime
+    format: "DD/MM/YYYY"
+    width: 120
+  - name: party_name
+    label: Party
+    visible: true
+    sortable: true
+    filterable: true
+    width: 200
+  - name: broker_name
+    label: Broker
+    visible: true
+    sortable: true
+    filterable: true
+    width: 150
+  - name: status
+    label: Status
+    visible: true
+    sortable: true
+    width: 100
+  - name: total_qty
+    label: Total Qty
+    visible: true
+    sortable: false
+    width: 100
+    align: right
+  - name: total_amount
+    label: Total Amount
+    visible: true
+    sortable: false
+    dataType: currency
+    width: 120
+    align: right
+  - name: last_updated_at
+    label: Last Updated
+    visible: true
+    sortable: true
+    dataType: datetime
+    format: "DD/MM/YYYY HH:mm"
+    defaultSort: DESC
+    width: 150
+  - name: last_updated_by_name
+    label: Updated By
+    visible: true
+    width: 150
+
+actionConfig:
+  add:
+    label: New Order
+    actionType: DISPLAY_FORM
+    shortcut: F2
+    formConfig: add-sales-order
+    onSuccess: refresh
+  edit:
+    label: Edit
+    actionType: DISPLAY_FORM
+    shortcut: F4
+    level: ROW
+    formConfig: edit-sales-order
+    payload:
+      - id
+    onSuccess: refresh
+  delete:
+    label: Delete
+    actionType: EXECUTE_QUERY
+    shortcut: F8
+    level: ROW
+    confirmationRequired: true
+    confirmationMessage: "Are you sure you want to delete Order '${row.entry_no}'?"
+    queryInfo:
+      returnType: SCALAR
+      query: SELECT wms.delete_sales_order_header($1, $2) as id;
+      payload:
+        - id
+      contextParams:
+        - current_user_id
+      path:
+        - actionConfig
+        - delete
+    onSuccess: refresh
+    onFailure: showErrorSnackbar

@@ -8,7 +8,7 @@ queryInfo:
     FROM
       (
         SELECT
-          u.id as user_id, u.username as username,
+          u.id as id, u.username as username,
           u.email as email, u.first_name as first_name, u.last_name as last_name,
           TRIM(CONCAT(u.first_name, ' ', u.last_name)) as full_name,
           string_agg(r.name, ', ') as roles, string_agg(r.id::text, ', ') as role_ids,
@@ -50,7 +50,7 @@ actionConfig:
     label: Edit User
     actionType: DISPLAY_FORM
     payload:
-      - user_id
+      - id
     formConfig: add-user
     onSuccess: refresh
     accessTypeRequired: 6-EDIT
@@ -58,7 +58,7 @@ actionConfig:
     label: Change Password
     actionType: DISPLAY_FORM
     payload:
-      - user_id
+      - id
     formConfig: change-password
     onSuccess: refresh
     accessTypeRequired: 6-EDIT
@@ -72,7 +72,7 @@ actionConfig:
         - delete
       query: Select administration.delete_user($1, $2) as id;
       payload:
-        - user_id
+        - id
       contextParams:
         - current_user_id
     formConfig: list-users

@@ -144,14 +144,14 @@ sections:
           - field: sales_head
             span: 6
       - columns:
-          - field: cr_limit
-            span: 6
-          - field: cr_days
-            span: 6
-      - columns:
           - field: director
             span: 6
           - field: manager
+            span: 6
+      - columns:
+          - field: cr_limit
+            span: 6
+          - field: cr_days
             span: 6
     
     fields:

@@ -6,7 +6,7 @@ queryInfo:
   query: |
     SELECT * FROM (
       SELECT
-        cd.id as city_district_id,
+        cd.id as id,
         cm.name as city_name,
         dm.name as district_name,
         sm.name as state_name,
@@ -53,7 +53,7 @@ actionConfig:
     level: ROW
     formConfig: edit-city-district
     payload:
-      - city_district_id
+      - id
     onSuccess: refresh
     accessTypeRequired: 7-EDIT
 
@@ -69,7 +69,7 @@ actionConfig:
       returnType: SCALAR
       query: SELECT wms.delete_city_district($1, $2) as id;
       payload:
-        - city_district_id
+        - id
       contextParams:
         - current_user_id
       path:
@@ -79,7 +79,7 @@ actionConfig:
     onFailure: showErrorSnackbar
 
 columns:
-  - name: city_district_id
+  - name: id
     label: ID
     visible: false
     sortable: false

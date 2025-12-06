@@ -66,11 +66,10 @@ sections:
         required: true
         selectConfig:
           resource: list-uoms
-          labelField: uom_name
           displayField: uom_each_name
           selectHandler: converter
           currentSelection:
-            - key: uom_id_each
+            - key: id
               as: uom_id_each
           selectParser: converter
           fields_to_extract:
@@ -84,11 +83,10 @@ sections:
         required: true
         selectConfig:
           resource: list-uoms
-          labelField: uom_name
           displayField: uom_case_name
           selectHandler: converter
           currentSelection:
-            - key: uom_id_case
+            - key: id
               as: uom_id_case
           selectParser: converter
           fields_to_extract:

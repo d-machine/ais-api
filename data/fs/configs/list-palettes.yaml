@@ -4,7 +4,7 @@ queryInfo:
   query: |
     SELECT * FROM (
       SELECT
-        p.id as palette_id,
+        p.id as id,
         p.descr as descr,
         p.lua as last_updated_at,
         TRIM(CONCAT(u.first_name, ' ', u.last_name)) AS last_updated_by_name
@@ -41,7 +41,7 @@ actionConfig:
     formConfig: add-palette
     accessTypeRequired: 7-EDIT
     payload:
-      - palette_id
+      - id
     onSuccess: refresh
 
   delete:
@@ -52,7 +52,7 @@ actionConfig:
       returnType: SINGLE_ROW
       query: SELECT wms.delete_palette($1, $2);
       payload:
-        - palette_id
+        - id
       contextParams:
         - current_user_id
       path:
@@ -62,7 +62,7 @@ actionConfig:
     onFailure: showErrorSnackbar
 
 columns:
-  - name: palette_id
+  - name: id
     label: ID
     visible: false
   - name: descr

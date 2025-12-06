@@ -5,13 +5,13 @@ sections:
       returnType: SINGLE_ROW
       query: |
         SELECT
-          id as uom_id, name as uom_name, descr as descr
+          id as id, name as uom_name, descr as descr
         FROM
           wms.uom
         WHERE
           id = $1
       payload:
-        - uom_id
+        - id
       path:
         - sections
         - 0

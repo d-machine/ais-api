@@ -1,0 +1,167 @@
+configType: FORM
+version: 1.0
+sections:
+  - sectionType: FIELDS
+    sectionName: Order Detail
+    queryInfo:
+      returnType: SINGLE_ROW
+      query: |
+        SELECT
+          d.id,
+          d.header_id,
+          d.item_id,
+          m.name as item_name,
+          d.uom_pc_id,
+          u1.name as uom_pc_name,
+          d.uom_package_id,
+          u2.name as uom_package_name,
+          d.rate_per_pc,
+          d.no_of_pc,
+          d.amount,
+          d.status,
+          d.remarks
+        FROM wms.sales_order_details d
+        LEFT JOIN wms.material m ON d.item_id = m.id
+        LEFT JOIN wms.uom u1 ON d.uom_pc_id = u1.id
+        LEFT JOIN wms.uom u2 ON d.uom_package_id = u2.id
+        WHERE d.id = $1
+      payload:
+        - id
+      path:
+        - sections
+        - 0
+    applicableActions:
+      - SAVE
+      - CANCEL
+    actionConfig:
+      SAVE:
+        label: Update Item
+        actionType: EXECUTE_QUERY
+        queryInfo:
+          returnType: SCALAR
+          query: SELECT wms.update_sales_order_details($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) as id;
+          payload:
+            - id
+            - item_id
+            - uom_pc_id
+            - uom_package_id
+            - rate_per_pc
+            - no_of_pc
+            - amount
+            - status
+            - remarks
+          contextParams:
+            - current_user_id
+          path:
+            - sections
+            - 0
+            - actionConfig
+            - SAVE
+        onSuccess: exitAndComplete
+        onFailure: showErrorSnackbar
+      CANCEL:
+        label: Cancel
+    
+    rows:
+      - columns:
+          - field: item_id
+            span: 12
+      - columns:
+          - field: uom_pc_id
+            span: 6
+          - field: uom_package_id
+            span: 6
+      - columns:
+          - field: rate_per_pc
+            span: 4
+          - field: no_of_pc
+            span: 4
+          - field: amount
+            span: 4
+      - columns:
+          - field: status
+            span: 6
+          - field: remarks
+            span: 6
+            
+    fields:
+      - name: id
+        label: ID
+        type: NUMBER
+        visible: false
+        required: true
+      - name: item_id
+        label: Item
+        type: SELECT
+        required: true
+        selectConfig:
+          resource: list-materials
+          labelField: name
+          displayField: name
+          selectHandler: converter
+          currentSelection:
+            - key: item_id
+              as: item_id
+          selectParser: converter
+          fields_to_extract:
+            - key: id
+              as: item_id
+            - key: name
+              as: item_name
+            - key: selling_rate
+              as: rate_per_pc
+      - name: uom_pc_id
+        label: Base UOM
+        type: SELECT
+        required: true
+        selectConfig:
+          resource: list-uoms
+          labelField: name
+          displayField: name
+          selectHandler: converter
+          currentSelection:
+            - key: uom_pc_id
+              as: uom_pc_id
+          selectParser: converter
+          fields_to_extract:
+            - key: id
+              as: uom_pc_id
+            - key: name
+              as: uom_pc_name
+      - name: uom_package_id
+        label: Package UOM
+        type: SELECT
+        required: true
+        selectConfig:
+          resource: list-uoms
+          labelField: name
+          displayField: name
+          selectHandler: converter
+          currentSelection:
+            - key: uom_package_id
+              as: uom_package_id
+          selectParser: converter
+          fields_to_extract:
+            - key: id
+              as: uom_package_id
+            - key: name
+              as: uom_package_name
+      - name: rate_per_pc
+        label: Rate
+        type: NUMBER
+        required: true
+      - name: no_of_pc
+        label: Quantity
+        type: NUMBER
+        required: true
+      - name: amount
+        label: Amount
+        type: NUMBER
+        required: true
+      - name: status
+        label: Status
+        type: TEXT
+        required: true
+      - name: remarks
+        label: Remarks
+        type: TEXTAREA

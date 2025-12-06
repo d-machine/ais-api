@@ -3,7 +3,7 @@ queryInfo:
   query: |
     SELECT * FROM (
       SELECT
-        b.id as broker_id,
+        b.id as id,
         b.broker_type as broker_type,
         b.name as broker_name,
         b.add1 as add1,
@@ -60,7 +60,7 @@ actionConfig:
     resourcePath: broker-master
     accessTypeRequired: BROKER-UPDATE
     targetParams:
-      - key: broker_id
+      - key: id
         as: broker_id
   DELETE:
     label: Delete Broker
@@ -73,7 +73,7 @@ actionConfig:
         SET is_active = false, lua = NOW()
         WHERE id = $1;
       payload:
-        - broker_id
+        - id
       contextParams:
         - current_user_id
       path:
@@ -83,7 +83,7 @@ actionConfig:
     onFailure: showErrorSnackbar
 
 columns:
-  - name: broker_id
+  - name: id
     label: ID
     visible: false
   - name: broker_type

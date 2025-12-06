@@ -4,7 +4,7 @@ queryInfo:
   query: |
     SELECT * FROM (
       SELECT
-        um.id as uom_id,
+        um.id as id,
         um.name as uom_name,
         um.descr as descr,
         um.lua as last_updated_at,
@@ -19,7 +19,7 @@ queryInfo:
     applyAccessLevelRestrictions: false
     applyFiltering: true
     applySorting: true
-    applyPagenation: true
+    applyPagination: true
     onSuccess: refresh
     onFailure: showErrorPage
 applicableActions:
@@ -36,20 +36,22 @@ actionConfig:
   edit:
     label: Edit UOM
     actionType: DISPLAY_FORM
+    level: ROW
     formConfig: add-uom
     accessTypeRequired: 7-EDIT
     payload:
-      - uom_id
+      - id
     onSuccess: refresh
   delete:
     label: Delete UOM
     actionType: EXECUTE_QUERY
+    level: ROW
     accessTypeRequired: 7-DELETE
     queryInfo: 
       returnType: SINGLE_ROW
       query: SELECT wms.delete_uom_master($1,$2) as id;
       payload:
-        - uom_id
+        - id
       contextParams:
          - current_user_id
       path:
@@ -59,7 +61,7 @@ actionConfig:
     onFailure: showErrorSnackbar
   
 columns:
-  - name: uom_id
+  - name: id
     label: ID
     visible: false
   - name: uom_name

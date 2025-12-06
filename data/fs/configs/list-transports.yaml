@@ -4,7 +4,7 @@ queryInfo:
   query: |
     SELECT * FROM (
       SELECT
-        t.id as transport_id,
+        t.id as id,
         t.name as transport_name,
         t.descr as descr,
         t.lua as last_updated_at,
@@ -42,7 +42,7 @@ actionConfig:
     formConfig: add-transport
     accessTypeRequired: 7-EDIT
     payload:
-      - transport_id
+      - id
     onSuccess: refresh
 
   delete:
@@ -53,7 +53,7 @@ actionConfig:
       returnType: SINGLE_ROW
       query: SELECT wms.delete_transport($1, $2) as id;
       payload:
-        - transport_id
+        - id
       contextParams:
         - current_user_id
       path:
@@ -63,7 +63,7 @@ actionConfig:
     onFailure: showErrorSnackbar
 
 columns:
-  - name: transport_id
+  - name: id
     label: ID
     visible: false
   - name: transport_name

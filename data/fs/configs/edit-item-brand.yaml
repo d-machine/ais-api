@@ -7,7 +7,7 @@ sections:
       returnType: SINGLE_ROW
       query: |
         SELECT
-          ib.id as brand_id,
+          ib.id as id,
           ib.brand_name,
           ib.category_id,
           icm.name as category_name,
@@ -18,7 +18,7 @@ sections:
         WHERE
           ib.id = $1
       payload:
-        - brand_id
+        - id
       path:
         - sections
         - 0

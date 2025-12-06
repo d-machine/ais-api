@@ -7,7 +7,7 @@ sections:
       returnType: SINGLE_ROW
       query: |
         SELECT
-          cd.id as city_district_id,
+          cd.id as id,
           cd.state_id,
           s.name as state_name,
           cd.city_id,
@@ -23,7 +23,7 @@ sections:
         WHERE
           cd.id = $1
       payload:
-        - city_district_id
+        - id
       path:
         - sections
         - 0
@@ -38,7 +38,7 @@ sections:
           returnType: SCALAR
           query: SELECT wms.update_city_district($1, $2, $3, $4, $5, $6) as id;
           payload:
-            - city_district_id
+            - id
             - city_id
             - district_id
             - state_id

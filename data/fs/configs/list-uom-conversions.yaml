@@ -6,6 +6,8 @@ queryInfo:
   query: |
     SELECT
       uc.id,
+      uc.uom_id_each,
+      uc.uom_id_case,
       u1.name as uom_each_name,
       u2.name as uom_case_name,
       uc.no_of_pcs,
@@ -28,6 +30,13 @@ columns:
     label: ID
     visible: false
     sortable: false
+  - name: uom_id_each
+    label: Base UOM ID
+    visible: false
+    filterable: true
+  - name: uom_id_case
+    label: Package UOM ID
+    visible: false
   - name: uom_each_name
     label: Base UOM
     visible: true

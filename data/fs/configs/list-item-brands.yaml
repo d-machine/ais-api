@@ -6,7 +6,7 @@ queryInfo:
   query: |
     SELECT * FROM (
       SELECT
-        ib.id as brand_id,
+        ib.id as id,
         ib.brand_name,
         icm.id as category_id,
         icm.name as category_name,
@@ -51,7 +51,7 @@ actionConfig:
     level: ROW
     formConfig: edit-item-brand
     payload:
-      - brand_id
+      - id
     onSuccess: refresh
     accessTypeRequired: 7-EDIT
   
@@ -67,7 +67,7 @@ actionConfig:
       returnType: SCALAR
       query: SELECT wms.delete_item_brand($1, $2) as id;
       payload:
-        - brand_id
+        - id
       contextParams:
         - current_user_id
       path:
@@ -77,10 +77,14 @@ actionConfig:
     onFailure: showErrorSnackbar
 
 columns:
-  - name: brand_id
+  - name: id
     label: ID
     visible: false
     sortable: false
+  - name: category_id
+    label: Category ID
+    visible: false
+    filterable: true
   - name: brand_name
     label: Brand Name
     visible: true
