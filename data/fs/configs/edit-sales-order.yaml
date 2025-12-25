@@ -1,5 +1,12 @@
 configType: FORM
 version: 1.0
+formActions:
+  FINISH:
+    label: Finish
+    visible: true
+    actionType: NAVIGATE
+    onSuccess: exitAndComplete
+
 sections:
   - sectionType: FIELDS
     sectionName: Order Header
@@ -11,11 +18,11 @@ sections:
           sh.entry_no,
           sh.entry_dt,
           sh.party_id,
-          p.party_name,
+          p.name as party_name,
           sh.broker_id,
           b.name as broker_name,
           sh.delivery_at_id,
-          a.address_line_1 as delivery_at_name,
+          CONCAT_WS(', ', a.adr1, a.adr2, a.adr3, c.name) as full_address,
           sh.trsp_id,
           t.name as trsp_name,
           sh.year_code,
@@ -26,6 +33,7 @@ sections:
         LEFT JOIN wms.party p ON sh.party_id = p.id
         LEFT JOIN wms.broker b ON sh.broker_id = b.id
         LEFT JOIN wms.address a ON sh.delivery_at_id = a.id
+        LEFT JOIN wms.city c ON a.city_id = c.id
         LEFT JOIN wms.transport t ON sh.trsp_id = t.id
         WHERE sh.id = $1
       payload:
@@ -148,8 +156,7 @@ sections:
         required: true
         selectConfig:
           resource: list-addresses
-          labelField: address_line_1
-          displayField: address_line_1
+          displayField: full_address
           selectHandler: converter
           currentSelection:
             - key: delivery_at_id
@@ -158,8 +165,8 @@ sections:
           fields_to_extract:
             - key: id
               as: delivery_at_id
-            - key: address_line_1
-              as: address_line_1
+            - key: full_address
+              as: full_address
       - name: trsp_id
         label: Transport
         type: SELECT
@@ -214,7 +221,9 @@ sections:
         WHERE d.header_id = $1 AND d.is_active = true
       payload:
         - id
-      path: []
+      path:
+        - sections
+        - 1
       options:
         applyFiltering: false
         applySorting: false
@@ -268,7 +277,8 @@ sections:
         actionType: DISPLAY_FORM
         formConfig: add-sales-order-detail
         payload:
-          - id # Pass header_id
+          - key: id
+            as: header_id
         onSuccess: refresh
       edit:
         label: Edit

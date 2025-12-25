@@ -69,8 +69,7 @@ sections:
         required: true
         selectConfig:
           resource: list-materials
-          labelField: name
-          displayField: name
+          displayField: item_name
           selectHandler: converter
           currentSelection:
             - key: item_id
@@ -79,7 +78,7 @@ sections:
           fields_to_extract:
             - key: id
               as: item_id
-            - key: name
+            - key: material_name
               as: item_name
             - key: selling_rate
               as: rate_per_pc
@@ -89,8 +88,7 @@ sections:
         required: true
         selectConfig:
           resource: list-uoms
-          labelField: name
-          displayField: name
+          displayField: uom_pc_name
           selectHandler: converter
           currentSelection:
             - key: uom_pc_id
@@ -99,7 +97,7 @@ sections:
           fields_to_extract:
             - key: id
               as: uom_pc_id
-            - key: name
+            - key: uom_name
               as: uom_pc_name
       - name: uom_package_id
         label: Package UOM
@@ -107,8 +105,7 @@ sections:
         required: true
         selectConfig:
           resource: list-uoms
-          labelField: name
-          displayField: name
+          displayField: uom_package_name
           selectHandler: converter
           currentSelection:
             - key: uom_package_id
@@ -117,7 +114,7 @@ sections:
           fields_to_extract:
             - key: id
               as: uom_package_id
-            - key: name
+            - key: uom_name
               as: uom_package_name
       - name: rate_per_pc
         label: Rate

@@ -1,5 +1,12 @@
 configType: FORM
 version: 1.0
+formActions:
+  FINISH:
+    label: Finish
+    visible: false
+    actionType: NAVIGATE
+    onSuccess: exitAndComplete
+
 sections:
   - sectionType: FIELDS
     sectionName: Country Details
@@ -42,7 +49,8 @@ sections:
             - 0
             - actionConfig
             - SAVE
-        onSuccess: exitAndComplete
+        onSuccess:
+          callback: callFinish
         onFailure: showErrorSnackbar
       CANCEL:
         label: Discard Changes

@@ -1,5 +1,12 @@
 configType: FORM
 version: 1.0
+formActions:
+  FINISH:
+    label: Finish
+    visible: true
+    actionType: NAVIGATE
+    onSuccess: exitAndComplete
+
 sections:
   - sectionType: FIELDS
     sectionName: Order Header
@@ -30,7 +37,9 @@ sections:
             - 0
             - actionConfig
             - SAVE
-        onSuccess: UPDATE_CONTEXT
+        onSuccess:
+          callback: updateContextAndEnableNext
+          nextSectionToEnable: "Order Details"
         onFailure: showErrorSnackbar
       CANCEL:
         label: Discard
@@ -121,8 +130,7 @@ sections:
         required: true
         selectConfig:
           resource: list-addresses
-          labelField: address_line_1
-          displayField: address_line_1
+          displayField: full_address
           selectHandler: converter
           currentSelection:
             - key: delivery_at_id
@@ -131,8 +139,8 @@ sections:
           fields_to_extract:
             - key: id
               as: delivery_at_id
-            - key: address_line_1
-              as: address_line_1
+            - key: full_address
+              as: full_address
       - name: trsp_id
         label: Transport
         type: SELECT
@@ -192,7 +200,9 @@ sections:
         WHERE d.header_id = $1 AND d.is_active = true
       payload:
         - id  # Uses 'id' from form context as 'header_id' param
-      path: []
+      path:
+        - sections
+        - 1
       options:
         applyFiltering: false
         applySorting: false
@@ -246,7 +256,8 @@ sections:
         actionType: DISPLAY_FORM
         formConfig: add-sales-order-detail
         payload:
-          - id # Pass header_id
+          - key: id
+            as: header_id
         onSuccess: refresh
       edit:
         label: Edit
