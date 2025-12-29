@@ -12,7 +12,7 @@ sections:
         actionType: EXECUTE_QUERY
         queryInfo:
           returnType: SCALAR
-          query: SELECT wms.insert_sales_order_details($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12) as id;
+          query: SELECT wms.insert_purchase_order_details($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12) as id;
           payload:
             - header_id
             - item_id
@@ -23,7 +23,7 @@ sections:
             - eqty
             - pqty
             - amount
-            - dqty
+            - iqty
             - status
             - remarks
           contextParams:
@@ -54,7 +54,7 @@ sections:
             span: 4
           - field: amount
             span: 4
-          - field: dqty
+          - field: iqty
             span: 4
       - columns:
           - field: status
@@ -68,13 +68,12 @@ sections:
         type: NUMBER
         visible: false
         required: true
-      
-      # Hidden fields for calculation/logic
+
+      # Hidden fields
       - name: conversion_factor
         label: Conversion Factor
         type: NUMBER
         visible: false
-        required: false
       - name: euom
         label: Base UOM ID
         type: NUMBER
@@ -183,20 +182,9 @@ sections:
         type: NUMBER
         required: true
         readonly: true
-        dependencies:
-          - target: [eqty, rate_per_pc]
-            handler: calculateAmount
-            # Note: calculateAmount handler needs to be verified/added if not exists, 
-            # or use a simple math handler. Assuming standard math handler exists or I should add it.
-            # For now, let's assume user handles amount calculation or I should add a simple handler.
-            # Wait, I didn't add calculateAmount. I should add it or use a generic one.
-            # Let's use a generic math handler if possible, or add calculateAmount to form-store.ts.
-            # I'll stick to the requested scope (UOM logic) but amount is standard.
-            # I'll remove the handler reference for now to avoid errors if it doesn't exist, 
-            # or I'll add it to form-store in next step.
       
-      - name: dqty
-        label: Dispatched Qty
+      - name: iqty
+        label: Inward Qty
         type: NUMBER
         required: false
         defaultValue: 0

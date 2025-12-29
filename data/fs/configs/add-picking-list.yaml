@@ -1,0 +1,56 @@
+configType: FORM
+version: 1.0
+sections:
+  - sectionType: FIELDS
+    sectionName: Picking List Header
+    applicableActions: [SAVE, CANCEL]
+    actionConfig:
+      SAVE:
+        label: Create Picking List
+        actionType: EXECUTE_QUERY
+        queryInfo:
+          returnType: SCALAR
+          query: SELECT wms.insert_picking_list_header($1, $2, $3, $4, $5) as id;
+          payload: [entry_dt, party_id, so_ids, remarks]
+          contextParams: [current_user_id]
+        onSuccess: 
+          callback: navigate
+          param: edit-picking-list
+    fields:
+      - name: entry_dt
+        label: Date
+        type: DATE
+        required: true
+        defaultValue: today
+
+      - name: party_id
+        label: Customer
+        type: SELECT
+        required: true
+        selectConfig:
+          resource: list-parties
+          displayField: name
+          currentSelection:
+            - key: party_id
+              as: id
+      
+      - name: so_ids
+        label: Pending Sales Orders
+        type: MULTI_SELECT
+        required: true
+        selectConfig:
+          resource: list-pending-sales-orders
+          displayField: entry_no
+          currentSelection:
+            - key: so_ids
+              as: id
+        dependencies:
+          - target: [party_id]
+            handler: filterByDependency
+            required: true
+            dependencyConfig:
+              targetParam: party_id
+
+      - name: remarks
+        label: Remarks
+        type: TEXTAREA

@@ -1,4 +1,4 @@
----------------------------** USER MANAGEMENT **---------------------------
+﻿---------------------------** USER MANAGEMENT **---------------------------
 -- Insert a user
 CREATE OR REPLACE FUNCTION administration.insert_user(
     username VARCHAR(255),
@@ -828,6 +828,7 @@ CREATE OR REPLACE FUNCTION wms.insert_sales_order_details(
     _rate_per_pc DOUBLE PRECISION,
     _no_of_pc INTEGER,
     _amount DOUBLE PRECISION,
+    _dqty DECIMAL(15,3),
     _status VARCHAR(255),
     _remarks VARCHAR(255),
     _current_user_id INTEGER
@@ -836,11 +837,11 @@ DECLARE _id INTEGER;
 BEGIN
     INSERT INTO wms.sales_order_details(
         header_id, item_id, uom_pc_id, uom_package_id, 
-        rate_per_pc, no_of_pc, amount, status, remarks, lub
+        rate_per_pc, no_of_pc, amount, dqty, status, remarks, lub
     )
     VALUES (
         _header_id, _item_id, _uom_pc_id, _uom_package_id,
-        _rate_per_pc, _no_of_pc, _amount, _status, _remarks, _current_user_id
+        _rate_per_pc, _no_of_pc, _amount, _dqty, _status, _remarks, _current_user_id
     )
     RETURNING id INTO _id;
     RETURN _id;
@@ -851,11 +852,14 @@ $$ LANGUAGE plpgsql;
 CREATE OR REPLACE FUNCTION wms.update_sales_order_details(
     _id INTEGER,
     _item_id INTEGER,
-    _uom_pc_id INTEGER,
-    _uom_package_id INTEGER,
+    _euom INTEGER,
+    _puom INTEGER,
+    _quom INTEGER,
     _rate_per_pc DOUBLE PRECISION,
-    _no_of_pc INTEGER,
+    _eqty INTEGER,
+    _pqty INTEGER,
     _amount DOUBLE PRECISION,
+    _dqty DECIMAL(15,3),
     _status VARCHAR(255),
     _remarks VARCHAR(255),
     _current_user_id INTEGER
@@ -863,11 +867,14 @@ CREATE OR REPLACE FUNCTION wms.update_sales_order_details(
 BEGIN
     UPDATE wms.sales_order_details
     SET item_id = _item_id,
-        uom_pc_id = _uom_pc_id,
-        uom_package_id = _uom_package_id,
+        euom = _euom,
+        puom = _puom,
+        quom = _quom,
         rate_per_pc = _rate_per_pc,
-        no_of_pc = _no_of_pc,
+        eqty = _eqty,
+        pqty = _pqty,
         amount = _amount,
+        dqty = _dqty,
         status = _status,
         remarks = _remarks,
         lub = _current_user_id,
@@ -1176,7 +1183,7 @@ $$ LANGUAGE plpgsql;
 CREATE OR REPLACE FUNCTION wms.insert_purchase_order_header(
     entry_no VARCHAR(6),
     entry_dt TIMESTAMP,
-    party_id INTEGER,
+    vendor_id INTEGER,
     broker_id INTEGER,
     delivery_at_id INTEGER,
     trsp_id INTEGER,
@@ -1191,7 +1198,8 @@ BEGIN
     INSERT INTO wms.purchase_order_header(
         entry_no,
         entry_dt,
-        party_id,
+        vendor_id,
+        broker_id,
         delivery_at_id,
         trsp_id,
         year_code,
@@ -1203,7 +1211,7 @@ BEGIN
     VALUES (
         entry_no, 
         entry_dt,
-        party_id,
+        vendor_id,
         broker_id,
         delivery_at_id,
         trsp_id,
@@ -1223,7 +1231,7 @@ CREATE OR  REPLACE FUNCTION wms.update_purchase_order_header(
     purchase_list_header_id INT,
     entry_no VARCHAR(6),
     entry_dt TIMESTAMP,
-    party_id INTEGER,
+    vendor_id INTEGER,
     broker_id INTEGER,
     delivery_at_id INTEGER,
     trsp_id INTEGER,
@@ -1237,7 +1245,7 @@ BEGIN
     UPDATE  wms.purchase_order_header
     SET entry_no = entry_no,
         entry_dt = entry_dt,
-        party_id = party_id,
+        vendor_id = vendor_id,
         delivery_at_id = delivery_at_id,
         trsp_id = trsp_id,
         year_code = year_code,
@@ -1276,11 +1284,14 @@ $$ LANGUAGE plpgsql;
 CREATE OR REPLACE FUNCTION wms.insert_purchase_order_details(
     header_id INTEGER,
     item_id INTEGER,
-    uom_pc_id INTEGER,
-    uom_package_id INTEGER,
+    euom INTEGER,
+    puom INTEGER,
+    quom INTEGER,
     rate_per_pc DOUBLE PRECISION,
-    no_of_pc INTEGER,
+    eqty INTEGER,
+    pqty INTEGER,
     amount DOUBLE PRECISION,
+    iqty DECIMAL(15,3),
     status VARCHAR(255),
     remarks VARCHAR(255),
     current_user_id INTEGER
@@ -1290,11 +1301,14 @@ BEGIN
     INSERT INTO wms.purchase_order_details(
         header_id,
         item_id,
-        uom_pc_id,
-        uom_package_id,
+        euom,
+        puom,
+        quom,
         rate_per_pc,
-        no_of_pc,
+        eqty,
+        pqty,
         amount,
+        iqty,
         status,
         remarks,
         lub
@@ -1302,11 +1316,14 @@ BEGIN
     VALUES (
         header_id,
         item_id,
-        uom_pc_id,
-        uom_package_id,
+        euom,
+        puom,
+        quom,
         rate_per_pc,
-        no_of_pc,
+        eqty,
+        pqty,
         amount,
+        iqty,
         status,
         remarks,
         current_user_id
@@ -1321,11 +1338,14 @@ CREATE OR REPLACE FUNCTION wms.update_purchase_order_details(
     purchase_order_details_id INTEGER,
     header_id INTEGER,
     item_id INTEGER,
-    uom_pc_id INTEGER,
-    uom_package_id INTEGER,
+    euom INTEGER,
+    puom INTEGER,
+    quom INTEGER,
     rate_per_pc DOUBLE PRECISION,
-    no_of_pc INTEGER,
+    eqty INTEGER,
+    pqty INTEGER,
     amount DOUBLE PRECISION,
+    iqty DECIMAL(15,3),
     status VARCHAR(255),
     remarks VARCHAR(255),
     current_user_id INTEGER
@@ -1334,11 +1354,14 @@ BEGIN
     UPDATE wms.purchase_order_details
     SET header_id = header_id,
         item_id = item_id,
-        uom_pc_id = uom_pc_id,
-        uom_package_id = uom_package_id,
+        euom = euom,
+        puom = puom,
+        quom = quom,
         rate_per_pc = rate_per_pc,
-        no_of_pc = no_of_pc,
+        eqty = eqty,
+        pqty = pqty,
         amount = amount,
+        iqty = iqty,
         status = status,
         remarks = remarks,
         lub = current_user_id
@@ -2261,3 +2284,1288 @@ END;
 $$ LANGUAGE plpgsql;
 
 
+---------------------------** WMS CRUD FUNCTIONS **---------------------------
+-- This file contains all CRUD functions for the new WMS tables
+-- To be appended to the existing query_functions.sql file
+
+---------------------------** Rack Master **---------------------------
+
+-- Function to insert rack
+CREATE OR REPLACE FUNCTION wms.insert_rack(
+    _code VARCHAR(50),
+    _name VARCHAR(255),
+    _descr VARCHAR(255),
+    _capacity DECIMAL(15,3),
+    _current_user_id INTEGER
+) RETURNS INTEGER AS $$
+DECLARE
+    _id INTEGER;
+BEGIN
+    INSERT INTO wms.rack (code, name, descr, capacity, lub)
+    VALUES (_code, _name, _descr, _capacity, _current_user_id)
+    RETURNING id INTO _id;
+    RETURN _id;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Function to update rack
+CREATE OR REPLACE FUNCTION wms.update_rack(
+    _id INTEGER,
+    _code VARCHAR(50),
+    _name VARCHAR(255),
+    _descr VARCHAR(255),
+    _capacity DECIMAL(15,3),
+    _current_user_id INTEGER
+) RETURNS INTEGER AS $$
+BEGIN
+    UPDATE wms.rack
+    SET code = _code,
+        name = _name,
+        descr = _descr,
+        capacity = _capacity,
+        lub = _current_user_id,
+        lua = NOW()
+    WHERE id = _id;
+    RETURN _id;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Function to delete rack (soft delete)
+CREATE OR REPLACE FUNCTION wms.delete_rack(
+    _id INTEGER,
+    _current_user_id INTEGER
+) RETURNS INTEGER AS $$
+BEGIN
+    UPDATE wms.rack
+    SET is_active = false, lub = _current_user_id, lua = NOW()
+    WHERE id = _id;
+    RETURN _id;
+END;
+$$ LANGUAGE plpgsql;
+
+
+---------------------------** Party Material (Party-Specific Pricing) **---------------------------
+
+-- Function to insert party_material
+CREATE OR REPLACE FUNCTION wms.insert_party_material(
+    _material_id INTEGER,
+    _party_id INTEGER,
+    _selling_rate DECIMAL(15,2),
+    _date DATE,
+    _current_user_id INTEGER
+) RETURNS INTEGER AS $$
+DECLARE
+    _id INTEGER;
+BEGIN
+    INSERT INTO wms.party_material (material_id, party_id, selling_rate, date, lub)
+    VALUES (_material_id, _party_id, _selling_rate, _date, _current_user_id)
+    RETURNING id INTO _id;
+    RETURN _id;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Function to update party_material
+CREATE OR REPLACE FUNCTION wms.update_party_material(
+    _id INTEGER,
+    _material_id INTEGER,
+    _party_id INTEGER,
+    _selling_rate DECIMAL(15,2),
+    _date DATE,
+    _current_user_id INTEGER
+) RETURNS INTEGER AS $$
+BEGIN
+    UPDATE wms.party_material
+    SET material_id = _material_id,
+        party_id = _party_id,
+        selling_rate = _selling_rate,
+        date = _date,
+        lub = _current_user_id,
+        lua = NOW()
+    WHERE id = _id;
+    RETURN _id;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Function to delete party_material (soft delete)
+CREATE OR REPLACE FUNCTION wms.delete_party_material(
+    _id INTEGER,
+    _current_user_id INTEGER
+) RETURNS INTEGER AS $$
+BEGIN
+    UPDATE wms.party_material
+    SET is_active = false, lub = _current_user_id, lua = NOW()
+    WHERE id = _id;
+    RETURN _id;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Function to get party-specific price for a material
+CREATE OR REPLACE FUNCTION wms.get_party_material_price(
+    _material_id INTEGER,
+    _party_id INTEGER
+) RETURNS DECIMAL(15,2) AS $$
+DECLARE
+    _selling_rate DECIMAL(15,2);
+BEGIN
+    -- Get the most recent price for this party-material combination
+    SELECT selling_rate INTO _selling_rate
+    FROM wms.party_material
+    WHERE material_id = _material_id 
+      AND party_id = _party_id 
+      AND is_active = true
+    ORDER BY date DESC
+    LIMIT 1;
+    
+    -- If no party-specific price found, return NULL
+    RETURN _selling_rate;
+END;
+$$ LANGUAGE plpgsql;
+
+
+---------------------------** Inward Header **---------------------------
+
+-- Function to insert inward_header
+CREATE OR REPLACE FUNCTION wms.insert_inward_header(
+    entry_dt DATE,
+    vendor_id INTEGER,
+    po_ids TEXT,
+    invoice_no VARCHAR(100),
+    invoice_dt DATE,
+    remarks VARCHAR(255),
+    current_user_id INTEGER
+) RETURNS TABLE (id INTEGER, entry_no VARCHAR) AS $$
+DECLARE 
+    new_inward_header_id INT;
+    new_entry_no VARCHAR(50);
+    max_entry_no INT;
+BEGIN
+    -- Auto-generate entry_no
+    SELECT COALESCE(MAX(CAST(h.entry_no AS INTEGER)), 0) INTO max_entry_no 
+    FROM wms.inward_header h;
+    
+    new_entry_no := LPAD((max_entry_no + 1)::TEXT, 6, '0');
+
+    INSERT INTO wms.inward_header(
+        entry_no, entry_dt, vendor_id, po_ids, invoice_no, invoice_dt, remarks, lub
+    )
+    VALUES (
+        new_entry_no, entry_dt, vendor_id, po_ids, invoice_no, invoice_dt, remarks, current_user_id
+    )
+    RETURNING wms.inward_header.id INTO new_inward_header_id;
+    
+    RETURN QUERY SELECT new_inward_header_id, new_entry_no;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Function to update inward_header
+CREATE OR REPLACE FUNCTION wms.update_inward_header(
+    _id INTEGER,
+    _entry_dt DATE,
+    _vendor_id INTEGER,
+    _po_ids TEXT,
+    _invoice_no VARCHAR(100),
+    _invoice_dt DATE,
+    _remarks VARCHAR(255),
+    _current_user_id INTEGER
+) RETURNS INTEGER AS $$
+BEGIN
+    UPDATE wms.inward_header
+    SET entry_dt = _entry_dt,
+        vendor_id = _vendor_id,
+        po_ids = _po_ids,
+        invoice_no = _invoice_no,
+        invoice_dt = _invoice_dt,
+        remarks = _remarks,
+        lub = _current_user_id,
+        lua = NOW()
+    WHERE id = _id;
+    RETURN _id;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Function to delete inward_header (soft delete)
+CREATE OR REPLACE FUNCTION wms.delete_inward_header(
+    _id INTEGER,
+    _current_user_id INTEGER
+) RETURNS INTEGER AS $$
+BEGIN
+    -- Soft delete header
+    UPDATE wms.inward_header
+    SET is_active = false, lub = _current_user_id, lua = NOW()
+    WHERE id = _id;
+    
+    -- Also soft delete all details
+    UPDATE wms.inward_details
+    SET is_active = false, lub = _current_user_id, lua = NOW()
+    WHERE header_id = _id;
+    
+    RETURN _id;
+END;
+$$ LANGUAGE plpgsql;
+
+
+---------------------------** Inward Details **---------------------------
+
+-- Function to insert inward_details
+CREATE OR REPLACE FUNCTION wms.insert_inward_details(
+    _header_id INTEGER,
+    _entry_no VARCHAR(50),
+    _row_no INTEGER,
+    _material_id INTEGER,
+    _po_detail_id INTEGER,
+    _quom INTEGER,
+    _euom INTEGER,
+    _puom INTEGER,
+    _eqty DECIMAL(15,3),
+    _pqty DECIMAL(15,3),
+    _pur_rate DECIMAL(15,2),
+    _amount DECIMAL(15,2),
+    _current_user_id INTEGER
+) RETURNS INTEGER AS $$
+DECLARE _id INTEGER;
+BEGIN
+    INSERT INTO wms.inward_details(
+        header_id, entry_no, row_no, material_id, po_detail_id,
+        quom, euom, puom, eqty, pqty, pur_rate, amount, lub
+    )
+    VALUES (
+        _header_id, _entry_no, _row_no, _material_id, _po_detail_id,
+        _quom, _euom, _puom, _eqty, _pqty, _pur_rate, _amount, _current_user_id
+    )
+    RETURNING id INTO _id;
+    RETURN _id;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Function to update inward_details
+CREATE OR REPLACE FUNCTION wms.update_inward_details(
+    _id INTEGER,
+    _material_id INTEGER,
+    _po_detail_id INTEGER,
+    _quom INTEGER,
+    _euom INTEGER,
+    _puom INTEGER,
+    _eqty DECIMAL(15,3),
+    _pqty DECIMAL(15,3),
+    _pur_rate DECIMAL(15,2),
+    _amount DECIMAL(15,2),
+    _current_user_id INTEGER
+) RETURNS INTEGER AS $$
+BEGIN
+    UPDATE wms.inward_details
+    SET material_id = _material_id,
+        po_detail_id = _po_detail_id,
+        quom = _quom,
+        euom = _euom,
+        puom = _puom,
+        eqty = _eqty,
+        pqty = _pqty,
+        pur_rate = _pur_rate,
+        amount = _amount,
+        lub = _current_user_id,
+        lua = NOW()
+    WHERE id = _id;
+    RETURN _id;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Function to delete inward_details (soft delete)
+CREATE OR REPLACE FUNCTION wms.delete_inward_details(
+    _id INTEGER,
+    _current_user_id INTEGER
+) RETURNS INTEGER AS $$
+BEGIN
+    UPDATE wms.inward_details
+    SET is_active = false, lub = _current_user_id, lua = NOW()
+    WHERE id = _id;
+    RETURN _id;
+END;
+$$ LANGUAGE plpgsql;
+
+
+---------------------------** Dispatch Header **---------------------------
+
+-- Function to insert dispatch_header
+CREATE OR REPLACE FUNCTION wms.insert_dispatch_header(
+    entry_dt DATE,
+    party_id INTEGER,
+    addr_id INTEGER,
+    pl_ids TEXT,
+    vehicle_no VARCHAR(50),
+    driver_name VARCHAR(255),
+    remarks VARCHAR(255),
+    current_user_id INTEGER
+) RETURNS TABLE (id INTEGER, entry_no VARCHAR) AS $$
+DECLARE 
+    new_dispatch_header_id INT;
+    new_entry_no VARCHAR(50);
+    max_entry_no INT;
+BEGIN
+    -- Auto-generate entry_no
+    SELECT COALESCE(MAX(CAST(h.entry_no AS INTEGER)), 0) INTO max_entry_no 
+    FROM wms.dispatch_header h;
+    
+    new_entry_no := LPAD((max_entry_no + 1)::TEXT, 6, '0');
+
+    INSERT INTO wms.dispatch_header(
+        entry_no, entry_dt, party_id, addr_id, pl_ids, vehicle_no, driver_name, remarks, lub
+    )
+    VALUES (
+        new_entry_no, entry_dt, party_id, addr_id, pl_ids, vehicle_no, driver_name, remarks, current_user_id
+    )
+    RETURNING wms.dispatch_header.id INTO new_dispatch_header_id;
+    
+    RETURN QUERY SELECT new_dispatch_header_id, new_entry_no;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Function to update dispatch_header
+CREATE OR REPLACE FUNCTION wms.update_dispatch_header(
+    _id INTEGER,
+    _entry_dt DATE,
+    _party_id INTEGER,
+    _addr_id INTEGER,
+    _pl_ids TEXT,
+    _vehicle_no VARCHAR(50),
+    _driver_name VARCHAR(255),
+    _remarks VARCHAR(255),
+    _current_user_id INTEGER
+) RETURNS INTEGER AS $$
+BEGIN
+    UPDATE wms.dispatch_header
+    SET entry_dt = _entry_dt,
+        party_id = _party_id,
+        addr_id = _addr_id,
+        pl_ids = _pl_ids,
+        vehicle_no = _vehicle_no,
+        driver_name = _driver_name,
+        remarks = _remarks,
+        lub = _current_user_id,
+        lua = NOW()
+    WHERE id = _id;
+    RETURN _id;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Function to delete dispatch_header (soft delete)
+CREATE OR REPLACE FUNCTION wms.delete_dispatch_header(
+    _id INTEGER,
+    _current_user_id INTEGER
+) RETURNS INTEGER AS $$
+BEGIN
+    -- Soft delete header
+    UPDATE wms.dispatch_header
+    SET is_active = false, lub = _current_user_id, lua = NOW()
+    WHERE id = _id;
+    
+    -- Also soft delete all details
+    UPDATE wms.dispatch_details
+    SET is_active = false, lub = _current_user_id, lua = NOW()
+    WHERE header_id = _id;
+    
+    RETURN _id;
+END;
+$$ LANGUAGE plpgsql;
+
+
+---------------------------** Dispatch Details **---------------------------
+
+-- Function to insert dispatch_details
+CREATE OR REPLACE FUNCTION wms.insert_dispatch_details(
+    _header_id INTEGER,
+    _entry_no VARCHAR(50),
+    _row_no INTEGER,
+    _material_id INTEGER,
+    _picking_detail_id INTEGER,
+    _rack_id INTEGER,
+    _qty DECIMAL(15,3),
+    _uom_id INTEGER,
+    _current_user_id INTEGER
+) RETURNS INTEGER AS $$
+DECLARE _id INTEGER;
+BEGIN
+    INSERT INTO wms.dispatch_details(
+        header_id, entry_no, row_no, material_id, picking_detail_id,
+        rack_id, qty, uom_id, lub
+    )
+    VALUES (
+        _header_id, _entry_no, _row_no, _material_id, _picking_detail_id,
+        _rack_id, _qty, _uom_id, _current_user_id
+    )
+    RETURNING id INTO _id;
+    RETURN _id;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Function to update dispatch_details
+CREATE OR REPLACE FUNCTION wms.update_dispatch_details(
+    _id INTEGER,
+    _material_id INTEGER,
+    _picking_detail_id INTEGER,
+    _rack_id INTEGER,
+    _qty DECIMAL(15,3),
+    _uom_id INTEGER,
+    _current_user_id INTEGER
+) RETURNS INTEGER AS $$
+BEGIN
+    UPDATE wms.dispatch_details
+    SET material_id = _material_id,
+        picking_detail_id = _picking_detail_id,
+        rack_id = _rack_id,
+        qty = _qty,
+        uom_id = _uom_id,
+        lub = _current_user_id,
+        lua = NOW()
+    WHERE id = _id;
+    RETURN _id;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Function to delete dispatch_details (soft delete)
+CREATE OR REPLACE FUNCTION wms.delete_dispatch_details(
+    _id INTEGER,
+    _current_user_id INTEGER
+) RETURNS INTEGER AS $$
+BEGIN
+    UPDATE wms.dispatch_details
+    SET is_active = false, lub = _current_user_id, lua = NOW()
+    WHERE id = _id;
+    RETURN _id;
+END;
+$$ LANGUAGE plpgsql;
+
+
+---------------------------** Stock Management **---------------------------
+
+-- Function to update or insert stock (for putaway and inward)
+CREATE OR REPLACE FUNCTION wms.upsert_stock(
+    _material_id INTEGER,
+    _rack_id INTEGER,
+    _qty DECIMAL(15,3),
+    _uom_id INTEGER,
+    _inward_id INTEGER,
+    _rate DECIMAL(15,2),
+    _current_user_id INTEGER
+) RETURNS INTEGER AS $$
+DECLARE
+    _id INTEGER;
+BEGIN
+    -- Try to update existing stock
+    UPDATE wms.stock
+    SET qty = qty + _qty,
+        lub = _current_user_id,
+        lua = NOW()
+    WHERE material_id = _material_id AND rack_id = _rack_id
+    RETURNING id INTO _id;
+    
+    -- If no row was updated, insert new row
+    IF _id IS NULL THEN
+        INSERT INTO wms.stock (material_id, rack_id, qty, uom_id, inward_id, rate, lub)
+        VALUES (_material_id, _rack_id, _qty, _uom_id, _inward_id, _rate, _current_user_id)
+        RETURNING id INTO _id;
+    END IF;
+    
+    RETURN _id;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Function to reduce stock (for dispatch)
+CREATE OR REPLACE FUNCTION wms.reduce_stock(
+    _material_id INTEGER,
+    _rack_id INTEGER,
+    _qty DECIMAL(15,3),
+    _current_user_id INTEGER
+) RETURNS INTEGER AS $$
+DECLARE
+    _id INTEGER;
+    _current_qty DECIMAL(15,3);
+BEGIN
+    -- Check current quantity
+    SELECT id, qty INTO _id, _current_qty
+    FROM wms.stock
+    WHERE material_id = _material_id AND rack_id = _rack_id;
+    
+    IF _id IS NULL THEN
+        RAISE EXCEPTION 'Stock not found for material_id % and rack_id %', _material_id, _rack_id;
+    END IF;
+    
+    IF _current_qty < _qty THEN
+        RAISE EXCEPTION 'Insufficient stock. Available: %, Requested: %', _current_qty, _qty;
+    END IF;
+    
+    -- Reduce stock
+    UPDATE wms.stock
+    SET qty = qty - _qty,
+        lub = _current_user_id,
+        lua = NOW()
+    WHERE id = _id;
+    
+    RETURN _id;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Function to get available stock for a material
+CREATE OR REPLACE FUNCTION wms.get_available_stock(
+    _material_id INTEGER
+) RETURNS TABLE (
+    rack_id INTEGER,
+    rack_code VARCHAR,
+    rack_name VARCHAR,
+    qty DECIMAL(15,3),
+    uom_name VARCHAR
+) AS $$
+BEGIN
+    RETURN QUERY
+    SELECT 
+        s.rack_id,
+        r.code as rack_code,
+        r.name as rack_name,
+        s.qty,
+        u.name as uom_name
+    FROM wms.stock s
+    LEFT JOIN wms.rack r ON s.rack_id = r.id
+    LEFT JOIN wms.uom u ON s.uom_id = u.id
+    WHERE s.material_id = _material_id 
+      AND s.qty > 0 
+      AND s.is_active = true
+    ORDER BY s.rack_id;
+END;
+$$ LANGUAGE plpgsql;
+
+---------------------------** Inward Header **---------------------------
+
+-- Function to insert inward_header
+CREATE OR REPLACE FUNCTION wms.insert_inward_header(
+    _entry_no VARCHAR(50),
+    _entry_dt DATE,
+    _vendor_id INTEGER,
+    _po_ids TEXT,
+    _invoice_no VARCHAR(100),
+    _invoice_dt DATE,
+    _remarks VARCHAR(255),
+    _current_user_id INTEGER
+) RETURNS INTEGER AS $$
+DECLARE
+    _new_id INTEGER;
+    _generated_entry_no VARCHAR(50);
+BEGIN
+    -- Auto-generate entry_no if not provided or 'Auto-generated'
+    IF _entry_no IS NULL OR _entry_no = '' OR _entry_no = 'Auto-generated' THEN
+        SELECT 'INW-' || TO_CHAR(NOW(), 'YYMMDD') || '-' || LPAD(CAST(COALESCE(MAX(id), 0) + 1 AS TEXT), 4, '0')
+        INTO _generated_entry_no
+        FROM wms.inward_header;
+    ELSE
+        _generated_entry_no := _entry_no;
+    END IF;
+
+    INSERT INTO wms.inward_header (
+        entry_no, entry_dt, vendor_id, po_ids, invoice_no, invoice_dt, remarks, lub, status
+    )
+    VALUES (
+        _generated_entry_no, _entry_dt, _vendor_id, _po_ids, _invoice_no, _invoice_dt, _remarks, _current_user_id, 'Draft'
+    )
+    RETURNING id INTO _new_id;
+    
+    RETURN _new_id;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Function to update inward_header
+CREATE OR REPLACE FUNCTION wms.update_inward_header(
+    _id INTEGER,
+    _entry_no VARCHAR(50),
+    _entry_dt DATE,
+    _vendor_id INTEGER,
+    _po_ids TEXT,
+    _invoice_no VARCHAR(100),
+    _invoice_dt DATE,
+    _remarks VARCHAR(255),
+    _current_user_id INTEGER
+) RETURNS INTEGER AS $$
+BEGIN
+    UPDATE wms.inward_header
+    SET 
+        entry_no = _entry_no,
+        entry_dt = _entry_dt,
+        vendor_id = _vendor_id,
+        po_ids = _po_ids,
+        invoice_no = _invoice_no,
+        invoice_dt = _invoice_dt,
+        remarks = _remarks,
+        lub = _current_user_id,
+        lua = NOW()
+    WHERE id = _id;
+    
+    RETURN _id;
+END;
+$$ LANGUAGE plpgsql;
+
+---------------------------** Inward Details **---------------------------
+
+-- Function to insert inward_details (with Expiry)
+CREATE OR REPLACE FUNCTION wms.insert_inward_details(
+    _header_id INTEGER,
+    _item_id INTEGER,
+    _po_detail_id INTEGER,
+    _euom INTEGER,
+    _puom INTEGER,
+    _quom INTEGER,
+    _eqty DECIMAL(15,3),
+    _pqty DECIMAL(15,3),
+    _remarks VARCHAR(255),
+    _expiry_dt DATE,
+    _current_user_id INTEGER
+) RETURNS INTEGER AS $$
+DECLARE
+    _new_id INTEGER;
+    _entry_no VARCHAR(50);
+    _max_row_no INTEGER;
+BEGIN
+    SELECT entry_no INTO _entry_no FROM wms.inward_header WHERE id = _header_id;
+    SELECT COALESCE(MAX(row_no), 0) + 1 INTO _max_row_no FROM wms.inward_details WHERE header_id = _header_id;
+
+    INSERT INTO wms.inward_details (
+        header_id, entry_no, row_no, material_id, po_detail_id, 
+        euom, puom, quom, eqty, pqty, remarks, expiry_dt, lub
+    )
+    VALUES (
+        _header_id, _entry_no, _max_row_no, _item_id, _po_detail_id,
+        _euom, _puom, _quom, _eqty, _pqty, _remarks, _expiry_dt, _current_user_id
+    )
+    RETURNING id INTO _new_id;
+    
+    IF _po_detail_id IS NOT NULL THEN
+        UPDATE wms.purchase_order_details
+        SET iqty = COALESCE(iqty, 0) + _eqty
+        WHERE id = _po_detail_id;
+    END IF;
+
+    RETURN _new_id;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Function to update inward_details (with Expiry)
+CREATE OR REPLACE FUNCTION wms.update_inward_details(
+    _id INTEGER,
+    _header_id INTEGER,
+    _item_id INTEGER,
+    _po_detail_id INTEGER,
+    _euom INTEGER,
+    _puom INTEGER,
+    _quom INTEGER,
+    _eqty DECIMAL(15,3),
+    _pqty DECIMAL(15,3),
+    _remarks VARCHAR(255),
+    _expiry_dt DATE,
+    _current_user_id INTEGER
+) RETURNS INTEGER AS $$
+DECLARE
+    _old_eqty DECIMAL(15,3);
+BEGIN
+    SELECT eqty INTO _old_eqty FROM wms.inward_details WHERE id = _id;
+
+    UPDATE wms.inward_details
+    SET 
+        material_id = _item_id,
+        po_detail_id = _po_detail_id,
+        euom = _euom,
+        puom = _puom,
+        quom = _quom,
+        eqty = _eqty,
+        pqty = _pqty,
+        remarks = _remarks,
+        expiry_dt = _expiry_dt,
+        lub = _current_user_id,
+        lua = NOW()
+    WHERE id = _id;
+    
+    IF _po_detail_id IS NOT NULL THEN
+        UPDATE wms.purchase_order_details
+        SET iqty = COALESCE(iqty, 0) - _old_eqty + _eqty
+        WHERE id = _po_detail_id;
+    END IF;
+
+    RETURN _id;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Function to delete inward_details
+CREATE OR REPLACE FUNCTION wms.delete_inward_details(
+    _id INTEGER,
+    _current_user_id INTEGER
+) RETURNS INTEGER AS $$
+DECLARE
+    _po_detail_id INTEGER;
+    _eqty DECIMAL(15,3);
+BEGIN
+    SELECT po_detail_id, eqty INTO _po_detail_id, _eqty FROM wms.inward_details WHERE id = _id;
+
+    UPDATE wms.inward_details
+    SET is_active = false, lub = _current_user_id, lua = NOW()
+    WHERE id = _id;
+    
+    IF _po_detail_id IS NOT NULL THEN
+        UPDATE wms.purchase_order_details
+        SET iqty = COALESCE(iqty, 0) - _eqty
+        WHERE id = _po_detail_id;
+    END IF;
+
+    RETURN _id;
+END;
+$$ LANGUAGE plpgsql;
+
+---------------------------** Rack Master **---------------------------
+
+-- Function to insert rack
+CREATE OR REPLACE FUNCTION wms.insert_rack(
+    _code VARCHAR(50),
+    _name VARCHAR(255),
+    _descr VARCHAR(255),
+    _capacity DECIMAL(15,3),
+    _current_user_id INTEGER
+) RETURNS INTEGER AS $$
+DECLARE
+    _new_id INTEGER;
+BEGIN
+    INSERT INTO wms.rack (
+        code, name, descr, capacity, lub
+    )
+    VALUES (
+        _code, _name, _descr, _capacity, _current_user_id
+    )
+    RETURNING id INTO _new_id;
+    
+    RETURN _new_id;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Function to update rack
+CREATE OR REPLACE FUNCTION wms.update_rack(
+    _id INTEGER,
+    _code VARCHAR(50),
+    _name VARCHAR(255),
+    _descr VARCHAR(255),
+    _capacity DECIMAL(15,3),
+    _current_user_id INTEGER
+) RETURNS INTEGER AS $$
+BEGIN
+    UPDATE wms.rack
+    SET 
+        code = _code,
+        name = _name,
+        descr = _descr,
+        capacity = _capacity,
+        lub = _current_user_id,
+        lua = NOW()
+    WHERE id = _id;
+    
+    RETURN _id;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Function to delete rack
+CREATE OR REPLACE FUNCTION wms.delete_rack(
+    _id INTEGER,
+    _current_user_id INTEGER
+) RETURNS INTEGER AS $$
+BEGIN
+    UPDATE wms.rack
+    SET is_active = false, lub = _current_user_id, lua = NOW()
+    WHERE id = _id;
+    
+    RETURN _id;
+END;
+$$ LANGUAGE plpgsql;
+
+---------------------------** Process Inward **---------------------------
+
+-- Function to process inward (with Expiry)
+CREATE OR REPLACE FUNCTION wms.process_inward(
+    _inward_id INTEGER,
+    _current_user_id INTEGER
+) RETURNS INTEGER AS $$
+DECLARE
+    _status VARCHAR(50);
+    _detail RECORD;
+    _stock_id INTEGER;
+BEGIN
+    SELECT status INTO _status FROM wms.inward_header WHERE id = _inward_id;
+    
+    IF _status = 'PROCESSED' THEN
+        RAISE EXCEPTION 'Inward entry is already processed.';
+    END IF;
+
+    UPDATE wms.inward_header
+    SET status = 'PROCESSED', lub = _current_user_id, lua = NOW()
+    WHERE id = _inward_id;
+
+    FOR _detail IN SELECT * FROM wms.inward_details WHERE header_id = _inward_id LOOP
+        -- Check if stock record exists for this material + rack + expiry
+        SELECT id INTO _stock_id 
+        FROM wms.stock 
+        WHERE material_id = _detail.material_id 
+          AND rack_id = 0 
+          AND (expiry_dt = _detail.expiry_dt OR (expiry_dt IS NULL AND _detail.expiry_dt IS NULL));
+
+        IF _stock_id IS NOT NULL THEN
+            UPDATE wms.stock
+            SET 
+                qty = qty + _detail.eqty,
+                lub = _current_user_id,
+                lua = NOW()
+            WHERE id = _stock_id;
+        ELSE
+            INSERT INTO wms.stock (
+                material_id, rack_id, qty, uom_id, inward_id, rate, expiry_dt, lub
+            )
+            VALUES (
+                _detail.material_id, 
+                0, -- Rack 0
+                _detail.eqty, 
+                _detail.euom, 
+                _inward_id, 
+                (SELECT rate_per_pc FROM wms.purchase_order_details WHERE id = _detail.po_detail_id), 
+                _detail.expiry_dt,
+                _current_user_id
+            );
+        END IF;
+    END LOOP;
+
+    RETURN _inward_id;
+END;
+$$ LANGUAGE plpgsql;
+
+---------------------------** Stock Movement **---------------------------
+
+-- Function to move stock (with Expiry)
+CREATE OR REPLACE FUNCTION wms.move_stock(
+    _from_stock_id INTEGER,
+    _to_rack_id INTEGER,
+    _move_qty DECIMAL(15,3),
+    _current_user_id INTEGER
+) RETURNS INTEGER AS $$
+DECLARE
+    _material_id INTEGER;
+    _current_rack_id INTEGER;
+    _current_qty DECIMAL(15,3);
+    _uom_id INTEGER;
+    _rate DECIMAL(15,2);
+    _inward_id INTEGER;
+    _expiry_dt DATE;
+    _to_stock_id INTEGER;
+BEGIN
+    -- Get Source Stock Details including Expiry
+    SELECT material_id, rack_id, qty, uom_id, rate, inward_id, expiry_dt
+    INTO _material_id, _current_rack_id, _current_qty, _uom_id, _rate, _inward_id, _expiry_dt
+    FROM wms.stock
+    WHERE id = _from_stock_id;
+
+    IF _current_qty < _move_qty THEN
+        RAISE EXCEPTION 'Insufficient stock. Available: %, Requested: %', _current_qty, _move_qty;
+    END IF;
+
+    IF _current_rack_id = _to_rack_id THEN
+        RAISE EXCEPTION 'Source and Target Rack cannot be the same.';
+    END IF;
+
+    -- Decrement Source
+    UPDATE wms.stock
+    SET qty = qty - _move_qty, lub = _current_user_id, lua = NOW()
+    WHERE id = _from_stock_id;
+
+    -- Upsert Target (Match Expiry)
+    SELECT id INTO _to_stock_id
+    FROM wms.stock
+    WHERE material_id = _material_id 
+      AND rack_id = _to_rack_id 
+      AND (expiry_dt = _expiry_dt OR (expiry_dt IS NULL AND _expiry_dt IS NULL))
+      AND COALESCE(inward_id, 0) = COALESCE(_inward_id, 0);
+
+    IF _to_stock_id IS NOT NULL THEN
+        UPDATE wms.stock
+        SET qty = qty + _move_qty, lub = _current_user_id, lua = NOW()
+        WHERE id = _to_stock_id;
+    ELSE
+        INSERT INTO wms.stock (
+            material_id, rack_id, qty, uom_id, inward_id, rate, expiry_dt, lub
+        )
+        VALUES (
+            _material_id, _to_rack_id, _move_qty, _uom_id, _inward_id, _rate, _expiry_dt, _current_user_id
+        )
+        RETURNING id INTO _to_stock_id;
+    END IF;
+
+    RETURN _to_stock_id;
+END;
+$$ LANGUAGE plpgsql;
+
+---------------------------** Picking List Header **---------------------------
+
+-- Function to insert picking_list_header
+CREATE OR REPLACE FUNCTION wms.insert_picking_list_header(
+    _entry_dt DATE,
+    _party_id INTEGER,
+    _so_ids TEXT,
+    _remarks VARCHAR(255),
+    _current_user_id INTEGER
+) RETURNS INTEGER AS $$
+DECLARE
+    _new_id INTEGER;
+    _entry_no VARCHAR(50);
+BEGIN
+    SELECT 'PL-' || TO_CHAR(NOW(), 'YYMMDD') || '-' || LPAD(CAST(COALESCE(MAX(id), 0) + 1 AS TEXT), 4, '0')
+    INTO _entry_no
+    FROM wms.picking_list_header;
+
+    INSERT INTO wms.picking_list_header (
+        entry_no, entry_dt, party_id, so_ids, remarks, status, lub
+    )
+    VALUES (
+        _entry_no, _entry_dt, _party_id, _so_ids, _remarks, 'Draft', _current_user_id
+    )
+    RETURNING id INTO _new_id;
+    
+    RETURN _new_id;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Function to update picking_list_header
+CREATE OR REPLACE FUNCTION wms.update_picking_list_header(
+    _id INTEGER,
+    _entry_dt DATE,
+    _party_id INTEGER,
+    _so_ids TEXT,
+    _remarks VARCHAR(255),
+    _current_user_id INTEGER
+) RETURNS INTEGER AS $$
+BEGIN
+    UPDATE wms.picking_list_header
+    SET 
+        entry_dt = _entry_dt,
+        party_id = _party_id,
+        so_ids = _so_ids,
+        remarks = _remarks,
+        lub = _current_user_id,
+        lua = NOW()
+    WHERE id = _id;
+    
+    RETURN _id;
+END;
+$$ LANGUAGE plpgsql;
+
+---------------------------** Picking List Details **---------------------------
+
+-- Function to insert picking_list_details
+CREATE OR REPLACE FUNCTION wms.insert_picking_list_details(
+    _header_id INTEGER,
+    _so_detail_id INTEGER,
+    _material_id INTEGER,
+    _rack_id INTEGER,
+    _expiry_dt DATE,
+    _qty DECIMAL(15,3),
+    _current_user_id INTEGER
+) RETURNS INTEGER AS $$
+DECLARE
+    _new_id INTEGER;
+BEGIN
+    INSERT INTO wms.picking_list_details (
+        header_id, so_detail_id, material_id, rack_id, expiry_dt, qty, picked_qty, status, lub
+    )
+    VALUES (
+        _header_id, _so_detail_id, _material_id, _rack_id, _expiry_dt, _qty, 0, 'Pending', _current_user_id
+    )
+    RETURNING id INTO _new_id;
+    
+    RETURN _new_id;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Function to update picking_list_details
+CREATE OR REPLACE FUNCTION wms.update_picking_list_details(
+    _id INTEGER,
+    _rack_id INTEGER,
+    _expiry_dt DATE,
+    _qty DECIMAL(15,3),
+    _current_user_id INTEGER
+) RETURNS INTEGER AS $$
+BEGIN
+    UPDATE wms.picking_list_details
+    SET 
+        rack_id = _rack_id,
+        expiry_dt = _expiry_dt,
+        qty = _qty,
+        lub = _current_user_id,
+        lua = NOW()
+    WHERE id = _id;
+    
+    RETURN _id;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Function to delete picking_list_details
+CREATE OR REPLACE FUNCTION wms.delete_picking_list_details(
+    _id INTEGER,
+    _current_user_id INTEGER
+) RETURNS INTEGER AS $$
+BEGIN
+    UPDATE wms.picking_list_details
+    SET is_active = false, lub = _current_user_id, lua = NOW()
+    WHERE id = _id;
+    
+    RETURN _id;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Trigger for picking_list_details
+CREATE OR REPLACE FUNCTION wms.picking_list_details_trigger()
+RETURNS TRIGGER AS $$
+BEGIN
+    IF (TG_OP = 'INSERT') THEN
+        INSERT INTO wms.picking_list_details_history(
+            detail_id, header_id, so_detail_id, material_id, rack_id, expiry_dt, qty, picked_qty, status, is_active, operation, operation_at, operation_by
+        ) VALUES (
+            NEW.id, NEW.header_id, NEW.so_detail_id, NEW.material_id, NEW.rack_id, NEW.expiry_dt, NEW.qty, NEW.picked_qty, NEW.status, NEW.is_active, 'INSERT', NEW.lua, NEW.lub
+        );
+    ELSIF (TG_OP = 'UPDATE') THEN
+        INSERT INTO wms.picking_list_details_history(
+            detail_id, header_id, so_detail_id, material_id, rack_id, expiry_dt, qty, picked_qty, status, is_active, operation, operation_at, operation_by
+        ) VALUES (
+            NEW.id, NEW.header_id, NEW.so_detail_id, NEW.material_id, NEW.rack_id, NEW.expiry_dt, NEW.qty, NEW.picked_qty, NEW.status, NEW.is_active, 'UPDATE', NEW.lua, NEW.lub
+        );
+    END IF;
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS picking_details_trigger ON wms.picking_list_details;
+CREATE TRIGGER picking_details_trigger
+    AFTER INSERT OR UPDATE ON wms.picking_list_details
+    FOR EACH ROW
+    EXECUTE FUNCTION wms.picking_list_details_trigger();
+
+-- Function to confirm picking list (Mark as Picked)
+CREATE OR REPLACE FUNCTION wms.confirm_picking_list(
+    _id INTEGER,
+    _current_user_id INTEGER
+) RETURNS INTEGER AS $$
+DECLARE
+    _status VARCHAR(50);
+BEGIN
+    SELECT status INTO _status FROM wms.picking_list_header WHERE id = _id;
+    
+    IF _status != 'Draft' THEN
+        RAISE EXCEPTION 'Only Draft picking lists can be confirmed.';
+    END IF;
+
+    -- Update details status
+    UPDATE wms.picking_list_details
+    SET 
+        status = 'Picked',
+        picked_qty = qty,
+        lub = _current_user_id,
+        lua = NOW()
+    WHERE header_id = _id AND is_active = true;
+
+    -- Update header status
+    UPDATE wms.picking_list_header
+    SET 
+        status = 'Picked',
+        lub = _current_user_id,
+        lua = NOW()
+    WHERE id = _id;
+
+    RETURN _id;
+END;
+$$ LANGUAGE plpgsql;
+
+---------------------------** Dispatch Header **---------------------------
+
+-- Function to insert dispatch_header
+CREATE OR REPLACE FUNCTION wms.insert_dispatch_header(
+    _entry_dt DATE,
+    _party_id INTEGER,
+    _pl_ids TEXT,
+    _vehicle_no VARCHAR(50),
+    _driver_name VARCHAR(255),
+    _remarks VARCHAR(255),
+    _current_user_id INTEGER
+) RETURNS INTEGER AS $$
+DECLARE
+    _new_id INTEGER;
+    _entry_no VARCHAR(50);
+BEGIN
+    SELECT 'DSP-' || TO_CHAR(NOW(), 'YYMMDD') || '-' || LPAD(CAST(COALESCE(MAX(id), 0) + 1 AS TEXT), 4, '0')
+    INTO _entry_no
+    FROM wms.dispatch_header;
+
+    INSERT INTO wms.dispatch_header (
+        entry_no, entry_dt, party_id, pl_ids, vehicle_no, driver_name, remarks, status, lub
+    )
+    VALUES (
+        _entry_no, _entry_dt, _party_id, _pl_ids, _vehicle_no, _driver_name, _remarks, 'Draft', _current_user_id
+    )
+    RETURNING id INTO _new_id;
+    
+    RETURN _new_id;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Function to update dispatch_header
+CREATE OR REPLACE FUNCTION wms.update_dispatch_header(
+    _id INTEGER,
+    _entry_dt DATE,
+    _party_id INTEGER,
+    _pl_ids TEXT,
+    _vehicle_no VARCHAR(50),
+    _driver_name VARCHAR(255),
+    _remarks VARCHAR(255),
+    _current_user_id INTEGER
+) RETURNS INTEGER AS $$
+BEGIN
+    UPDATE wms.dispatch_header
+    SET 
+        entry_dt = _entry_dt,
+        party_id = _party_id,
+        pl_ids = _pl_ids,
+        vehicle_no = _vehicle_no,
+        driver_name = _driver_name,
+        remarks = _remarks,
+        lub = _current_user_id,
+        lua = NOW()
+    WHERE id = _id;
+    
+    RETURN _id;
+END;
+$$ LANGUAGE plpgsql;
+
+---------------------------** Dispatch Details **---------------------------
+
+-- Function to insert dispatch_details
+CREATE OR REPLACE FUNCTION wms.insert_dispatch_details(
+    _header_id INTEGER,
+    _material_id INTEGER,
+    _picking_detail_id INTEGER,
+    _qty DECIMAL(15,3),
+    _uom_id INTEGER,
+    _current_user_id INTEGER
+) RETURNS INTEGER AS $$
+DECLARE
+    _new_id INTEGER;
+BEGIN
+    INSERT INTO wms.dispatch_details (
+        header_id, material_id, picking_detail_id, qty, uom_id, lub
+    )
+    VALUES (
+        _header_id, _material_id, _picking_detail_id, _qty, _uom_id, _current_user_id
+    )
+    RETURNING id INTO _new_id;
+    
+    RETURN _new_id;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Function to delete dispatch_details
+CREATE OR REPLACE FUNCTION wms.delete_dispatch_details(
+    _id INTEGER,
+    _current_user_id INTEGER
+) RETURNS INTEGER AS $$
+BEGIN
+    UPDATE wms.dispatch_details
+    SET is_active = false, lub = _current_user_id, lua = NOW()
+    WHERE id = _id;
+    
+    RETURN _id;
+END;
+$$ LANGUAGE plpgsql;
+
+---------------------------** Process Dispatch **---------------------------
+
+-- Function to process dispatch (Deduct Stock & Update SO)
+CREATE OR REPLACE FUNCTION wms.process_dispatch(
+    _dispatch_id INTEGER,
+    _current_user_id INTEGER
+) RETURNS INTEGER AS $$
+DECLARE
+    _status VARCHAR(50);
+    _detail RECORD;
+    _pick_detail RECORD;
+    _pl_ids TEXT;
+BEGIN
+    SELECT status, pl_ids INTO _status, _pl_ids FROM wms.dispatch_header WHERE id = _dispatch_id;
+    
+    IF _status = 'Dispatched' THEN
+        RAISE EXCEPTION 'Dispatch entry is already processed.';
+    END IF;
+
+    -- Auto-populate dispatch_details if empty
+    IF NOT EXISTS (SELECT 1 FROM wms.dispatch_details WHERE header_id = _dispatch_id AND is_active = true) THEN
+        INSERT INTO wms.dispatch_details (header_id, material_id, picking_detail_id, qty, uom_id, lub)
+        SELECT 
+            _dispatch_id, 
+            pld.material_id, 
+            pld.id, 
+            pld.qty, 
+            m.uom_pc_id, -- Default to Each
+            _current_user_id
+        FROM wms.picking_list_details pld
+        JOIN wms.material m ON pld.material_id = m.id
+        WHERE pld.header_id = ANY(string_to_array(_pl_ids, ',')::int[])
+          AND pld.status = 'Picked'
+          AND pld.is_active = true;
+    END IF;
+
+    -- Update Dispatch Status
+    UPDATE wms.dispatch_header
+    SET status = 'Dispatched', lub = _current_user_id, lua = NOW()
+    WHERE id = _dispatch_id;
+
+    FOR _detail IN SELECT * FROM wms.dispatch_details WHERE header_id = _dispatch_id AND is_active = true LOOP
+        -- Get Picking Detail to find Rack, Expiry, and SO Detail
+        SELECT rack_id, expiry_dt, so_detail_id INTO _pick_detail 
+        FROM wms.picking_list_details 
+        WHERE id = _detail.picking_detail_id;
+
+        -- 1. Deduct Stock
+        PERFORM wms.reduce_stock(_detail.material_id, _pick_detail.rack_id, _detail.qty, _pick_detail.expiry_dt, _current_user_id);
+
+        -- 2. Update Sales Order dqty
+        UPDATE wms.sales_order_details
+        SET dqty = COALESCE(dqty, 0) + _detail.qty
+        WHERE id = _pick_detail.so_detail_id;
+    END LOOP;
+
+    RETURN _dispatch_id;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Function to reduce stock from a specific rack
+CREATE OR REPLACE FUNCTION wms.reduce_stock(
+    _material_id INTEGER,
+    _rack_id INTEGER,
+    _qty DECIMAL(15,3),
+    _expiry_dt DATE,
+    _current_user_id INTEGER
+) RETURNS VOID AS $$
+DECLARE
+    _stock_id INTEGER;
+    _current_qty DECIMAL(15,3);
+BEGIN
+    SELECT id, qty INTO _stock_id, _current_qty 
+    FROM wms.stock 
+    WHERE material_id = _material_id 
+      AND rack_id = _rack_id 
+      AND (expiry_dt = _expiry_dt OR (expiry_dt IS NULL AND _expiry_dt IS NULL));
+
+    IF _stock_id IS NULL THEN
+        RAISE EXCEPTION 'Stock record not found for Material ID %, Rack ID %, Expiry %', _material_id, _rack_id, _expiry_dt;
+    END IF;
+
+    IF _current_qty < _qty THEN
+        RAISE EXCEPTION 'Insufficient stock in Rack %. Available: %, Requested: %', _rack_id, _current_qty, _qty;
+    END IF;
+
+    UPDATE wms.stock
+    SET qty = qty - _qty, lub = _current_user_id, lua = NOW()
+    WHERE id = _stock_id;
+END;
+$$ LANGUAGE plpgsql;

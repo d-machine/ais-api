@@ -2,30 +2,28 @@ configType: FORM
 version: 1.0
 sections:
   - sectionType: FIELDS
-    sectionName: Order Detail
+    sectionName: Inward Item Detail
+    queryInfo:
+      returnType: SINGLE_ROW
+      query: |
+        SELECT 
+          CASE WHEN $1 > 0 THEN d.id ELSE 0 END as id,
+          CASE WHEN $1 > 0 THEN d.material_id ELSE pod.item_id END as item_id,
+          m.name as item_name,
+          CASE WHEN $1 > 0 THEN d.po_detail_id ELSE pod.id END as po_detail_id,
+          pod.eqty as po_eqty,
+          /* Fetch UOMs and Conversion Factors */
+          m.uom_pc_id as euom,
+        - id
+        - row_type
+        - po_detail_id
+      path:
+        - sections
+        - 0
+    
     applicableActions:
       - SAVE
       - CANCEL
-    actionConfig:
-      SAVE:
-        label: Add Item
-        actionType: EXECUTE_QUERY
-        queryInfo:
-          returnType: SCALAR
-          query: SELECT wms.insert_sales_order_details($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12) as id;
-          payload:
-            - header_id
-            - item_id
-            - euom
-            - puom
-            - quom
-            - rate_per_pc
-            - eqty
-            - pqty
-            - amount
-            - dqty
-            - status
-            - remarks
           contextParams:
             - current_user_id
           path:
@@ -37,80 +35,53 @@ sections:
         onFailure: showErrorSnackbar
       CANCEL:
         label: Cancel
-    
-    rows:
-      - columns:
-          - field: item_id
-            span: 12
-      - columns:
-          - field: quom
-            span: 4
-          - field: eqty
-            span: 4
-          - field: pqty
-            span: 4
-      - columns:
-          - field: rate_per_pc
-            span: 4
-          - field: amount
-            span: 4
-          - field: dqty
-            span: 4
-      - columns:
-          - field: status
-            span: 6
-          - field: remarks
-            span: 6
-            
+
     fields:
+      - name: id
+        label: ID
+        type: NUMBER
+        visible: false
+      
       - name: header_id
         label: Header ID
         type: NUMBER
         visible: false
         required: true
       
-      # Hidden fields for calculation/logic
+      # Hidden fields
       - name: conversion_factor
         label: Conversion Factor
         type: NUMBER
         visible: false
-        required: false
       - name: euom
         label: Base UOM ID
         type: NUMBER
         visible: false
-        required: true
       - name: puom
         label: Package UOM ID
         type: NUMBER
         visible: false
-        required: true
+      - name: po_detail_id
+        label: PO Detail ID
+        type: NUMBER
+        visible: false
 
       - name: item_id
         label: Item
         type: SELECT
         required: true
+        readonly: true
         selectConfig:
           resource: list-materials
           displayField: item_name
-          selectHandler: converter
           currentSelection:
             - key: item_id
               as: item_id
-          selectParser: converter
-          fields_to_extract:
-            - key: id
-              as: item_id
-            - key: material_name
-              as: item_name
-            - key: selling_rate
-              as: rate_per_pc
-            - key: conversion_factor
-              as: conversion_factor
-            - key: uom_pc_id
-              as: euom
-            - key: uom_package_id
-              as: puom
+      
+      - name: po_eqty
+        label: PO Qty (Each)
+        type: NUMBER
+        readonly: true
       
       - name: quom
         label: Quantity UOM
@@ -172,41 +143,12 @@ sections:
               condition:
                 field: quom
                 compareWithField: euom
-
-      - name: rate_per_pc
-        label: Rate (Per Pc)
-        type: NUMBER
-        required: true
       
-      - name: amount
-        label: Amount
-        type: NUMBER
-        required: true
-        readonly: true
-        dependencies:
-          - target: [eqty, rate_per_pc]
-            handler: calculateAmount
-            # Note: calculateAmount handler needs to be verified/added if not exists, 
-            # or use a simple math handler. Assuming standard math handler exists or I should add it.
-            # For now, let's assume user handles amount calculation or I should add a simple handler.
-            # Wait, I didn't add calculateAmount. I should add it or use a generic one.
-            # Let's use a generic math handler if possible, or add calculateAmount to form-store.ts.
-            # I'll stick to the requested scope (UOM logic) but amount is standard.
-            # I'll remove the handler reference for now to avoid errors if it doesn't exist, 
-            # or I'll add it to form-store in next step.
-      
-      - name: dqty
-        label: Dispatched Qty
-        type: NUMBER
+      - name: expiry_dt
+        label: Expiry Date
+        type: DATE
         required: false
-        defaultValue: 0
-        readonly: true
-      
-      - name: status
-        label: Status
-        type: TEXT
-        required: true
-        defaultValue: "Pending"
+
       - name: remarks
         label: Remarks
         type: TEXTAREA

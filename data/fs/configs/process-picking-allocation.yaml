@@ -1,0 +1,118 @@
+configType: FORM
+version: 1.0
+sections:
+  - sectionType: FIELDS
+    sectionName: Allocation Detail
+    queryInfo:
+      returnType: SINGLE_ROW
+      # $1=ID (Detail ID or Header ID), $2=SODetailID, $3=MaterialID, $4=PendingQty, $5=ActionType
+      query: |
+        SELECT 
+          CASE WHEN $5 = 'EDIT' THEN d.id ELSE 0 END as id,
+          CASE WHEN $5 = 'EDIT' THEN d.header_id ELSE $1 END as header_id,
+          CASE WHEN $5 = 'EDIT' THEN d.so_detail_id ELSE $2 END as so_detail_id,
+          CASE WHEN $5 = 'EDIT' THEN d.material_id ELSE $3 END as material_id,
+          m.name as material_name,
+          CASE WHEN $5 = 'EDIT' THEN d.rack_id ELSE NULL END as rack_id,
+          CASE WHEN $5 = 'EDIT' THEN d.expiry_dt ELSE NULL END as expiry_dt,
+          CASE WHEN $5 = 'EDIT' THEN d.qty ELSE 0 END as qty,
+          CASE WHEN $5 = 'EDIT' THEN 0 ELSE $4 END as max_qty
+        FROM (SELECT 1) dummy
+        LEFT JOIN wms.picking_list_details d ON d.id = $1 AND $5 = 'EDIT'
+        LEFT JOIN wms.material m ON m.id = COALESCE(d.material_id, $3)
+      payload: [id, so_detail_id, material_id, pending_qty, action_type]
+    
+    applicableActions: [SAVE, CANCEL]
+    actionConfig:
+      SAVE:
+        label: Save Allocation
+        actionType: EXECUTE_QUERY
+        queryInfo:
+          returnType: SCALAR
+          query: |
+            SELECT CASE 
+              WHEN $1 = 0 THEN wms.insert_picking_list_details($2, $3, $4, $5, $6, $7, $8) 
+              ELSE wms.update_picking_list_details($1, $5, $6, $7, $8) 
+            END as id;
+          payload: [id, header_id, so_detail_id, material_id, rack_id, expiry_dt, qty]
+          contextParams: [current_user_id]
+        onSuccess: exitAndComplete
+
+    fields:
+      - name: id
+        label: ID
+        type: NUMBER
+        visible: false
+      
+      - name: header_id
+        label: Header ID
+        type: NUMBER
+        visible: false
+
+      - name: so_detail_id
+        label: SO Detail ID
+        type: NUMBER
+        visible: false
+      
+      - name: material_id
+        label: Material ID
+        type: NUMBER
+        visible: false
+
+      - name: material_name
+        label: Material
+        type: TEXT
+        readonly: true
+
+      - name: max_qty
+        label: Pending Qty
+        type: NUMBER
+        readonly: true
+
+      - name: stock_id
+        label: Select Stock (FEFO)
+        type: SELECT
+        required: true
+        selectConfig:
+          resource: list-available-stock-by-material
+          labelField: display_label
+          displayField: display_label
+          selectHandler: extractor
+          currentSelection:
+            - key: stock_id
+              as: id
+          fields_to_extract:
+            - key: rack_id
+              as: rack_id
+            - key: expiry_dt
+              as: expiry_dt
+            - key: available_qty
+              as: available_qty
+        dependencies:
+          - target: [material_id]
+            handler: filterByDependency
+            required: true
+            dependencyConfig:
+              targetParam: material_id
+
+      - name: rack_id
+        label: Rack ID
+        type: NUMBER
+        visible: false
+      
+      - name: expiry_dt
+        label: Expiry Date
+        type: DATE
+        readonly: true
+      
+      - name: available_qty
+        label: Available Qty
+        type: NUMBER
+        readonly: true
+
+      - name: qty
+        label: Allocate Qty
+        type: NUMBER
+        required: true
+        validators:
+          - {handler: validateMax, config: {maxField: available_qty}}

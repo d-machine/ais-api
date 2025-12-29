@@ -1,0 +1,37 @@
+configType: LIST
+version: 1.0
+queryInfo:
+  returnType: MULTIPLE_ROWS
+  query: |
+    SELECT 
+      h.id,
+      h.entry_no,
+      h.entry_dt,
+      p.name as party_name,
+      h.status,
+      h.vehicle_no
+    FROM wms.dispatch_header h
+    JOIN wms.party p ON h.party_id = p.id
+    WHERE h.is_active = true
+    ORDER BY h.entry_dt DESC, h.id DESC
+columns:
+  - name: entry_no
+    label: Dispatch No
+  - name: entry_dt
+    label: Date
+  - name: party_name
+    label: Customer
+  - name: vehicle_no
+    label: Vehicle
+  - name: status
+    label: Status
+actionConfig:
+  add:
+    label: New Dispatch
+    actionType: OPEN_FORM
+    formConfig: add-dispatch
+  edit:
+    label: Edit
+    actionType: OPEN_FORM
+    formConfig: edit-dispatch
+    payload: [id]

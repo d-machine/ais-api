@@ -1,0 +1,21 @@
+configType: LIST
+version: 1.0
+queryInfo:
+  returnType: MULTIPLE_ROWS
+  query: |
+    SELECT 
+      id,
+      entry_no,
+      entry_dt,
+      remarks
+    FROM wms.picking_list_header
+    WHERE party_id = $1
+      AND status = 'Picked'
+      AND is_active = true
+    ORDER BY entry_dt DESC
+  payload: [party_id]
+columns:
+  - name: entry_no
+    label: Picking List No
+  - name: entry_dt
+    label: Date

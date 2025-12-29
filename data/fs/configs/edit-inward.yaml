@@ -1,0 +1,262 @@
+configType: FORM
+version: 1.0
+sections:
+  - sectionType: FIELDS
+    sectionName: Inward Header
+    queryInfo:
+      returnType: SINGLE_ROW
+      query: |
+        SELECT
+          id,
+          entry_no,
+          entry_dt,
+          vendor_id,
+          v.name as vendor_name,
+          po_ids,
+          invoice_no,
+          invoice_dt,
+          status,
+          remarks
+        FROM wms.inward_header h
+        LEFT JOIN wms.vendor v ON h.vendor_id = v.id
+        WHERE h.id = $1
+      payload:
+        - id
+      path:
+        - sections
+        - 0
+    applicableActions:
+      - SAVE
+      - PROCESS
+      - CANCEL
+    actionConfig:
+      SAVE:
+        label: Finish
+        actionType: EXECUTE_QUERY
+        queryInfo:
+          returnType: SCALAR
+          query: SELECT wms.update_inward_header($1, $2, $3, $4, $5, $6, $7, $8) as id;
+          payload:
+            - id
+            - entry_no
+            - entry_dt
+            - vendor_id
+            - po_ids
+            - invoice_no
+            - invoice_dt
+            - remarks
+          contextParams:
+            - current_user_id
+          path:
+            - sections
+            - 0
+            - actionConfig
+            - SAVE
+        onSuccess: exitAndComplete
+        onFailure: showErrorSnackbar
+      PROCESS:
+        label: Finish & Process
+        actionType: EXECUTE_QUERY
+        condition: status === 'Draft'
+        confirmationRequired: true
+        confirmationMessage: "This will lock the Inward Entry and update stock. Continue?"
+        queryInfo:
+          returnType: SCALAR
+          query: |
+            /* 1. Update Header */
+            SELECT wms.update_inward_header($1, $2, $3, $4, $5, $6, $7, $8);
+            /* 2. Process Inward */
+            SELECT wms.process_inward($1, $9) as id;
+          payload:
+            - id
+            - entry_no
+            - entry_dt
+            - vendor_id
+            - po_ids
+            - invoice_no
+            - invoice_dt
+            - remarks
+          contextParams:
+            - current_user_id
+          path:
+            - sections
+            - 0
+            - actionConfig
+            - PROCESS
+        onSuccess: exitAndComplete
+        onFailure: showErrorSnackbar
+      CANCEL:
+        label: Cancel
+    
+    fields:
+      - name: id
+        label: ID
+        type: NUMBER
+        visible: false
+        required: true
+
+      - name: status
+        label: Status
+        type: TEXT
+        readonly: true
+        required: false
+
+      - name: entry_no
+        label: Entry No
+        type: TEXT
+        required: true
+        readonly: true
+      
+      - name: entry_dt
+        label: Entry Date
+        type: DATE
+        required: true
+      
+      - name: vendor_id
+        label: Vendor
+        type: SELECT
+        required: true
+        selectConfig:
+          resource: list-vendors
+          displayField: vendor_name
+          selectHandler: converter
+          currentSelection:
+            - key: vendor_id
+              as: vendor_id
+          selectParser: converter
+          fields_to_extract:
+            - key: id
+              as: vendor_id
+            - key: vendor_name
+              as: vendor_name
+
+      - name: po_ids
+        label: Purchase Orders
+        type: SELECT
+        required: true
+        selectConfig:
+          resource: list-purchase-orders
+          displayField: entry_no
+          selectionMode: multiple
+          filtersData:
+            - field: vendor_id
+              value: "${vendor_id}"
+          selectHandler: converter
+          currentSelection:
+            - key: po_ids
+              as: po_ids
+          selectParser: converter
+          fields_to_extract:
+            - key: id
+              as: po_ids
+            - key: entry_no
+              as: entry_no
+        dependencies:
+          - target: [vendor_id]
+            handler: filterByDependency
+            required: true
+            dependencyConfig:
+              targetParam: vendor_id
+
+      - name: invoice_no
+        label: Invoice No
+        type: TEXT
+        required: false
+      
+      - name: invoice_dt
+        label: Invoice Date
+        type: DATE
+        required: false
+      
+      - name: remarks
+        label: Remarks
+        type: TEXTAREA
+        required: false
+
+  - sectionType: TABLE
+    sectionName: Inward Details
+    queryInfo:
+      returnType: MULTIPLE_ROWS
+      query: |
+        /* 1. Existing Inward Rows */
+        SELECT 
+          d.id,
+          'EXISTING' as row_type,
+          d.material_id,
+          m.name as material_name,
+          d.po_detail_id,
+          d.quom,
+          u.name as uom_name,
+          d.eqty,
+          d.pqty,
+          pod.eqty as po_eqty,
+          'Inwarded' as status
+        FROM wms.inward_details d
+        JOIN wms.material m ON d.material_id = m.id
+        LEFT JOIN wms.uom u ON d.quom = u.id
+        LEFT JOIN wms.purchase_order_details pod ON d.po_detail_id = pod.id
+        WHERE d.header_id = $1
+        
+        UNION ALL
+        
+        /* 2. Pending PO Rows */
+        SELECT 
+          0 as id,
+          'PENDING' as row_type,
+          pod.item_id as material_id,
+          m.name as material_name,
+          pod.id as po_detail_id,
+          pod.quom,
+          u.name as uom_name,
+          0 as eqty,
+          0 as pqty,
+          pod.eqty as po_eqty,
+          'Pending' as status
+        FROM wms.purchase_order_details pod
+        JOIN wms.purchase_order_header poh ON pod.header_id = poh.id
+        JOIN wms.material m ON pod.item_id = m.id
+        LEFT JOIN wms.uom u ON pod.quom = u.id
+        WHERE poh.id = ANY(string_to_array((SELECT po_ids FROM wms.inward_header WHERE id = $1), ',')::int[])
+        AND (pod.pqty - pod.iqty) > 0
+      payload:
+        - id
+      path:
+        - sections
+        - 1
+      options:
+        applyFiltering: false
+        applySorting: false
+        applyPagination: false
+
+    columns:
+      - name: material_name
+        label: Material
+        visible: true
+        width: 200
+      - name: po_eqty
+        label: PO Qty
+        visible: true
+        width: 100
+        align: right
+      - name: eqty
+        label: Inward Qty
+        visible: true
+        width: 100
+        align: right
+      - name: status
+        label: Status
+        visible: true
+        width: 100
+    
+    actionConfig:
+      edit:
+        label: Edit/Add
+        actionType: DISPLAY_FORM
+        formConfig: process-inward-detail
+        payload:
+          - id
+          - row_type
+          - po_detail_id
+          - material_id
+          - po_eqty
+        onSuccess: refresh

@@ -1,0 +1,79 @@
+configType: LIST
+version: 1.0
+queryInfo:
+  returnType: MULTIPLE_ROWS
+  query: |
+    SELECT 
+      id,
+      code,
+      name,
+      descr,
+      capacity,
+      remarks
+    FROM wms.rack
+    WHERE is_active = true
+  payload: []
+  options:
+    applyFiltering: true
+    applySorting: true
+    applyPagination: true
+
+columns:
+  - name: id
+    label: ID
+    visible: false
+  - name: code
+    label: Code
+    visible: true
+    width: 100
+    sortable: true
+    filterable: true
+  - name: name
+    label: Name
+    visible: true
+    width: 200
+    sortable: true
+    filterable: true
+  - name: descr
+    label: Description
+    visible: true
+    width: 250
+  - name: capacity
+    label: Capacity
+    visible: true
+    width: 100
+    align: right
+  - name: remarks
+    label: Remarks
+    visible: true
+    width: 200
+
+actionConfig:
+  add:
+    label: Add Rack
+    actionType: DISPLAY_FORM
+    formConfig: add-rack
+    onSuccess: refresh
+  edit:
+    label: Edit
+    actionType: DISPLAY_FORM
+    level: ROW
+    formConfig: edit-rack
+    payload:
+      - id
+    onSuccess: refresh
+  delete:
+    label: Delete
+    actionType: EXECUTE_QUERY
+    level: ROW
+    confirmationRequired: true
+    confirmationMessage: "Are you sure you want to delete Rack '${row.name}'?"
+    queryInfo:
+      returnType: SCALAR
+      query: SELECT wms.delete_rack($1, $2) as id;
+      payload:
+        - id
+      contextParams:
+        - current_user_id
+    onSuccess: refresh
+    onFailure: showErrorSnackbar

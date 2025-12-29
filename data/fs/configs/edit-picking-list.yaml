@@ -1,0 +1,151 @@
+configType: FORM
+version: 1.0
+sections:
+  - sectionType: FIELDS
+    sectionName: Picking List Header
+    applicableActions: [SAVE, CANCEL, CONFIRM_PICK]
+    actionConfig:
+      SAVE:
+        label: Save Header
+        actionType: EXECUTE_QUERY
+        queryInfo:
+          returnType: SCALAR
+          query: SELECT wms.update_picking_list_header($1, $2, $3, $4, $5, $6) as id;
+          payload: [id, entry_dt, party_id, so_ids, remarks]
+          contextParams: [current_user_id]
+      CONFIRM_PICK:
+        label: Confirm Pick
+        actionType: EXECUTE_QUERY
+        confirm: "Are you sure you want to confirm this picking list? This will mark items as picked."
+        queryInfo:
+          returnType: SCALAR
+          query: SELECT wms.confirm_picking_list($1, $2) as id;
+          payload: [id]
+          contextParams: [current_user_id]
+        onSuccess:
+          callback: refreshForm
+        visibility:
+          field: status
+          condition: EQUALS
+          value: Draft
+    fields:
+      - name: id
+        label: ID
+        type: NUMBER
+        visible: false
+
+      - name: entry_no
+        label: Entry No
+        type: TEXT
+        readonly: true
+
+      - name: entry_dt
+        label: Date
+        type: DATE
+        required: true
+
+      - name: party_id
+        label: Customer
+        type: SELECT
+        required: true
+        readonly: true
+        selectConfig:
+          resource: list-parties
+          displayField: name
+          currentSelection:
+            - key: party_id
+              as: id
+      
+      - name: so_ids
+        label: Pending Sales Orders
+        type: MULTI_SELECT
+        required: true
+        selectConfig:
+          resource: list-pending-sales-orders
+          displayField: entry_no
+          currentSelection:
+            - key: so_ids
+              as: id
+        dependencies:
+          - target: [party_id]
+            handler: filterByDependency
+            required: true
+            dependencyConfig:
+              targetParam: party_id
+
+      - name: remarks
+        label: Remarks
+        type: TEXTAREA
+
+  - sectionType: TABLE
+    sectionName: Pending Requirements
+    queryInfo:
+      returnType: MULTIPLE_ROWS
+      query: |
+        SELECT 
+          d.id as so_detail_id,
+          d.item_id as material_id,
+          m.name as material_name,
+          h.entry_no as so_no,
+          (d.qty - COALESCE(d.dqty, 0)) as pending_qty,
+          COALESCE((SELECT SUM(qty) FROM wms.picking_list_details pld WHERE pld.header_id = $1 AND pld.so_detail_id = d.id AND pld.is_active = true), 0) as allocated_qty
+        FROM wms.sales_order_details d
+        JOIN wms.sales_order_header h ON d.header_id = h.id
+        JOIN wms.material m ON d.item_id = m.id
+        WHERE h.id = ANY(string_to_array((SELECT so_ids FROM wms.picking_list_header WHERE id = $1), ',')::int[])
+        AND (d.qty - COALESCE(d.dqty, 0)) > 0
+      payload: [id]
+    columns:
+      - name: material_name
+        label: Material
+      - name: so_no
+        label: SO No
+      - name: pending_qty
+        label: Pending Qty
+      - name: allocated_qty
+        label: Allocated Qty
+    actionConfig:
+      allocate:
+        label: Allocate
+        actionType: DISPLAY_FORM
+        formConfig: process-picking-allocation
+        payload: [id, so_detail_id, material_id, pending_qty]
+        onSuccess: refresh
+
+  - sectionType: TABLE
+    sectionName: Allocated Picks
+    queryInfo:
+      returnType: MULTIPLE_ROWS
+      query: |
+        SELECT 
+          d.id,
+          d.material_id,
+          m.name as material_name,
+          d.rack_id,
+          r.code as rack_code,
+          d.expiry_dt,
+          d.qty,
+          d.status
+        FROM wms.picking_list_details d
+        JOIN wms.material m ON d.material_id = m.id
+        LEFT JOIN wms.rack r ON d.rack_id = r.id
+        WHERE d.header_id = $1 AND d.is_active = true
+      payload: [id]
+    columns:
+      - name: material_name
+        label: Material
+      - name: rack_code
+        label: Rack
+      - name: expiry_dt
+        label: Expiry
+      - name: qty
+        label: Qty
+      - name: status
+        label: Status
+    actionConfig:
+      edit:
+        label: Edit
+        actionType: DISPLAY_FORM
+        formConfig: process-picking-allocation
+        payload: [id, material_id]
+        onSuccess: refresh

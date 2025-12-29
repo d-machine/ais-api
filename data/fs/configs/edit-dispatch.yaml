@@ -1,0 +1,129 @@
+configType: FORM
+version: 1.0
+sections:
+  - sectionType: FIELDS
+    sectionName: Dispatch Header
+    applicableActions: [SAVE, CANCEL, PROCESS_DISPATCH]
+    actionConfig:
+      SAVE:
+        label: Save Header
+        actionType: EXECUTE_QUERY
+        queryInfo:
+          returnType: SCALAR
+          query: SELECT wms.update_dispatch_header($1, $2, $3, $4, $5, $6, $7, $8) as id;
+          payload: [id, entry_dt, party_id, pl_ids, vehicle_no, driver_name, remarks]
+          contextParams: [current_user_id]
+      PROCESS_DISPATCH:
+        label: Process Dispatch
+        actionType: EXECUTE_QUERY
+        confirm: "Are you sure you want to process this dispatch? This will deduct stock and update Sales Orders."
+        queryInfo:
+          returnType: SCALAR
+          query: SELECT wms.process_dispatch($1, $2) as id;
+          payload: [id]
+          contextParams: [current_user_id]
+        onSuccess:
+          callback: refreshForm
+        visibility:
+          field: status
+          condition: EQUALS
+          value: Draft
+    fields:
+      - name: id
+        label: ID
+        type: NUMBER
+        visible: false
+
+      - name: entry_no
+        label: Dispatch No
+        type: TEXT
+        readonly: true
+
+      - name: entry_dt
+        label: Date
+        type: DATE
+        required: true
+
+      - name: party_id
+        label: Customer
+        type: SELECT
+        required: true
+        readonly: true
+        selectConfig:
+          resource: list-parties
+          displayField: name
+          currentSelection:
+            - key: party_id
+              as: id
+      
+      - name: pl_ids
+        label: Picking Lists
+        type: MULTI_SELECT
+        required: true
+        selectConfig:
+          resource: list-picked-lists-by-party
+          displayField: entry_no
+          currentSelection:
+            - key: pl_ids
+              as: id
+        dependencies:
+          - target: [party_id]
+            handler: filterByDependency
+            required: true
+            dependencyConfig:
+              targetParam: party_id
+
+      - name: vehicle_no
+        label: Vehicle No
+        type: TEXT
+
+      - name: driver_name
+        label: Driver Name
+        type: TEXT
+
+      - name: remarks
+        label: Remarks
+        type: TEXTAREA
+
+      - name: status
+        label: Status
+        type: TEXT
+        readonly: true
+
+  - sectionType: TABLE
+    sectionName: Dispatch Items
+    queryInfo:
+      returnType: MULTIPLE_ROWS
+      # Query: Items from Picked Lists
+      query: |
+        SELECT 
+          d.id as picking_detail_id,
+          d.material_id,
+          m.name as material_name,
+          d.rack_id,
+          r.code as rack_code,
+          d.expiry_dt,
+          d.qty as picked_qty,
+          COALESCE((SELECT SUM(qty) FROM wms.dispatch_details dd WHERE dd.header_id = $1 AND dd.picking_detail_id = d.id AND dd.is_active = true), 0) as dispatched_qty
+        FROM wms.picking_list_details d
+        JOIN wms.material m ON d.material_id = m.id
+        LEFT JOIN wms.rack r ON d.rack_id = r.id
+        WHERE d.header_id = ANY(string_to_array((SELECT pl_ids FROM wms.dispatch_header WHERE id = $1), ',')::int[])
+        AND d.status = 'Picked'
+        AND d.is_active = true
+      payload: [id]
+    columns:
+      - name: material_name
+        label: Material
+      - name: rack_code
+        label: Rack
+      - name: expiry_dt
+        label: Expiry
+      - name: picked_qty
+        label: Picked Qty
+      - name: dispatched_qty
+        label: Dispatched Qty
+    # Note: For now, we assume full dispatch of picked items. 
+    # We can add an 'Add to Dispatch' action if partial dispatch is needed.
+    # But to simplify, let's auto-populate dispatch_details on PROCESS_DISPATCH if empty, 
+    # or add a button to 'Populate from Picking Lists'.

@@ -1,0 +1,111 @@
+configType: LIST
+version: 1.0
+queryInfo:
+  returnType: MULTIPLE_ROWS
+  query: |
+    SELECT 
+      h.id,
+      h.entry_no,
+      h.entry_dt,
+      v.name as vendor_name,
+      h.invoice_no,
+      h.invoice_dt,
+      h.status,
+      h.remarks
+    FROM wms.inward_header h
+    LEFT JOIN wms.vendor v ON h.vendor_id = v.id
+    WHERE h.is_active = true
+  payload: []
+  options:
+    applyFiltering: true
+    applySorting: true
+    applyPagination: true
+
+columns:
+  - name: id
+    label: ID
+    visible: false
+  - name: entry_no
+    label: Entry No
+    visible: true
+    width: 150
+    sortable: true
+    filterable: true
+  - name: entry_dt
+    label: Entry Date
+    visible: true
+    width: 120
+    dataType: date
+    sortable: true
+  - name: vendor_name
+    label: Vendor
+    visible: true
+    width: 200
+    sortable: true
+    filterable: true
+  - name: invoice_no
+    label: Invoice No
+    visible: true
+    width: 150
+  - name: invoice_dt
+    label: Invoice Date
+    visible: true
+    width: 120
+    dataType: date
+  - name: status
+    label: Status
+    visible: true
+    width: 100
+    sortable: true
+    filterable: true
+  - name: remarks
+    label: Remarks
+    visible: true
+    width: 200
+
+actionConfig:
+  add:
+    label: Create Inward
+    actionType: DISPLAY_FORM
+    formConfig: add-inward
+    onSuccess: refresh
+  edit:
+    label: Edit
+    actionType: DISPLAY_FORM
+    level: ROW
+    formConfig: edit-inward
+    payload:
+      - id
+    onSuccess: refresh
+  process:
+    label: Process
+    actionType: EXECUTE_QUERY
+    level: ROW
+    condition: row.status === 'Draft'
+    confirmationRequired: true
+    confirmationMessage: "Are you sure you want to process Inward Entry '${row.entry_no}'? This will lock the entry and update stock."
+    queryInfo:
+      returnType: SCALAR
+      query: SELECT wms.process_inward($1, $2) as id;
+      payload:
+        - id
+      contextParams:
+        - current_user_id
+    onSuccess: refresh
+    onFailure: showErrorSnackbar
+  delete:
+    label: Delete
+    actionType: EXECUTE_QUERY
+    level: ROW
+    condition: row.status === 'Draft'
+    confirmationRequired: true
+    confirmationMessage: "Are you sure you want to delete Inward Entry '${row.entry_no}'?"
+    queryInfo:
+      returnType: SCALAR
+      query: UPDATE wms.inward_header SET is_active = false WHERE id = $1 RETURNING id;
+      payload:
+        - id
+      contextParams:
+        - current_user_id
+    onSuccess: refresh
+    onFailure: showErrorSnackbar

@@ -1,0 +1,37 @@
+configType: LIST
+version: 1.0
+queryInfo:
+  returnType: MULTIPLE_ROWS
+  query: |
+    SELECT 
+      h.id,
+      h.entry_no,
+      h.entry_dt,
+      p.name as party_name,
+      h.status,
+      (SELECT COUNT(*) FROM wms.picking_list_details d WHERE d.header_id = h.id) as total_items
+    FROM wms.picking_list_header h
+    JOIN wms.party p ON h.party_id = p.id
+    ORDER BY h.id DESC
+  payload: []
+columns:
+  - name: entry_no
+    label: Entry No
+  - name: entry_dt
+    label: Date
+  - name: party_name
+    label: Customer
+  - name: total_items
+    label: Items
+  - name: status
+    label: Status
+actionConfig:
+  edit:
+    label: Edit
+    actionType: NAVIGATE
+    target: edit-picking-list
+    param: id
+  add:
+    label: Create Picking List
+    actionType: NAVIGATE
+    target: add-picking-list
