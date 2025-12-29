@@ -12,8 +12,20 @@ sections:
           m.name as item_name,
           CASE WHEN $1 > 0 THEN d.po_detail_id ELSE pod.id END as po_detail_id,
           pod.eqty as po_eqty,
-          /* Fetch UOMs and Conversion Factors */
           m.uom_pc_id as euom,
+          m.uom_package_id as puom,
+          CASE WHEN $1 > 0 THEN d.quom ELSE pod.quom END as quom,
+          CASE WHEN $1 > 0 THEN d.eqty ELSE 0 END as eqty,
+          CASE WHEN $1 > 0 THEN d.pqty ELSE 0 END as pqty,
+          CASE WHEN $1 > 0 THEN d.expiry_dt ELSE NULL END as expiry_dt,
+          CASE WHEN $1 > 0 THEN d.remarks ELSE '' END as remarks,
+          COALESCE(uc.no_of_pcs, 1) as conversion_factor
+        FROM wms.purchase_order_details pod
+        JOIN wms.material m ON pod.item_id = m.id
+        LEFT JOIN wms.inward_details d ON d.po_detail_id = pod.id AND d.id = $1
+        LEFT JOIN wms.uom_conversion uc ON m.uom_pc_id = uc.uom_id_each AND m.uom_package_id = uc.uom_id_case
+        WHERE pod.id = $3
+      payload:
         - id
         - row_type
         - po_detail_id
@@ -24,6 +36,30 @@ sections:
     applicableActions:
       - SAVE
       - CANCEL
+    
+    actionConfig:
+      SAVE:
+        label: Save Details
+        actionType: EXECUTE_QUERY
+        queryInfo:
+          returnType: SCALAR
+          query: |
+            SELECT CASE 
+              WHEN $1 > 0 THEN wms.update_inward_details($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+              ELSE wms.insert_inward_details($2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+            END as id;
+          payload:
+            - id
+            - header_id
+            - item_id
+            - po_detail_id
+            - euom
+            - puom
+            - quom
+            - eqty
+            - pqty
+            - remarks
+            - expiry_dt
           contextParams:
             - current_user_id
           path:

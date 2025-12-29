@@ -56,7 +56,7 @@ INSERT INTO administration.resource (id, name, list_config_file, parent_id, lub)
 (101, 'Purchase Order', 'list-purchase-orders', 5, 1),
 (102, 'Inward', 'list-inwards', 5, 1),
 (103, 'Putaway', 'list-putaways', 5, 1),
-(104, 'Purchase Return', 'list-purchase-returns', 5, 1)
+(104, 'Purchase Return', 'list-purchase-returns', 5, 1),
 -- 101 - 110 are for Purchase.
 (111, 'Transport', 'list-transports', 3, 1)
 ;

@@ -66,7 +66,7 @@ export default class DBClient {
         "uom_conversion.sql",
         "material.sql",
         // warehouse
-        "palette.sql",
+        "rack.sql",
         // broker
         "broker.sql",
         // party
@@ -82,8 +82,10 @@ export default class DBClient {
         "sales_order_details.sql",
         // picking_list
         "picking_list_header.sql",
-        "picking_list_order.sql",
-        "picking_list_palette.sql",
+        "picking_list_details.sql",
+        //dispatch
+        "dispatch_header.sql",
+        "dispatch_details.sql",
 
         "query_functions.sql",
         "initial_data.sql",
@@ -98,7 +100,7 @@ export default class DBClient {
 
         try {
           console.log(`Executing SQL file: ${file}`);
-          const query = fs.readFileSync(filePath, "utf-8");
+          const query = fs.readFileSync(filePath, "utf-8").replace(/^\uFEFF/, "");
           await this.pool?.query(query);
           console.log(`Successfully executed SQL file: ${file}`);
         } catch (error) {
