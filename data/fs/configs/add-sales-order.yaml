@@ -94,12 +94,11 @@ sections:
         required: true
         selectConfig:
           resource: list-parties
-          labelField: party_name
           displayField: party_name
           selectHandler: converter
           currentSelection:
             - key: party_id
-              as: party_id
+              as: id
           selectParser: converter
           fields_to_extract:
             - key: id
@@ -112,12 +111,11 @@ sections:
         required: false
         selectConfig:
           resource: list-brokers
-          labelField: broker_name
           displayField: broker_name
           selectHandler: converter
           currentSelection:
-            - key: id
-              as: broker_id
+            - key: broker_id
+              as: id
           selectParser: converter
           fields_to_extract:
             - key: id
@@ -134,7 +132,7 @@ sections:
           selectHandler: converter
           currentSelection:
             - key: delivery_at_id
-              as: delivery_at_id
+              as: id
           selectParser: converter
           fields_to_extract:
             - key: id
@@ -152,7 +150,7 @@ sections:
           selectHandler: converter
           currentSelection:
             - key: trsp_id
-              as: trsp_id
+              as: id
           selectParser: converter
           fields_to_extract:
             - key: id
@@ -189,14 +187,14 @@ sections:
           u1.name as uom_pc_name,
           u2.name as uom_package_name,
           d.rate_per_pc,
-          d.no_of_pc,
+          d.eqty,
           d.amount,
           d.status,
           d.remarks
         FROM wms.sales_order_details d
         LEFT JOIN wms.material m ON d.item_id = m.id
-        LEFT JOIN wms.uom u1 ON d.uom_pc_id = u1.id
-        LEFT JOIN wms.uom u2 ON d.uom_package_id = u2.id
+        LEFT JOIN wms.uom u1 ON d.euom = u1.id
+        LEFT JOIN wms.uom u2 ON d.puom = u2.id
         WHERE d.header_id = $1 AND d.is_active = true
       payload:
         - id  # Uses 'id' from form context as 'header_id' param
@@ -230,7 +228,7 @@ sections:
         dataType: currency
         width: 100
         align: right
-      - name: no_of_pc
+      - name: eqty
         label: Qty
         visible: true
         width: 80

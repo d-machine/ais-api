@@ -29,21 +29,39 @@ sections:
         required: true
         selectConfig:
           resource: list-parties
-          displayField: name
+          displayField: party_name
+          selectHandler: converter
           currentSelection:
             - key: party_id
               as: id
+          selectParser: converter
+          fields_to_extract:
+            - key: id
+              as: party_id
+            - key: party_name
+              as: party_name
       
       - name: so_ids
         label: Pending Sales Orders
-        type: MULTI_SELECT
+        type: SELECT
         required: true
         selectConfig:
           resource: list-pending-sales-orders
-          displayField: entry_no
+          displayField: so_entry_nos
+          selectionMode: multiple
+          filtersData:
+            - field: party_id
+              value: "${party_id}"
+          selectHandler: concatinator
           currentSelection:
             - key: so_ids
               as: id
+          selectParser: splitter
+          fields_to_extract:
+            - key: id
+              as: so_ids
+            - key: entry_no
+              as: so_entry_nos
         dependencies:
           - target: [party_id]
             handler: filterByDependency

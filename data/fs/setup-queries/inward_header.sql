@@ -14,6 +14,7 @@ CREATE TABLE IF NOT EXISTS wms.inward_header (
     is_active BOOLEAN NOT NULL DEFAULT true,
     lub INTEGER REFERENCES administration.user(id),
     lua TIMESTAMP NOT NULL DEFAULT NOW(),
+    status VARCHAR(20) NOT NULL DEFAULT 'Draft',
     remarks VARCHAR(255)
 );
 
@@ -28,6 +29,7 @@ CREATE TABLE IF NOT EXISTS wms.inward_header_history (
     invoice_no VARCHAR(100),
     invoice_dt DATE,
     is_active BOOLEAN NOT NULL,
+    status VARCHAR(20),
     operation VARCHAR(10),
     operation_at TIMESTAMP,
     operation_by INTEGER REFERENCES administration.user(id)
@@ -40,32 +42,32 @@ BEGIN
     IF (TG_OP = 'INSERT') THEN
         INSERT INTO wms.inward_header_history(
             inward_header_id, entry_no, entry_dt, vendor_id, po_ids,
-            invoice_no, invoice_dt, is_active,
+            invoice_no, invoice_dt, is_active, status,
             operation, operation_at, operation_by
         ) VALUES (
             NEW.id, NEW.entry_no, NEW.entry_dt, NEW.vendor_id, NEW.po_ids,
-            NEW.invoice_no, NEW.invoice_dt, NEW.is_active,
+            NEW.invoice_no, NEW.invoice_dt, NEW.is_active, NEW.status,
             'INSERT', NEW.lua, NEW.lub
         );
     ELSIF (TG_OP = 'UPDATE') THEN
         IF (OLD.is_active = true AND NEW.is_active = false) THEN
             INSERT INTO wms.inward_header_history(
                 inward_header_id, entry_no, entry_dt, vendor_id, po_ids,
-                invoice_no, invoice_dt, is_active,
+                invoice_no, invoice_dt, is_active, status,
                 operation, operation_at, operation_by
             ) VALUES (
                 NEW.id, NEW.entry_no, NEW.entry_dt, NEW.vendor_id, NEW.po_ids,
-                NEW.invoice_no, NEW.invoice_dt, NEW.is_active,
+                NEW.invoice_no, NEW.invoice_dt, NEW.is_active, NEW.status,
                 'DELETE', NEW.lua, NEW.lub
             );
         ELSE
             INSERT INTO wms.inward_header_history(
                 inward_header_id, entry_no, entry_dt, vendor_id, po_ids,
-                invoice_no, invoice_dt, is_active,
+                invoice_no, invoice_dt, is_active, status,
                 operation, operation_at, operation_by
             ) VALUES (
                 NEW.id, NEW.entry_no, NEW.entry_dt, NEW.vendor_id, NEW.po_ids,
-                NEW.invoice_no, NEW.invoice_dt, NEW.is_active,
+                NEW.invoice_no, NEW.invoice_dt, NEW.is_active, NEW.status,
                 'UPDATE', NEW.lua, NEW.lub
             );
         END IF;

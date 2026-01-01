@@ -4,24 +4,27 @@ version: 1.0
 queryInfo:
   returnType: MULTIPLE_ROWS
   query: |
-    SELECT
-      ph.id,
-      ph.entry_no,
-      ph.entry_dt,
-      v.name as vendor_name,
-      b.name as broker_name,
-      ph.status,
-      COALESCE(SUM(pd.no_of_pc), 0) as total_qty,
-      COALESCE(SUM(pd.amount), 0) as total_amount,
-      ph.lua as last_updated_at,
-      TRIM(CONCAT(u.first_name, ' ', u.last_name)) as last_updated_by_name
-    FROM wms.purchase_order_header ph
-    LEFT JOIN wms.vendor v ON ph.vendor_id = v.id
-    LEFT JOIN wms.broker b ON ph.broker_id = b.id
-    LEFT JOIN wms.purchase_order_details pd ON ph.id = pd.header_id AND pd.is_active = true
-    LEFT JOIN administration.user u ON ph.lub = u.id
-    WHERE ph.is_active = true
-    GROUP BY ph.id, ph.entry_no, ph.entry_dt, v.name, b.name, ph.status, ph.lua, u.first_name, u.last_name
+    SELECT * FROM (
+      SELECT
+        ph.id,
+        ph.entry_no,
+        ph.entry_dt,
+        ph.vendor_id,
+        v.name as vendor_name,
+        b.name as broker_name,
+        ph.status,
+        COALESCE(SUM(pd.eqty), 0) as total_qty,
+        COALESCE(SUM(pd.amount), 0) as total_amount,
+        ph.lua as last_updated_at,
+        TRIM(CONCAT(u.first_name, ' ', u.last_name)) as last_updated_by_name
+      FROM wms.purchase_order_header ph
+      LEFT JOIN wms.vendor v ON ph.vendor_id = v.id
+      LEFT JOIN wms.broker b ON ph.broker_id = b.id
+      LEFT JOIN wms.purchase_order_details pd ON ph.id = pd.header_id AND pd.is_active = true
+      LEFT JOIN administration.user u ON ph.lub = u.id
+      WHERE ph.is_active = true
+      GROUP BY ph.id, ph.entry_no, ph.entry_dt, ph.vendor_id, v.name, b.name, ph.status, ph.lua, u.first_name, u.last_name
+    ) as po
   options:
     applyFiltering: true
     applySorting: true

@@ -11,7 +11,7 @@ queryInfo:
       p.name as party_name,
       b.name as broker_name,
       sh.status,
-      COALESCE(SUM(sd.no_of_pc), 0) as total_qty,
+      COALESCE(SUM(sd.eqty), 0) as total_qty,
       COALESCE(SUM(sd.amount), 0) as total_amount,
       sh.lua as last_updated_at,
       TRIM(CONCAT(u.first_name, ' ', u.last_name)) as last_updated_by_name

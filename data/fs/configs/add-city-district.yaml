@@ -7,19 +7,19 @@ sections:
       returnType: SINGLE_ROW
       query: |
         SELECT
-          cd.id as city_district_id,
+          cd.id as id,
           cd.state_id,
-          sm.name as state_name,
+          s.name as state_name,
           cd.city_id,
-          cm.name as city_name,
+          c.name as city_name,
           cd.district_id,
-          dm.name as district_name,
+          d.name as district_name,
           cd.descr
         FROM
           wms.city_district cd
-          LEFT JOIN wms.city cm ON cd.city_id = cm.id
-          LEFT JOIN wms.district dm ON cd.district_id = dm.id
-          LEFT JOIN wms.state sm ON cd.state_id = sm.id
+          LEFT JOIN wms.state s ON cd.state_id = s.id
+          LEFT JOIN wms.city c ON cd.city_id = c.id
+          LEFT JOIN wms.district d ON cd.district_id = d.id
         WHERE
           cd.id = $1
       payload:
@@ -80,7 +80,7 @@ sections:
           selectHandler: converter
           currentSelection:
             - key: state_id
-              as: state_id
+              as: id
           selectParser: converter
           fields_to_extract:
             - key: id
@@ -98,7 +98,7 @@ sections:
           selectHandler: converter
           currentSelection:
             - key: city_id
-              as: city_id
+              as: id
           selectParser: converter
           fields_to_extract:
             - key: id
@@ -116,7 +116,7 @@ sections:
           selectHandler: converter
           currentSelection:
             - key: district_id
-              as: district_id
+              as: id
           selectParser: converter
           fields_to_extract:
             - key: id

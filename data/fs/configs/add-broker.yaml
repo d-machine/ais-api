@@ -159,10 +159,10 @@ sections:
           selectHandler: converter
           currentSelection:
             - key: country_id
-              as: country_id
+              as: id
           selectParser: converter
           fields_to_extract:
-            - key: country_id
+            - key: id
               as: country_id
             - key: country_name
               as: country_name
@@ -176,10 +176,10 @@ sections:
           selectHandler: converter
           currentSelection:
             - key: state_id
-              as: state_id
+              as: id
           selectParser: converter
           fields_to_extract:
-            - key: state_id
+            - key: id
               as: state_id
             - key: state_name
               as: state_name

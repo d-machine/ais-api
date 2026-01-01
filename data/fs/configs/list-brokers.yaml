@@ -41,9 +41,8 @@ queryInfo:
   options:
     applyFiltering: true
     applySorting: true
-    applyPagenation: true
-  path:
-    - queryInfo
+    applyPagination: true
+  path: []
 
 applicableActions:
   - NEW

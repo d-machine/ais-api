@@ -3,13 +3,12 @@ version: 1.0
 queryInfo:
   returnType: MULTIPLE_ROWS
   query: |
-    SELECT
-      u.id,
-      u.name as uom_name,
-      m.id as material_id
+    SELECT * FROM (
+    SELECT u.id, u.name as uom_name, m.id as material_id
     FROM wms.uom u
     JOIN wms.material m ON (m.uom_pc_id = u.id OR m.uom_package_id = u.id)
     WHERE u.is_active = true
+    ) as uom_list
   options:
     applyFiltering: true
     applySorting: true

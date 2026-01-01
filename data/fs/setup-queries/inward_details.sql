@@ -20,6 +20,7 @@ CREATE TABLE IF NOT EXISTS wms.inward_details (
     is_active BOOLEAN NOT NULL DEFAULT true,
     lub INTEGER REFERENCES administration.user(id),
     lua TIMESTAMP NOT NULL DEFAULT NOW(),
+    expiry_dt DATE,
     remarks VARCHAR(255),
     UNIQUE(entry_no, row_no)
 );
@@ -40,6 +41,7 @@ CREATE TABLE IF NOT EXISTS wms.inward_details_history (
     pqty DECIMAL(15,3),
     pur_rate DECIMAL(15,2),
     amount DECIMAL(15,2),
+    expiry_dt DATE,
     is_active BOOLEAN NOT NULL,
     operation VARCHAR(10),
     operation_at TIMESTAMP,
@@ -53,69 +55,69 @@ BEGIN
     IF (TG_OP = 'INSERT') THEN
         INSERT INTO wms.inward_details_history(
             inward_details_id, header_id, entry_no, row_no, material_id, po_detail_id,
-            quom, euom, puom, eqty, pqty, pur_rate, amount, is_active,
+            quom, euom, puom, eqty, pqty, pur_rate, amount, expiry_dt, is_active,
             operation, operation_at, operation_by
         )
         VALUES (
             NEW.id, NEW.header_id, NEW.entry_no, NEW.row_no, NEW.material_id, NEW.po_detail_id,
-            NEW.quom, NEW.euom, NEW.puom, NEW.eqty, NEW.pqty, NEW.pur_rate, NEW.amount, NEW.is_active,
+            NEW.quom, NEW.euom, NEW.puom, NEW.eqty, NEW.pqty, NEW.pur_rate, NEW.amount, NEW.expiry_dt, NEW.is_active,
             'INSERT', NEW.lua, NEW.lub
         );
     ELSIF (TG_OP = 'UPDATE') THEN
         IF (OLD.is_active = true AND NEW.is_active = false) THEN
             INSERT INTO wms.inward_details_history(
                 inward_details_id, header_id, entry_no, row_no, material_id, po_detail_id,
-                quom, euom, puom, eqty, pqty, pur_rate, amount, is_active,
+                quom, euom, puom, eqty, pqty, pur_rate, amount, expiry_dt, is_active,
                 operation, operation_at, operation_by
             )
             VALUES (
                 NEW.id, NEW.header_id, NEW.entry_no, NEW.row_no, NEW.material_id, NEW.po_detail_id,
-                NEW.quom, NEW.euom, NEW.puom, NEW.eqty, NEW.pqty, NEW.pur_rate, NEW.amount, NEW.is_active,
+                NEW.quom, NEW.euom, NEW.puom, NEW.eqty, NEW.pqty, NEW.pur_rate, NEW.amount, NEW.expiry_dt, NEW.is_active,
                 'DELETE', NEW.lua, NEW.lub
             );
         ELSE
             INSERT INTO wms.inward_details_history(
                 inward_details_id, header_id, entry_no, row_no, material_id, po_detail_id,
-                quom, euom, puom, eqty, pqty, pur_rate, amount, is_active,
+                quom, euom, puom, eqty, pqty, pur_rate, amount, expiry_dt, is_active,
                 operation, operation_at, operation_by
             )
             VALUES (
                 NEW.id, NEW.header_id, NEW.entry_no, NEW.row_no, NEW.material_id, NEW.po_detail_id,
-                NEW.quom, NEW.euom, NEW.puom, NEW.eqty, NEW.pqty, NEW.pur_rate, NEW.amount, NEW.is_active,
+                NEW.quom, NEW.euom, NEW.puom, NEW.eqty, NEW.pqty, NEW.pur_rate, NEW.amount, NEW.expiry_dt, NEW.is_active,
                 'UPDATE', NEW.lua, NEW.lub
             );
         END IF;
     ELSIF (TG_OP = 'DELETE') THEN
         INSERT INTO wms.inward_details_history(
             inward_details_id, header_id, entry_no, row_no, material_id, po_detail_id,
-            quom, euom, puom, eqty, pqty, pur_rate, amount, is_active,
+            quom, euom, puom, eqty, pqty, pur_rate, amount, expiry_dt, is_active,
             operation, operation_at, operation_by
         )
         VALUES (
             OLD.id, OLD.header_id, OLD.entry_no, OLD.row_no, OLD.material_id, OLD.po_detail_id,
-            OLD.quom, OLD.euom, OLD.puom, OLD.eqty, OLD.pqty, OLD.pur_rate, OLD.amount, OLD.is_active,
-            'DELETE', NEW.lua, NEW.lub
+            OLD.quom, OLD.euom, OLD.puom, OLD.eqty, OLD.pqty, OLD.pur_rate, OLD.amount, OLD.expiry_dt, false,
+            'DELETE', NOW(), OLD.lub
         );
     END IF;
-    RETURN NEW;
+    RETURN NULL;
 END;
 $$ LANGUAGE plpgsql;
 
 -- Create triggers for inward_details
 DROP TRIGGER IF EXISTS inward_details_insert_trigger ON wms.inward_details;
 CREATE TRIGGER inward_details_insert_trigger
-    BEFORE INSERT ON wms.inward_details
+    AFTER INSERT ON wms.inward_details
     FOR EACH ROW
     EXECUTE FUNCTION wms.inward_details_trigger();
             
 DROP TRIGGER IF EXISTS inward_details_update_trigger ON wms.inward_details;
 CREATE TRIGGER inward_details_update_trigger
-    BEFORE INSERT ON wms.inward_details
+    AFTER UPDATE ON wms.inward_details
     FOR EACH ROW
     EXECUTE FUNCTION wms.inward_details_trigger();       
 
 DROP TRIGGER IF EXISTS inward_details_delete_trigger ON wms.inward_details;
 CREATE TRIGGER inward_details_delete_trigger
-    BEFORE INSERT ON wms.inward_details
+    AFTER DELETE ON wms.inward_details
     FOR EACH ROW
     EXECUTE FUNCTION wms.inward_details_trigger();

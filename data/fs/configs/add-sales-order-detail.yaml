@@ -12,7 +12,7 @@ sections:
         actionType: EXECUTE_QUERY
         queryInfo:
           returnType: SCALAR
-          query: SELECT wms.insert_sales_order_details($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12) as id;
+          query: SELECT wms.insert_sales_order_details($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13) as id;
           payload:
             - header_id
             - item_id
@@ -96,7 +96,7 @@ sections:
           selectHandler: converter
           currentSelection:
             - key: item_id
-              as: item_id
+              as: id
           selectParser: converter
           fields_to_extract:
             - key: id
@@ -118,12 +118,11 @@ sections:
         required: true
         selectConfig:
           resource: list-uoms-by-material
-          labelField: uom_name
           displayField: uom_name
           selectHandler: converter
           currentSelection:
             - key: quom
-              as: quom
+              as: id
           selectParser: converter
           fields_to_extract:
             - key: id
@@ -185,15 +184,10 @@ sections:
         readonly: true
         dependencies:
           - target: [eqty, rate_per_pc]
-            handler: calculateAmount
-            # Note: calculateAmount handler needs to be verified/added if not exists, 
-            # or use a simple math handler. Assuming standard math handler exists or I should add it.
-            # For now, let's assume user handles amount calculation or I should add a simple handler.
-            # Wait, I didn't add calculateAmount. I should add it or use a generic one.
-            # Let's use a generic math handler if possible, or add calculateAmount to form-store.ts.
-            # I'll stick to the requested scope (UOM logic) but amount is standard.
-            # I'll remove the handler reference for now to avoid errors if it doesn't exist, 
-            # or I'll add it to form-store in next step.
+            handler: calculateValue
+            dependencyConfig:
+              operation: MULTIPLY
+              operands: [eqty, rate_per_pc]
       
       - name: dqty
         label: Dispatched Qty

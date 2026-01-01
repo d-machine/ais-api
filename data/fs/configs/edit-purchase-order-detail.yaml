@@ -42,9 +42,10 @@ sections:
         actionType: EXECUTE_QUERY
         queryInfo:
           returnType: SCALAR
-          query: SELECT wms.update_purchase_order_details($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12) as id;
+          query: SELECT wms.update_purchase_order_details($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14) as id;
           payload:
             - id
+            - header_id
             - item_id
             - euom
             - puom
@@ -123,7 +124,7 @@ sections:
           selectHandler: converter
           currentSelection:
             - key: item_id
-              as: item_id
+              as: id
           selectParser: converter
           fields_to_extract:
             - key: id
@@ -150,7 +151,7 @@ sections:
           selectHandler: converter
           currentSelection:
             - key: quom
-              as: quom
+              as: id
           selectParser: converter
           fields_to_extract:
             - key: id
@@ -210,11 +211,18 @@ sections:
         type: NUMBER
         required: true
         readonly: true
+        dependencies:
+          - target: [eqty, rate_per_pc]
+            handler: calculateValue
+            dependencyConfig:
+              operation: MULTIPLY
+              operands: [eqty, rate_per_pc]
       
       - name: iqty
         label: Inward Qty
         type: NUMBER
         required: false
+        defaultValue: 0
         readonly: true
       
       - name: status

@@ -12,15 +12,10 @@ sections:
         label: Save Header & Continue
         actionType: EXECUTE_QUERY
         queryInfo:
-          returnType: SCALAR
+          returnType: SINGLE_ROW
           query: |
-            SELECT CASE 
-              WHEN $1 IS NULL THEN wms.insert_inward_header($2, $3, $4, $5, $6, $7, $8, $9)
-              ELSE wms.update_inward_header($1, $2, $3, $4, $5, $6, $7, $8, $9)
-            END as id;
+            SELECT * from wms.insert_inward_header($1, $2, $3, $4, $5, $6, $7);
           payload:
-            - id
-            - entry_no
             - entry_dt
             - vendor_id
             - po_ids
@@ -76,6 +71,26 @@ sections:
       CANCEL:
         label: Cancel
     
+    rows:
+      - columns:
+          - field: entry_no
+            span: 6
+          - field: entry_dt
+            span: 6
+      - columns:
+          - field: vendor_id
+            span: 6
+          - field: po_ids
+            span: 6
+      - columns:
+          - field: invoice_no
+            span: 6
+          - field: invoice_dt
+            span: 6
+      - columns:
+          - field: remarks
+            span: 12
+    
     fields:
       - name: id
         label: ID
@@ -91,7 +106,7 @@ sections:
       - name: entry_no
         label: Entry No
         type: TEXT
-        required: true
+        required: false
         readonly: true
         placeholder: "Auto-generated"
       
@@ -111,7 +126,7 @@ sections:
           selectHandler: converter
           currentSelection:
             - key: vendor_id
-              as: vendor_id
+              as: id
           selectParser: converter
           fields_to_extract:
             - key: id
@@ -125,27 +140,30 @@ sections:
         required: true
         selectConfig:
           resource: list-purchase-orders
-          displayField: entry_no
+          displayField: po_entry_nos
           selectionMode: multiple
           filtersData:
             - field: vendor_id
               value: "${vendor_id}"
-          selectHandler: converter
+          selectHandler: concatinator
           currentSelection:
             - key: po_ids
-              as: po_ids
-          selectParser: converter
+              as: id
+          selectParser: splitter
           fields_to_extract:
             - key: id
               as: po_ids
             - key: entry_no
-              as: entry_no
+              as: po_entry_nos
         dependencies:
           - target: [vendor_id]
             handler: filterByDependency
             required: true
             dependencyConfig:
               targetParam: vendor_id
+          - target: [vendor_id]
+            handler: toggleReadonly
+            condition: "!vendor_id"
 
       - name: invoice_no
         label: Invoice No

@@ -80,8 +80,8 @@ sections:
           displayField: state_name
           selectHandler: converter
           currentSelection:
-            - key: id
-              as: state_id
+            - key: state_id
+              as: id
           selectParser: converter
           fields_to_extract:
             - key: id
@@ -99,7 +99,7 @@ sections:
           selectHandler: converter
           currentSelection:
             - key: city_id
-              as: city_id
+              as: id
           selectParser: converter
           fields_to_extract:
             - key: id
@@ -117,7 +117,7 @@ sections:
           selectHandler: converter
           currentSelection:
             - key: district_id
-              as: district_id
+              as: id
           selectParser: converter
           fields_to_extract:
             - key: id

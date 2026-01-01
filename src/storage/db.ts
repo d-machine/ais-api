@@ -77,6 +77,9 @@ export default class DBClient {
         // purchase_order
         "purchase_order_header.sql",
         "purchase_order_details.sql",
+        //
+        "inward_header.sql",
+        "inward_details.sql",
         // sales_order
         "sales_order_header.sql",
         "sales_order_details.sql",

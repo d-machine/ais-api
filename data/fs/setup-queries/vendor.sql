@@ -27,7 +27,7 @@ CREATE TABLE wms.vendor (
     -- Business fields
     salesman VARCHAR(100),
     pan_no VARCHAR(20),
-    cr_limit NUMERIC(15,2),
+    cr_limit DECIMAL(15,2),
     cr_days INTEGER,
     gstno VARCHAR(20),
     aadhar_no VARCHAR(20),
@@ -61,7 +61,7 @@ CREATE TABLE wms.vendor_history (
     email VARCHAR(100),
     salesman VARCHAR(100),
     pan_no VARCHAR(20),
-    cr_limit NUMERIC(15,2),
+    cr_limit DECIMAL(15,2),
     cr_days INTEGER,
     gstno VARCHAR(20),
     aadhar_no VARCHAR(20),

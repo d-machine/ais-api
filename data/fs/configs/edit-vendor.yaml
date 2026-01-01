@@ -165,8 +165,8 @@ sections:
           displayField: category_name
           selectHandler: converter
           currentSelection:
-            - key: id
-              as: category_id
+            - key: category_id
+              as: id
           selectParser: converter
           fields_to_extract:
             - key: id
@@ -209,8 +209,8 @@ sections:
           displayField: country_name
           selectHandler: converter
           currentSelection:
-            - key: id
-              as: country_id
+            - key: country_id
+              as: id
           selectParser: converter
           fields_to_extract:
             - key: id
@@ -229,7 +229,7 @@ sections:
           selectHandler: converter
           currentSelection:
             - key: state_id
-              as: state_id
+              as: id
           selectParser: converter
           fields_to_extract:
             - key: id
@@ -254,7 +254,7 @@ sections:
           selectHandler: converter
           currentSelection:
             - key: city_id
-              as: city_id
+              as: id
           selectParser: converter
           fields_to_extract:
             - key: id
@@ -284,7 +284,7 @@ sections:
           selectHandler: converter
           currentSelection:
             - key: district_id
-              as: district_id
+              as: id
           selectParser: converter
           fields_to_extract:
             - key: id

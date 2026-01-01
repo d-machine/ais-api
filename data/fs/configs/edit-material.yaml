@@ -101,7 +101,7 @@ sections:
           selectHandler: converter
           currentSelection:
             - key: category_id
-              as: category_id
+              as: id
           selectParser: converter
           fields_to_extract:
             - key: id
@@ -121,8 +121,8 @@ sections:
           displayField: brand_name
           selectHandler: converter
           currentSelection:
-            - key: id
-              as: brand_id
+            - key: brand_id
+              as: id
           selectParser: converter
           fields_to_extract:
             - key: id
@@ -141,12 +141,11 @@ sections:
         required: true
         selectConfig:
           resource: list-uoms
-          labelField: uom_name
           displayField: uom_pc_name
           selectHandler: converter
           currentSelection:
             - key: uom_pc_id
-              as: uom_pc_id
+              as: id
           selectParser: converter
           fields_to_extract:
             - key: id
@@ -162,12 +161,11 @@ sections:
           field: uom_pc_id
         selectConfig:
           resource: list-uom-conversions
-          labelField: uom_case_name
           displayField: uom_package_name
           selectHandler: converter
           currentSelection:
             - key: uom_package_id
-              as: uom_package_id
+              as: uom_id_case
           selectParser: converter
           fields_to_extract:
             - key: uom_id_case
