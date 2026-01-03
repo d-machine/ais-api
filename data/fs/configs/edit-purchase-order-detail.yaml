@@ -9,6 +9,7 @@ sections:
         SELECT
           d.id,
           d.header_id,
+          d.row_no,
           d.item_id,
           m.name as item_name,
           d.euom,
@@ -71,8 +72,10 @@ sections:
     
     rows:
       - columns:
+          - field: row_no
+            span: 4
           - field: item_id
-            span: 12
+            span: 8
       - columns:
           - field: quom
             span: 4
@@ -99,6 +102,12 @@ sections:
         type: NUMBER
         visible: false
         required: true
+      
+      - name: row_no
+        label: Row No
+        type: TEXT
+        required: false
+        readonly: true
 
       # Hidden fields
       - name: conversion_factor

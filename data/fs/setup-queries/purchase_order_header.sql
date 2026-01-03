@@ -6,7 +6,7 @@
 --Create purchase_order_header table
 CREATE TABLE IF NOT EXISTS wms.purchase_order_header(
     id SERIAL PRIMARY KEY,
-    entry_no VARCHAR(6) NOT NULL UNIQUE,
+    entry_no VARCHAR(10) NOT NULL UNIQUE,
     entry_dt TIMESTAMP NOT NULL,
     vendor_id INTEGER NOT NULL REFERENCES wms.vendor(id),
     broker_id INTEGER REFERENCES wms.broker(id),
@@ -25,7 +25,7 @@ CREATE TABLE IF NOT EXISTS wms.purchase_order_header(
 CREATE TABLE IF NOT EXISTS wms.purchase_order_header_history(
     history_id SERIAL PRIMARY KEY,
     pruchase_header_id INTEGER,
-    entry_no VARCHAR(6),
+    entry_no VARCHAR(10),
     entry_dt TIMESTAMP,
     vendor_id INTEGER,
     broker_id INTEGER,

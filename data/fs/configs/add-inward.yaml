@@ -189,46 +189,57 @@ sections:
     queryInfo:
       returnType: MULTIPLE_ROWS
       query: |
-        /* 1. Existing Inward Rows */
         SELECT 
-          d.id,
-          'EXISTING' as row_type,
-          d.material_id,
-          m.name as material_name,
-          d.po_detail_id,
-          d.quom,
-          u.name as uom_name,
-          d.eqty,
-          d.pqty,
-          pod.eqty as po_eqty,
-          'Inwarded' as status
-        FROM wms.inward_details d
-        JOIN wms.material m ON d.material_id = m.id
-        LEFT JOIN wms.uom u ON d.quom = u.id
-        LEFT JOIN wms.purchase_order_details pod ON d.po_detail_id = pod.id
-        WHERE d.header_id = $1
-        
-        UNION ALL
-        
-        /* 2. Pending PO Rows */
-        SELECT 
-          0 as id,
-          'PENDING' as row_type,
+          -- Header ID (conditional based on row type)
+          CASE 
+            WHEN id.id IS NOT NULL THEN id.header_id  -- EXISTING: use from inward_details
+            ELSE $1                                    -- PENDING: use from parent form context
+          END as header_id,
+          
+          -- PO Detail Info (always from PO)
+          pod.id as po_detail_id,
+          poh.entry_no as po_entry_no,
+          pod.row_no as po_row_no,
           pod.item_id as material_id,
           m.name as material_name,
-          pod.id as po_detail_id,
           pod.quom,
           u.name as uom_name,
-          0 as eqty,
-          0 as pqty,
           pod.eqty as po_eqty,
-          'Pending' as status
+          (pod.eqty - COALESCE(pod.iqty, 0)) as balance_qty,
+          
+          -- Inward Detail Info (if exists for this header)
+          id.id as inward_detail_id,
+          COALESCE(id.eqty, 0) as inward_qty,
+          COALESCE(id.pqty, 0) as physical_qty,
+          id.expiry_dt,
+          id.batch_no,
+          
+          -- Row Type Logic
+          CASE 
+            WHEN id.id IS NOT NULL THEN 'EXISTING'
+            ELSE 'PENDING'
+          END as row_type
+          
         FROM wms.purchase_order_details pod
         JOIN wms.purchase_order_header poh ON pod.header_id = poh.id
         JOIN wms.material m ON pod.item_id = m.id
         LEFT JOIN wms.uom u ON pod.quom = u.id
-        WHERE poh.id = ANY(string_to_array((SELECT po_ids FROM wms.inward_header WHERE id = $1), ',')::int[])
-        AND (pod.pqty - pod.iqty) > 0
+        
+        -- LEFT JOIN to check if inward detail exists for this PO detail + header combo
+        LEFT JOIN wms.inward_details id ON 
+          id.po_detail_id = pod.id 
+          AND id.header_id = $1 
+          AND id.is_active = true
+        
+        WHERE poh.id = ANY(
+          string_to_array(
+            (SELECT po_ids FROM wms.inward_header WHERE id = $1), 
+            ','
+          )::int[]
+        )
+        AND pod.is_active = true
+        
+        ORDER BY poh.entry_no, pod.row_no
       payload:
         - id
       path:
@@ -240,34 +251,62 @@ sections:
         applyPagination: false
 
     columns:
+      - name: po_entry_no
+        label: PO No
+        visible: true
+        width: 120
+      
+      - name: po_row_no
+        label: Row #
+        visible: true
+        width: 80
+        align: center
+      
       - name: material_name
         label: Material
         visible: true
         width: 200
+      
       - name: po_eqty
-        label: PO Qty
+        label: Ordered Qty
         visible: true
         width: 100
         align: right
-      - name: eqty
-        label: Inward Qty
+      
+      - name: balance_qty
+        label: Balance Qty
         visible: true
         width: 100
         align: right
-      - name: status
-        label: Status
+        dataType: number
+      
+      - name: inward_qty
+        label: Inwarded Qty
         visible: true
-        width: 100
+        width: 120
+        align: right
+        dataType: number
     
     actionConfig:
-      edit:
-        label: Edit/Add
+      add:
+        label: Add
         actionType: DISPLAY_FORM
+        level: ROW
+        condition: row.row_type === 'PENDING'
         formConfig: process-inward-detail
         payload:
-          - id
-          - row_type
+          - header_id
           - po_detail_id
-          - material_id
-          - po_eqty
+        onSuccess: refresh
+      
+      edit:
+        label: Edit
+        actionType: DISPLAY_FORM
+        level: ROW
+        condition: row.row_type === 'EXISTING'
+        formConfig: process-inward-detail
+        payload:
+          - header_id
+          - inward_detail_id
+          - po_detail_id
         onSuccess: refresh

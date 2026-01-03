@@ -7,7 +7,7 @@ CREATE TABLE IF NOT EXISTS wms.inward_details (
     id SERIAL PRIMARY KEY,
     header_id INTEGER NOT NULL REFERENCES wms.inward_header(id) ON DELETE CASCADE,
     entry_no VARCHAR(50) NOT NULL,
-    row_no INTEGER NOT NULL,
+    row_no VARCHAR(5) NOT NULL,
     material_id INTEGER NOT NULL REFERENCES wms.material(id),
     po_detail_id INTEGER REFERENCES wms.purchase_order_details(id),
     quom INTEGER REFERENCES wms.uom(id),
@@ -21,6 +21,7 @@ CREATE TABLE IF NOT EXISTS wms.inward_details (
     lub INTEGER REFERENCES administration.user(id),
     lua TIMESTAMP NOT NULL DEFAULT NOW(),
     expiry_dt DATE,
+    batch_no VARCHAR(100),
     remarks VARCHAR(255),
     UNIQUE(entry_no, row_no)
 );
@@ -31,7 +32,7 @@ CREATE TABLE IF NOT EXISTS wms.inward_details_history (
     inward_details_id INTEGER,
     header_id INTEGER,
     entry_no VARCHAR(50),
-    row_no INTEGER,
+    row_no VARCHAR(5),
     material_id INTEGER,
     po_detail_id INTEGER,
     quom INTEGER,
@@ -42,6 +43,7 @@ CREATE TABLE IF NOT EXISTS wms.inward_details_history (
     pur_rate DECIMAL(15,2),
     amount DECIMAL(15,2),
     expiry_dt DATE,
+    batch_no VARCHAR(100),
     is_active BOOLEAN NOT NULL,
     operation VARCHAR(10),
     operation_at TIMESTAMP,
@@ -55,35 +57,35 @@ BEGIN
     IF (TG_OP = 'INSERT') THEN
         INSERT INTO wms.inward_details_history(
             inward_details_id, header_id, entry_no, row_no, material_id, po_detail_id,
-            quom, euom, puom, eqty, pqty, pur_rate, amount, expiry_dt, is_active,
+            quom, euom, puom, eqty, pqty, pur_rate, amount, expiry_dt, batch_no, is_active,
             operation, operation_at, operation_by
         )
         VALUES (
             NEW.id, NEW.header_id, NEW.entry_no, NEW.row_no, NEW.material_id, NEW.po_detail_id,
-            NEW.quom, NEW.euom, NEW.puom, NEW.eqty, NEW.pqty, NEW.pur_rate, NEW.amount, NEW.expiry_dt, NEW.is_active,
+            NEW.quom, NEW.euom, NEW.puom, NEW.eqty, NEW.pqty, NEW.pur_rate, NEW.amount, NEW.expiry_dt, NEW.batch_no, NEW.is_active,
             'INSERT', NEW.lua, NEW.lub
         );
     ELSIF (TG_OP = 'UPDATE') THEN
         IF (OLD.is_active = true AND NEW.is_active = false) THEN
             INSERT INTO wms.inward_details_history(
                 inward_details_id, header_id, entry_no, row_no, material_id, po_detail_id,
-                quom, euom, puom, eqty, pqty, pur_rate, amount, expiry_dt, is_active,
+                quom, euom, puom, eqty, pqty, pur_rate, amount, expiry_dt, batch_no, is_active,
                 operation, operation_at, operation_by
             )
             VALUES (
                 NEW.id, NEW.header_id, NEW.entry_no, NEW.row_no, NEW.material_id, NEW.po_detail_id,
-                NEW.quom, NEW.euom, NEW.puom, NEW.eqty, NEW.pqty, NEW.pur_rate, NEW.amount, NEW.expiry_dt, NEW.is_active,
+                NEW.quom, NEW.euom, NEW.puom, NEW.eqty, NEW.pqty, NEW.pur_rate, NEW.amount, NEW.expiry_dt, NEW.batch_no, NEW.is_active,
                 'DELETE', NEW.lua, NEW.lub
             );
         ELSE
             INSERT INTO wms.inward_details_history(
                 inward_details_id, header_id, entry_no, row_no, material_id, po_detail_id,
-                quom, euom, puom, eqty, pqty, pur_rate, amount, expiry_dt, is_active,
+                quom, euom, puom, eqty, pqty, pur_rate, amount, expiry_dt, batch_no, is_active,
                 operation, operation_at, operation_by
             )
             VALUES (
                 NEW.id, NEW.header_id, NEW.entry_no, NEW.row_no, NEW.material_id, NEW.po_detail_id,
-                NEW.quom, NEW.euom, NEW.puom, NEW.eqty, NEW.pqty, NEW.pur_rate, NEW.amount, NEW.expiry_dt, NEW.is_active,
+                NEW.quom, NEW.euom, NEW.puom, NEW.eqty, NEW.pqty, NEW.pur_rate, NEW.amount, NEW.expiry_dt, NEW.batch_no, NEW.is_active,
                 'UPDATE', NEW.lua, NEW.lub
             );
         END IF;

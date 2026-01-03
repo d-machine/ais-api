@@ -987,17 +987,21 @@ CREATE OR REPLACE FUNCTION wms.insert_purchase_order_header(
     _status VARCHAR(255),
     _remarks VARCHAR(255),
     _current_user_id INTEGER
-) RETURNS TABLE (id INTEGER, entry_no VARCHAR) AS $$
+) RETURNS TABLE (id INTEGER, entry_no VARCHAR(10)) AS $$
 DECLARE 
     _new_id INTEGER;
-    _new_entry_no VARCHAR(6);
+    _new_entry_no VARCHAR(10);
     _max_entry_no INTEGER;
 BEGIN
-    -- Auto-generate entry_no
-    SELECT COALESCE(MAX(CAST(ph.entry_no AS INTEGER)), 0) INTO _max_entry_no 
-    FROM wms.purchase_order_header ph;
+    -- Auto-generate entry_no with PO prefix
+    SELECT COALESCE(
+        MAX((REGEXP_REPLACE(ph.entry_no, '[^0-9]', '', 'g'))::INT),
+        0
+    ) INTO _max_entry_no
+    FROM wms.purchase_order_header ph
+    WHERE ph.entry_no ~ '^PO[0-9]+';
     
-    _new_entry_no := LPAD((_max_entry_no + 1)::TEXT, 6, '0');
+    _new_entry_no := 'PO' || LPAD((_max_entry_no + 1)::TEXT, 6, '0');
 
     INSERT INTO wms.purchase_order_header(
         entry_no, entry_dt, vendor_id, broker_id, delivery_at_id, 
@@ -1083,39 +1087,47 @@ CREATE OR REPLACE FUNCTION wms.insert_purchase_order_details(
     remarks VARCHAR(255),
     current_user_id INTEGER
 )RETURNS INT AS $$
-DECLARE new_purchase_details_id INT;
+DECLARE 
+    new_purchase_details_id INT;
+    _entry_no VARCHAR(10);
+    _row_no VARCHAR(5);
+    _max_row INTEGER;
+    _lock_key BIGINT;
 BEGIN
+    -- Get entry_no from header
+    SELECT entry_no INTO _entry_no 
+    FROM wms.purchase_order_header 
+    WHERE id = header_id;
+    
+    IF _entry_no IS NULL THEN
+        RAISE EXCEPTION 'Purchase Order Header % not found', header_id;
+    END IF;
+    
+    -- Acquire advisory lock to ensure unique row_no generation
+    _lock_key := header_id::BIGINT;
+    PERFORM pg_advisory_xact_lock(_lock_key);
+    
+    -- Generate next row_no for this header
+    SELECT COALESCE(MAX(CAST(row_no AS INTEGER)), 0) INTO _max_row
+    FROM wms.purchase_order_details 
+    WHERE wms.purchase_order_details.header_id = insert_purchase_order_details.header_id;
+    
+    _row_no := LPAD((_max_row + 1)::TEXT, 5, '0');
+    
     INSERT INTO wms.purchase_order_details(
-        header_id,
-        item_id,
-        euom,
-        puom,
-        quom,
-        rate_per_pc,
-        eqty,
-        pqty,
-        amount,
-        iqty,
-        status,
-        remarks,
-        lub
+        header_id, entry_no, row_no,
+        item_id, euom, puom, quom,
+        rate_per_pc, eqty, pqty, amount, iqty,
+        status, remarks, lub
     )
     VALUES (
-        header_id,
-        item_id,
-        euom,
-        puom,
-        quom,
-        rate_per_pc,
-        eqty,
-        pqty,
-        amount,
-        iqty,
-        status,
-        remarks,
-        current_user_id
+        header_id, _entry_no, _row_no,
+        item_id, euom, puom, quom,
+        rate_per_pc, eqty, pqty, amount, iqty,
+        status, remarks, current_user_id
     )
     RETURNING id INTO new_purchase_details_id;
+    
     RETURN new_purchase_details_id;
 END;
 $$ LANGUAGE plpgsql;
@@ -1219,7 +1231,7 @@ BEGIN
     WHERE h.entry_no ~ '^INW[0-9]+';
 
     v_new_no := v_max + 1;
-    v_entry_no := 'INW' || LPAD(v_new_no::TEXT, 5, '0');
+    v_entry_no := 'INW' || LPAD(v_new_no::TEXT, 6, '0');
 
     INSERT INTO wms.inward_header(entry_no, entry_dt, vendor_id, po_ids, invoice_no, invoice_dt, remarks, lub, status)
     VALUES (v_entry_no, p_entry_dt, p_vendor_id, p_po_ids, p_invoice_no, p_invoice_dt, p_remarks, p_current_user_id, 'Draft')
@@ -1308,13 +1320,15 @@ CREATE OR REPLACE FUNCTION wms.insert_inward_details(
     p_pur_rate DECIMAL(15,2),
     p_amount DECIMAL(15,2),
     p_expiry_dt DATE,
+    p_batch_no VARCHAR(100),
     p_remarks VARCHAR(255),
     p_current_user_id INTEGER
 ) RETURNS INTEGER AS $$
 DECLARE
     _new_id INTEGER;
     _entry_no VARCHAR(50);
-    _row_no INTEGER;
+    _row_no VARCHAR(5);
+    _row_no_int INTEGER;
     _lock_key BIGINT;
 BEGIN
     -- Ensure header exists and is active
@@ -1335,15 +1349,19 @@ BEGIN
     PERFORM pg_advisory_xact_lock(_lock_key);
 
     -- Compute next row_no safely within the lock
-    SELECT COALESCE(MAX(row_no), 0) + 1 INTO _row_no FROM wms.inward_details WHERE header_id = p_header_id;
+    SELECT COALESCE(MAX(CAST(row_no AS INTEGER)), 0) INTO _row_no_int 
+    FROM wms.inward_details 
+    WHERE header_id = p_header_id;
+    
+    _row_no := LPAD((_row_no_int + 1)::TEXT, 5, '0');
 
     INSERT INTO wms.inward_details (
         header_id, entry_no, row_no, material_id, po_detail_id,
-        quom, euom, puom, eqty, pqty, pur_rate, amount, expiry_dt, remarks, lub
+        quom, euom, puom, eqty, pqty, pur_rate, amount, expiry_dt, batch_no, remarks, lub
     )
     VALUES (
         p_header_id, _entry_no, _row_no, p_material_id, p_po_detail_id,
-        p_quom, p_euom, p_puom, p_eqty, p_pqty, p_pur_rate, p_amount, p_expiry_dt, p_remarks, p_current_user_id
+        p_quom, p_euom, p_puom, p_eqty, p_pqty, p_pur_rate, p_amount, p_expiry_dt, p_batch_no, p_remarks, p_current_user_id
     )
     RETURNING id INTO _new_id;
 
@@ -1364,6 +1382,8 @@ CREATE OR REPLACE FUNCTION wms.update_inward_details(
     p_pqty DECIMAL(15,3),
     p_pur_rate DECIMAL(15,2),
     p_amount DECIMAL(15,2),
+    p_expiry_dt DATE,
+    p_batch_no VARCHAR(100),
     p_remarks VARCHAR(255),
     p_current_user_id INTEGER
 ) RETURNS INTEGER AS $$
@@ -1388,6 +1408,8 @@ BEGIN
         pqty = p_pqty,
         pur_rate = p_pur_rate,
         amount = p_amount,
+        expiry_dt = p_expiry_dt,
+        batch_no = p_batch_no,
         remarks = p_remarks,
         lub = p_current_user_id,
         lua = NOW()
@@ -1454,20 +1476,21 @@ BEGIN
     -- Loop through active details and upsert stock (expiry-aware)
     FOR _detail IN SELECT * FROM wms.inward_details WHERE header_id = p_header_id AND is_active = true LOOP
 
-        -- Try expiry-aware upsert first (requires unique(material_id, rack_id, expiry_dt))
+        -- Try expiry-aware upsert first (requires unique(material_id, rack_id, expiry_dt, batch_no))
         BEGIN
-            INSERT INTO wms.stock (material_id, rack_id, expiry_dt, qty, uom_id, inward_id, rate, lub)
+            INSERT INTO wms.stock (material_id, rack_id, expiry_dt, batch_no, qty, uom_id, inward_id, rate, lub)
             VALUES (
                 _detail.material_id,
-                0,
+                1,
                 _detail.expiry_dt,
+                _detail.batch_no,
                 COALESCE(_detail.eqty,0),
                 _detail.euom,
                 p_header_id,
                 (SELECT rate_per_pc FROM wms.purchase_order_details WHERE id = _detail.po_detail_id),
                 p_current_user_id
             )
-            ON CONFLICT (material_id, rack_id, expiry_dt) DO UPDATE
+            ON CONFLICT (material_id, rack_id, expiry_dt, batch_no) DO UPDATE
             SET qty = wms.stock.qty + EXCLUDED.qty,
                 uom_id = EXCLUDED.uom_id,
                 inward_id = EXCLUDED.inward_id,
@@ -1481,7 +1504,7 @@ BEGIN
             INSERT INTO wms.stock (material_id, rack_id, qty, uom_id, inward_id, rate, lub)
             VALUES (
                 _detail.material_id,
-                0,
+                1,
                 COALESCE(_detail.eqty,0),
                 _detail.euom,
                 p_header_id,

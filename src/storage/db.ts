@@ -74,6 +74,8 @@ export default class DBClient {
         "party.sql",
         "vendor_category.sql",
         "vendor.sql",
+        // stock
+        "stock.sql",
         // purchase_order
         "purchase_order_header.sql",
         "purchase_order_details.sql",

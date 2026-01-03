@@ -185,6 +185,7 @@ sections:
         SELECT
           d.id,
           d.header_id,
+          d.row_no,
           m.name as item_name,
           u1.name as uom_pc_name,
           u2.name as uom_package_name,
@@ -199,6 +200,7 @@ sections:
         LEFT JOIN wms.uom u1 ON d.euom = u1.id
         LEFT JOIN wms.uom u2 ON d.puom = u2.id
         WHERE d.header_id = $1 AND d.is_active = true
+        ORDER BY d.row_no
       payload:
         - id  # Uses 'id' from form context as 'header_id' param
       path:
@@ -213,6 +215,10 @@ sections:
       - name: id
         label: ID
         visible: false
+      - name: row_no
+        label: Row#
+        visible: true
+        width: 80
       - name: item_name
         label: Item
         visible: true

@@ -7,6 +7,8 @@
 CREATE TABLE IF NOT EXISTS wms.purchase_order_details(
     id SERIAL PRIMARY KEY,
     header_id INTEGER NOT NULL REFERENCES wms.purchase_order_header(id),
+    entry_no VARCHAR(10) NOT NULL,
+    row_no VARCHAR(5) NOT NULL,
     item_id INTEGER NOT NULL REFERENCES wms.material(id),
     euom INTEGER NOT NULL REFERENCES wms.uom(id),
     puom INTEGER NOT NULL REFERENCES wms.uom(id),
@@ -20,7 +22,8 @@ CREATE TABLE IF NOT EXISTS wms.purchase_order_details(
     lua TIMESTAMP NOT NULL DEFAULT NOW(),
     is_active boolean NOT NULL DEFAULT true,
     status VARCHAR(255),
-    remarks VARCHAR(255)
+    remarks VARCHAR(255),
+    UNIQUE(entry_no, row_no)
 );
 
 -- Create temporal table for purchase_order_details
@@ -28,6 +31,8 @@ CREATE TABLE IF NOT EXISTS wms.purchase_order_details_history(
     history_id SERIAL PRIMARY KEY,
     purchase_details_id INTEGER,
     header_id INTEGER,
+    entry_no VARCHAR(10),
+    row_no VARCHAR(5),
     item_id INTEGER,
     euom INTEGER,
     puom INTEGER,
@@ -53,6 +58,8 @@ BEGIN
         INSERT INTO wms.purchase_order_details_history(
             purchase_details_id,
             header_id,
+            entry_no,
+            row_no,
             item_id,
             euom,
             puom,
@@ -70,6 +77,8 @@ BEGIN
         VALUES (
             NEW.id,
             NEW.header_id,
+            NEW.entry_no,
+            NEW.row_no,
             NEW.item_id,
             NEW.euom,
             NEW.puom,
@@ -89,6 +98,8 @@ BEGIN
             INSERT INTO wms.purchase_order_details_history(
                 purchase_details_id,
                 header_id,
+                entry_no,
+                row_no,
                 item_id,
                 euom,
                 puom,
@@ -106,6 +117,8 @@ BEGIN
             VALUES (
                 NEW.id,
                 NEW.header_id,
+                NEW.entry_no,
+                NEW.row_no,
                 NEW.item_id,
                 NEW.euom,
                 NEW.puom,
@@ -124,6 +137,8 @@ BEGIN
             INSERT INTO wms.purchase_order_details_history(
                 purchase_details_id,
                 header_id,
+                entry_no,
+                row_no,
                 item_id,
                 euom,
                 puom,
@@ -141,6 +156,8 @@ BEGIN
             VALUES (
                 NEW.id,
                 NEW.header_id,
+                NEW.entry_no,
+                NEW.row_no,
                 NEW.item_id,
                 NEW.euom,
                 NEW.puom,

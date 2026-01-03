@@ -7,27 +7,35 @@ sections:
       returnType: SINGLE_ROW
       query: |
         SELECT 
-          CASE WHEN $1 > 0 THEN d.id ELSE 0 END as id,
-          CASE WHEN $1 > 0 THEN d.material_id ELSE pod.item_id END as item_id,
+          COALESCE($2, 0) as id,
+          $1 as header_id,
+          CASE WHEN $2 > 0 THEN d.material_id ELSE pod.item_id END as item_id,
           m.name as item_name,
-          CASE WHEN $1 > 0 THEN d.po_detail_id ELSE pod.id END as po_detail_id,
+          CASE WHEN $2 > 0 THEN d.po_detail_id ELSE pod.id END as po_detail_id,
           pod.eqty as po_eqty,
-          m.uom_pc_id as euom,
-          m.uom_package_id as puom,
-          CASE WHEN $1 > 0 THEN d.quom ELSE pod.quom END as quom,
-          CASE WHEN $1 > 0 THEN d.eqty ELSE 0 END as eqty,
-          CASE WHEN $1 > 0 THEN d.pqty ELSE 0 END as pqty,
-          CASE WHEN $1 > 0 THEN d.expiry_dt ELSE NULL END as expiry_dt,
-          CASE WHEN $1 > 0 THEN d.remarks ELSE '' END as remarks,
+          CASE WHEN $2 > 0 THEN d.euom ELSE m.uom_pc_id END as euom,
+          u_each.name as euom_name,
+          CASE WHEN $2 > 0 THEN d.puom ELSE m.uom_package_id END as puom,
+          u_pkg.name as puom_name,
+          CASE WHEN $2 > 0 THEN d.quom ELSE NULL END as quom,
+          CASE WHEN $2 > 0 THEN u_quom.name ELSE NULL END as quom_name,
+          CASE WHEN $2 > 0 THEN d.eqty ELSE 0 END as eqty,
+          CASE WHEN $2 > 0 THEN d.pqty ELSE 0 END as pqty,
+          CASE WHEN $2 > 0 THEN d.expiry_dt ELSE NULL END as expiry_dt,
+          CASE WHEN $2 > 0 THEN d.batch_no ELSE '' END as batch_no,
+          CASE WHEN $2 > 0 THEN d.remarks ELSE '' END as remarks,
           COALESCE(uc.no_of_pcs, 1) as conversion_factor
         FROM wms.purchase_order_details pod
         JOIN wms.material m ON pod.item_id = m.id
-        LEFT JOIN wms.inward_details d ON d.po_detail_id = pod.id AND d.id = $1
+        LEFT JOIN wms.inward_details d ON d.po_detail_id = pod.id AND d.id = COALESCE($2, 0)
+        LEFT JOIN wms.uom u_each ON CASE WHEN $2 > 0 THEN d.euom ELSE m.uom_pc_id END = u_each.id
+        LEFT JOIN wms.uom u_pkg ON CASE WHEN $2 > 0 THEN d.puom ELSE m.uom_package_id END = u_pkg.id
+        LEFT JOIN wms.uom u_quom ON d.quom = u_quom.id
         LEFT JOIN wms.uom_conversion uc ON m.uom_pc_id = uc.uom_id_each AND m.uom_package_id = uc.uom_id_case
         WHERE pod.id = $3
       payload:
-        - id
-        - row_type
+        - header_id
+        - inward_detail_id
         - po_detail_id
       path:
         - sections
@@ -45,21 +53,22 @@ sections:
           returnType: SCALAR
           query: |
             SELECT CASE 
-              WHEN $1 > 0 THEN wms.update_inward_details($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
-              ELSE wms.insert_inward_details($2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+              WHEN $1 > 0 THEN wms.update_inward_details($1, $2, $3, $4, $5, $6, $7, $8, $9, 0, 0, $10, $11, $12, $13)
+              ELSE wms.insert_inward_details($2, $3, $4, $5, $6, $7, $8, $9, 0, 0, $10, $11, $12, $13)
             END as id;
           payload:
             - id
             - header_id
             - item_id
             - po_detail_id
+            - quom
             - euom
             - puom
-            - quom
             - eqty
             - pqty
-            - remarks
             - expiry_dt
+            - batch_no
+            - remarks
           contextParams:
             - current_user_id
           path:
@@ -71,6 +80,33 @@ sections:
         onFailure: showErrorSnackbar
       CANCEL:
         label: Cancel
+
+    rows:
+      - columns:
+          - field: item_id
+            span: 12
+      - columns:
+          - field: euom
+            span: 6
+          - field: puom
+            span: 6
+      - columns:
+          - field: po_eqty
+            span: 4
+          - field: quom
+            span: 4
+          - field: eqty
+            span: 2
+          - field: pqty
+            span: 2
+      - columns:
+          - field: expiry_dt
+            span: 6
+          - field: batch_no
+            span: 6
+      - columns:
+          - field: remarks
+            span: 12
 
     fields:
       - name: id
@@ -89,14 +125,6 @@ sections:
         label: Conversion Factor
         type: NUMBER
         visible: false
-      - name: euom
-        label: Base UOM ID
-        type: NUMBER
-        visible: false
-      - name: puom
-        label: Package UOM ID
-        type: NUMBER
-        visible: false
       - name: po_detail_id
         label: PO Detail ID
         type: NUMBER
@@ -112,7 +140,55 @@ sections:
           displayField: item_name
           currentSelection:
             - key: item_id
-              as: item_id
+              as: id
+      
+      - name: euom
+        label: Base UOM
+        type: SELECT
+        required: true
+        selectConfig:
+          resource: list-uoms-by-material
+          displayField: euom_name
+          selectHandler: converter
+          currentSelection:
+            - key: euom
+              as: id
+          selectParser: converter
+          fields_to_extract:
+            - key: id
+              as: euom
+            - key: uom_name
+              as: euom_name
+        dependencies:
+          - target: [item_id]
+            handler: filterByDependency
+            required: true
+            dependencyConfig:
+              targetParam: material_id
+      
+      - name: puom
+        label: Package UOM
+        type: SELECT
+        required: true
+        selectConfig:
+          resource: list-uoms-by-material
+          displayField: puom_name
+          selectHandler: converter
+          currentSelection:
+            - key: puom
+              as: id
+          selectParser: converter
+          fields_to_extract:
+            - key: id
+              as: puom
+            - key: uom_name
+              as: puom_name
+        dependencies:
+          - target: [item_id]
+            handler: filterByDependency
+            required: true
+            dependencyConfig:
+              targetParam: material_id
       
       - name: po_eqty
         label: PO Qty (Each)
@@ -125,18 +201,17 @@ sections:
         required: true
         selectConfig:
           resource: list-uoms-by-material
-          labelField: uom_name
-          displayField: uom_name
+          displayField: quom_name
           selectHandler: converter
           currentSelection:
             - key: quom
-              as: quom
+              as: id
           selectParser: converter
           fields_to_extract:
             - key: id
               as: quom
             - key: uom_name
-              as: uom_name
+              as: quom_name
         dependencies:
           - target: [item_id]
             handler: filterByDependency
@@ -184,6 +259,12 @@ sections:
         label: Expiry Date
         type: DATE
         required: false
+
+      - name: batch_no
+        label: Batch Number
+        type: TEXT
+        required: false
+        placeholder: "Enter batch/lot number"
 
       - name: remarks
         label: Remarks
