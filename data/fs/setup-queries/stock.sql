@@ -9,7 +9,6 @@ CREATE TABLE IF NOT EXISTS wms.stock (
     rack_id INTEGER NOT NULL DEFAULT 0 REFERENCES wms.rack(id),
     qty DECIMAL(15,3) NOT NULL DEFAULT 0,
     uom_id INTEGER NOT NULL REFERENCES wms.uom(id),
-    inward_id INTEGER REFERENCES wms.inward_header(id),
     rate DECIMAL(15,2),
     expiry_dt DATE,
     batch_no VARCHAR(100),
@@ -31,7 +30,6 @@ CREATE TABLE IF NOT EXISTS wms.stock_history (
     rack_id INTEGER,
     qty DECIMAL(15,3),
     uom_id INTEGER,
-    inward_id INTEGER,
     rate DECIMAL(15,2),
     expiry_dt DATE,
     batch_no VARCHAR(100),
@@ -48,11 +46,11 @@ RETURNS TRIGGER AS $$
 BEGIN
     IF TG_OP = 'INSERT' THEN
         INSERT INTO wms.stock_history (
-            stock_id, material_id, rack_id, qty, uom_id, inward_id, rate, expiry_dt, batch_no, is_active,
+            stock_id, material_id, rack_id, qty, uom_id, rate, expiry_dt, batch_no, is_active,
             operation, operation_at, operation_by
         )
         VALUES (
-            NEW.id, NEW.material_id, NEW.rack_id, NEW.qty, NEW.uom_id, NEW.inward_id, NEW.rate, NEW.expiry_dt, NEW.batch_no, NEW.is_active,
+            NEW.id, NEW.material_id, NEW.rack_id, NEW.qty, NEW.uom_id, NEW.rate, NEW.expiry_dt, NEW.batch_no, NEW.is_active,
             'INSERT', NEW.lua, NEW.lub
         );
 
@@ -60,20 +58,20 @@ BEGIN
         -- If the record is being deactivated, log it as a 'DELETE' operation for clarity
         IF (OLD.is_active = true AND NEW.is_active = false) THEN
             INSERT INTO wms.stock_history (
-                stock_id, material_id, rack_id, qty, uom_id, inward_id, rate, expiry_dt, batch_no, is_active,
+                stock_id, material_id, rack_id, qty, uom_id, rate, expiry_dt, batch_no, is_active,
                 operation, operation_at, operation_by
             )
             VALUES (
-                NEW.id, NEW.material_id, NEW.rack_id, NEW.qty, NEW.uom_id, NEW.inward_id, NEW.rate, NEW.expiry_dt, NEW.batch_no, NEW.is_active,
+                NEW.id, NEW.material_id, NEW.rack_id, NEW.qty, NEW.uom_id, NEW.rate, NEW.expiry_dt, NEW.batch_no, NEW.is_active,
                 'DELETE', NEW.lua, NEW.lub
             );
         ELSE
             INSERT INTO wms.stock_history (
-                stock_id, material_id, rack_id, qty, uom_id, inward_id, rate, expiry_dt, batch_no, is_active,
+                stock_id, material_id, rack_id, qty, uom_id, rate, expiry_dt, batch_no, is_active,
                 operation, operation_at, operation_by
             )
             VALUES (
-                NEW.id, NEW.material_id, NEW.rack_id, NEW.qty, NEW.uom_id, NEW.inward_id, NEW.rate, NEW.expiry_dt, NEW.batch_no, NEW.is_active,
+                NEW.id, NEW.material_id, NEW.rack_id, NEW.qty, NEW.uom_id, NEW.rate, NEW.expiry_dt, NEW.batch_no, NEW.is_active,
                 'UPDATE', NEW.lua, NEW.lub
             );
         END IF;

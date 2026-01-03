@@ -1478,7 +1478,7 @@ BEGIN
 
         -- Try expiry-aware upsert first (requires unique(material_id, rack_id, expiry_dt, batch_no))
         BEGIN
-            INSERT INTO wms.stock (material_id, rack_id, expiry_dt, batch_no, qty, uom_id, inward_id, rate, lub)
+            INSERT INTO wms.stock (material_id, rack_id, expiry_dt, batch_no, qty, uom_id, rate, lub)
             VALUES (
                 _detail.material_id,
                 1,
@@ -1486,14 +1486,12 @@ BEGIN
                 _detail.batch_no,
                 COALESCE(_detail.eqty,0),
                 _detail.euom,
-                p_header_id,
                 (SELECT rate_per_pc FROM wms.purchase_order_details WHERE id = _detail.po_detail_id),
                 p_current_user_id
             )
             ON CONFLICT (material_id, rack_id, expiry_dt, batch_no) DO UPDATE
             SET qty = wms.stock.qty + EXCLUDED.qty,
                 uom_id = EXCLUDED.uom_id,
-                inward_id = EXCLUDED.inward_id,
                 rate = COALESCE(EXCLUDED.rate, wms.stock.rate),
                 lub = EXCLUDED.lub,
                 lua = NOW();
@@ -1501,20 +1499,18 @@ BEGIN
         EXCEPTION WHEN undefined_column OR undefined_table THEN
             -- Fallback to non-expiry upsert if expiry column/index not present
             RAISE NOTICE 'Expiry-aware stock columns/index missing; falling back to expiry-agnostic upsert for material %', _detail.material_id;
-            INSERT INTO wms.stock (material_id, rack_id, qty, uom_id, inward_id, rate, lub)
+            INSERT INTO wms.stock (material_id, rack_id, qty, uom_id, rate, lub)
             VALUES (
                 _detail.material_id,
                 1,
                 COALESCE(_detail.eqty,0),
                 _detail.euom,
-                p_header_id,
                 (SELECT rate_per_pc FROM wms.purchase_order_details WHERE id = _detail.po_detail_id),
                 p_current_user_id
             )
             ON CONFLICT (material_id, rack_id) DO UPDATE
             SET qty = wms.stock.qty + EXCLUDED.qty,
                 uom_id = EXCLUDED.uom_id,
-                inward_id = EXCLUDED.inward_id,
                 rate = COALESCE(EXCLUDED.rate, wms.stock.rate),
                 lub = EXCLUDED.lub,
                 lua = NOW();
@@ -2741,7 +2737,6 @@ CREATE OR REPLACE FUNCTION wms.upsert_stock(
     _rack_id INTEGER,
     _qty DECIMAL(15,3),
     _uom_id INTEGER,
-    _inward_id INTEGER,
     _rate DECIMAL(15,2),
     _current_user_id INTEGER
 ) RETURNS INTEGER AS $$
@@ -2758,8 +2753,8 @@ BEGIN
     
     -- If no row was updated, insert new row
     IF _id IS NULL THEN
-        INSERT INTO wms.stock (material_id, rack_id, qty, uom_id, inward_id, rate, lub)
-        VALUES (_material_id, _rack_id, _qty, _uom_id, _inward_id, _rate, _current_user_id)
+        INSERT INTO wms.stock (material_id, rack_id, qty, uom_id, rate, lub)
+        VALUES (_material_id, _rack_id, _qty, _uom_id, _rate, _current_user_id)
         RETURNING id INTO _id;
     END IF;
     
@@ -2910,13 +2905,12 @@ DECLARE
     _current_qty DECIMAL(15,3);
     _uom_id INTEGER;
     _rate DECIMAL(15,2);
-    _inward_id INTEGER;
     _expiry_dt DATE;
     _to_stock_id INTEGER;
 BEGIN
     -- Get Source Stock Details including Expiry
-    SELECT material_id, rack_id, qty, uom_id, rate, inward_id, expiry_dt
-    INTO _material_id, _current_rack_id, _current_qty, _uom_id, _rate, _inward_id, _expiry_dt
+    SELECT material_id, rack_id, qty, uom_id, rate, expiry_dt
+    INTO _material_id, _current_rack_id, _current_qty, _uom_id, _rate, _expiry_dt
     FROM wms.stock
     WHERE id = _from_stock_id;
 
@@ -2938,8 +2932,7 @@ BEGIN
     FROM wms.stock
     WHERE material_id = _material_id 
       AND rack_id = _to_rack_id 
-      AND (expiry_dt = _expiry_dt OR (expiry_dt IS NULL AND _expiry_dt IS NULL))
-      AND COALESCE(inward_id, 0) = COALESCE(_inward_id, 0);
+      AND (expiry_dt = _expiry_dt OR (expiry_dt IS NULL AND _expiry_dt IS NULL));
 
     IF _to_stock_id IS NOT NULL THEN
         UPDATE wms.stock
@@ -2947,10 +2940,10 @@ BEGIN
         WHERE id = _to_stock_id;
     ELSE
         INSERT INTO wms.stock (
-            material_id, rack_id, qty, uom_id, inward_id, rate, expiry_dt, lub
+            material_id, rack_id, qty, uom_id, rate, expiry_dt, lub
         )
         VALUES (
-            _material_id, _to_rack_id, _move_qty, _uom_id, _inward_id, _rate, _expiry_dt, _current_user_id
+            _material_id, _to_rack_id, _move_qty, _uom_id, _rate, _expiry_dt, _current_user_id
         )
         RETURNING id INTO _to_stock_id;
     END IF;
