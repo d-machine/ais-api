@@ -3,26 +3,65 @@ version: 1.0
 sections:
   - sectionType: FIELDS
     sectionName: Picking List Header
-    applicableActions: [SAVE, CANCEL]
+    applicableActions:
+      - SAVE
+      - CANCEL
+    
     actionConfig:
       SAVE:
-        label: Create Picking List
+        label: Save & Continue
         actionType: EXECUTE_QUERY
         queryInfo:
-          returnType: SCALAR
-          query: SELECT wms.insert_picking_list_header($1, $2, $3, $4, $5) as id;
-          payload: [entry_dt, party_id, so_ids, remarks]
-          contextParams: [current_user_id]
-        onSuccess: 
-          callback: navigate
-          param: edit-picking-list
+          returnType: SINGLE_ROW
+          query: SELECT * FROM wms.insert_picking_list_header($1, $2, $3, $4, $5);
+          payload:
+            - entry_dt
+            - party_id
+            - so_ids
+            - remarks
+          contextParams:
+            - current_user_id
+          path:
+            - sections
+            - 0
+            - actionConfig
+            - SAVE
+        onSuccess:
+          callback: updateContextAndEnableNext
+          nextSectionToEnable: "Select SO Details"
+      
+      CANCEL:
+        label: Cancel
+    
+    rows:
+      - columns:
+          - field: entry_dt
+            span: 3
+          - field: party_id
+            span: 3
+          - field: from_dt
+            span: 3
+          - field: to_dt
+            span: 3
+      - columns:
+          - field: so_ids
+            span: 4
+      - columns:
+          - field: remarks
+            span: 8
+    
     fields:
+      - name: id
+        label: ID
+        type: NUMBER
+        visible: false
+      
       - name: entry_dt
-        label: Date
+        label: Entry Date
         type: DATE
         required: true
-        defaultValue: today
-
+        defaultValue: "TODAY"
+      
       - name: party_id
         label: Customer
         type: SELECT
@@ -41,34 +80,304 @@ sections:
             - key: party_name
               as: party_name
       
+      - name: from_dt
+        label: From Date
+        type: DATE
+        required: true
+      
+      - name: to_dt
+        label: To Date
+        type: DATE
+        required: true
+
       - name: so_ids
-        label: Pending Sales Orders
+        label: Sales Orders To Pick
         type: SELECT
         required: true
         selectConfig:
           resource: list-pending-sales-orders
-          displayField: so_entry_nos
           selectionMode: multiple
-          filtersData:
-            - field: party_id
-              value: "${party_id}"
-          selectHandler: concatinator
+          displayField: so_entries
           currentSelection:
             - key: so_ids
               as: id
+          selectHandler: concatinator
           selectParser: splitter
           fields_to_extract:
             - key: id
               as: so_ids
             - key: entry_no
-              as: so_entry_nos
+              as: so_entries
         dependencies:
           - target: [party_id]
             handler: filterByDependency
             required: true
             dependencyConfig:
               targetParam: party_id
-
+              operator: "EQUAL"
+          - target: [from_dt]
+            handler: filterByDependency
+            required: true
+            dependencyConfig:
+              targetParam: from_dt
+              operator: "GREATER_THAN_OR_EQUAL"
+          - target: [to_dt]
+            handler: filterByDependency
+            required: true
+            dependencyConfig:
+              targetParam: to_dt
+              operator: "LESS_THAN_OR_EQUAL"
+      
       - name: remarks
         label: Remarks
         type: TEXTAREA
+        required: false
+      
+      - name: selected_so_detail_ids
+        label: Selected SO Details
+        type: TEXT
+        visible: false
+
+  - sectionType: TABLE
+    sectionName: Select SO Details
+    applicableActions:
+      - DUMMY
+      - CANCEL
+    selectionMode: multiple
+    selectHandler: concatinator
+    selectParser: splitter
+    currentSelection:
+      - key: selected_so_detail_ids
+        as: so_detail_id
+    fields_to_extract:
+      - key: so_detail_id
+        as: selected_so_detail_ids
+    disabled:
+      condition: isEmpty
+      field: id
+    actionConfig:
+      DUMMY:
+        label: Save & Continue
+        handledByParent: true
+        onSuccess:
+          callback: updateContextAndEnableNext
+          nextSectionToEnable: Material Allocation
+      CANCEL:
+        handledByParent: true
+        label: Cancel
+    
+    queryInfo:
+      returnType: MULTIPLE_ROWS
+      query: |
+        SELECT
+          sod.id AS so_detail_id,
+          soh.entry_no AS so_entry_no,
+          m.name AS material_name,
+          sod.header_id AS so_id,
+          sod.item_id,
+          sod.eqty AS ordered_qty,
+          sod.dqty AS dispatched_qty,
+          COALESCE(pld.allocated_qty, 0) AS allocated_qty,
+          (sod.eqty - sod.dqty - COALESCE(pld.allocated_qty, 0)) AS pending_qty
+        FROM wms.sales_order_details sod
+        JOIN wms.sales_order_header soh
+          ON soh.id = sod.header_id
+        JOIN wms.material m
+          ON m.id = sod.item_id
+        LEFT JOIN (
+          SELECT
+              so_detail_id,
+              SUM(qty) AS allocated_qty
+          FROM wms.picking_list_so_allocation
+          WHERE is_active = true
+          GROUP BY so_detail_id
+        ) pld
+          ON pld.so_detail_id = sod.id
+        WHERE soh.status = 'Draft'
+          AND soh.is_active = true
+          AND sod.is_active = true
+          AND soh.id = ANY (
+            string_to_array($1, ',')::INT[]
+          )
+          AND (
+            sod.eqty
+            > sod.dqty + COALESCE(pld.allocated_qty, 0)
+          )
+        ORDER BY
+          sod.id,
+          m.name;
+      payload:
+        - so_ids
+      path:
+        - sections
+        - 1
+      options:
+        applyFiltering: false
+        applySorting: false
+        applyPagination: false
+    
+    columns:
+      - name: so_no
+        label: SO No
+        visible: true
+        width: 120
+      
+      - name: so_date
+        label: SO Date
+        visible: true
+        width: 100
+        dataType: datetime
+      
+      - name: material_name
+        label: Material
+        visible: true
+        width: 200
+      
+      - name: uom_name
+        label: UOM
+        visible: true
+        width: 80
+      
+      - name: ordered_qty
+        label: Ordered
+        visible: true
+        width: 100
+        align: right
+        dataType: number
+      
+      - name: dispatched_qty
+        label: Dispatched
+        visible: true
+        width: 100
+        align: right
+        dataType: number
+      
+      - name: pending_qty
+        label: Pending
+        visible: true
+        width: 100
+        align: right
+        dataType: number
+
+  - sectionType: TABLE
+    sectionName: Material Allocation
+    disabled:
+      condition: isEmpty
+      field: selected_so_detail_ids
+    
+    queryInfo:
+      returnType: MULTIPLE_ROWS
+      query: |
+        SELECT 
+          d.item_id AS material_id,
+          MIN(m.name) AS material_name,
+          MIN(u.name) AS uom_name,
+          STRING_AGG(DISTINCT h.entry_no, ', ' ORDER BY h.entry_no) AS so_numbers,
+          SUM(d.eqty - COALESCE(d.dqty, 0))::INT AS total_pending_qty,
+          COALESCE(SUM(pld.qty), 0)::INT AS allocated_qty,
+          (SUM(d.eqty - COALESCE(d.dqty, 0)) - COALESCE(SUM(pld.qty), 0))::INT AS pending_qty
+        FROM wms.sales_order_details d
+        JOIN wms.sales_order_header h
+          ON d.header_id = h.id
+        JOIN wms.material m
+          ON d.item_id = m.id
+        LEFT JOIN wms.uom u
+          ON m.uom_pc_id = u.id
+        LEFT JOIN wms.picking_list_so_allocation pld
+          ON pld.so_detail_id = d.id
+          AND pld.header_id = $1
+          AND pld.is_active = true
+        WHERE d.id = ANY (string_to_array($2, ',')::INT[])
+          AND d.is_active = true
+        GROUP BY
+          d.item_id
+        ORDER BY
+          MIN(m.name);
+      payload:
+        - id
+        - selected_so_detail_ids
+      path:
+        - sections
+        - 2
+      options:
+        applyFiltering: false
+        applySorting: false
+        applyPagination: false
+    
+    columns:
+      - name: material_name
+        label: Material
+        visible: true
+        width: 200
+      
+      - name: so_numbers
+        label: SO Numbers
+        visible: true
+        width: 150
+      
+      - name: uom_name
+        label: UOM
+        visible: true
+        width: 80
+      
+      - name: total_pending_qty
+        label: Total Pending
+        visible: true
+        width: 120
+        align: right
+        dataType: number
+      
+      - name: allocated_qty
+        label: Allocated
+        visible: true
+        width: 120
+        align: right
+        dataType: number
+      
+      - name: unallocated_qty
+        label: Unallocated
+        visible: true
+        width: 120
+        align: right
+        dataType: number
+    
+    applicableActions:
+      - allocate
+      - unallocate
+    actionConfig:
+      allocate:
+        label: Allocate
+        actionType: DISPLAY_FORM
+        level: ROW
+        condition: row.allocated_qty === 0
+        formConfig: process-picking-allocation
+        payload:
+          - key: id
+            as: header_id
+          - material_id
+          - total_pending_qty
+          - key: selected_so_detail_ids
+            as: so_detail_ids
+        onSuccess: refresh
+      
+      unallocate:
+        label: Unallocate
+        actionType: EXECUTE_QUERY
+        level: ROW
+        condition: row.allocated_qty > 0
+        confirmationRequired: true
+        confirmationMessage: "Remove all allocations for ${row.material_name}?"
+        queryInfo:
+          returnType: SCALAR
+          query: |
+            DELETE FROM wms.picking_list_details 
+            WHERE header_id = $1 
+              AND material_id = $2 
+              AND is_active = true;
+            SELECT $1 as id;
+          payload:
+            - id
+            - material_id
+          contextParams:
+            - current_user_id
+        onSuccess: refresh

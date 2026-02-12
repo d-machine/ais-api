@@ -6,11 +6,15 @@
 -- Create picking_list_header table
 CREATE TABLE IF NOT EXISTS wms.picking_list_header(
     id SERIAL PRIMARY KEY,
+    entry_no VARCHAR(10) UNIQUE,
+    entry_dt DATE,
     party_id INTEGER NOT NULL REFERENCES wms.party(id),
+    so_ids VARCHAR(255),
     descr VARCHAR(255),
     is_active boolean NOT NULL DEFAULT true,
     lub INTEGER references administration.user(id),
     lua TIMESTAMP NOT NULL DEFAULT NOW(),
+    remarks VARCHAR(255),
     status VARCHAR(255)
 );
 
@@ -18,8 +22,12 @@ CREATE TABLE IF NOT EXISTS wms.picking_list_header(
 CREATE TABLE IF NOT EXISTS wms.picking_list_header_history(
     history_id SERIAL PRIMARY KEY,
     picking_list_id INTEGER,
+    entry_no VARCHAR(10),
+    entry_dt DATE,
     party_id INTEGER,
+    so_ids VARCHAR(255),
     descr VARCHAR(255),
+    remarks VARCHAR(255),
     status VARCHAR(255),
     is_active boolean NOT NULL,
     operation VARCHAR(10),
@@ -33,25 +41,25 @@ RETURNS TRIGGER AS $$
 BEGIN
     IF (TG_OP = 'INSERT') THEN
         INSERT INTO wms.picking_list_header_history(
-            picking_list_id, party_id, descr, status, is_active, operation, operation_at, operation_by
+            picking_list_id, entry_no, entry_dt, party_id, so_ids, descr, remarks, status, is_active, operation, operation_at, operation_by
         )
         VALUES(
-            NEW.id, NEW.party_id, NEW.descr, NEW.status, NEW.is_active, 'INSERT', NEW.lua, NEW.lub
+            NEW.id, NEW.entry_no, NEW.entry_dt, NEW.party_id, NEW.so_ids, NEW.descr, NEW.remarks, NEW.status, NEW.is_active, 'INSERT', NEW.lua, NEW.lub
         );
     ELSIF (TG_OP = 'UPDATE') THEN
         IF (OLD.is_active = true AND NEW.is_active = false) THEN
             INSERT INTO wms.picking_list_header_history(
-                picking_list_id, party_id, descr, status, is_active, operation, operation_at, operation_by
+                picking_list_id, entry_no, entry_dt, party_id, so_ids, descr, remarks, status, is_active, operation, operation_at, operation_by
             )
             VALUES (
-                NEW.id, NEW.party_id, NEW.descr, NEW.status, NEW.is_active, 'DELETE', NEW.lua, NEW.lub
+                NEW.id, NEW.entry_no, NEW.entry_dt, NEW.party_id, NEW.so_ids, NEW.descr, NEW.remarks, NEW.status, NEW.is_active, 'DELETE', NEW.lua, NEW.lub
             );
         ELSE
             INSERT INTO wms.picking_list_header_history(
-                picking_list_id, party_id, descr, status, is_active, operation, operation_at, operation_by
+                picking_list_id, entry_no, entry_dt, party_id, so_ids, descr, remarks, status, is_active, operation, operation_at, operation_by
             )
             VALUES (
-                NEW.id, NEW.party_id, NEW.descr, NEW.status, NEW.is_active, 'UPDATE', NEW.lua, NEW.lub
+                NEW.id, NEW.entry_no, NEW.entry_dt, NEW.party_id, NEW.so_ids, NEW.descr, NEW.remarks, NEW.status, NEW.is_active, 'UPDATE', NEW.lua, NEW.lub
             );
         END IF;
     END IF;

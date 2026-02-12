@@ -1,29 +1,44 @@
 configType: LIST
 version: 1.0
+
 queryInfo:
   returnType: MULTIPLE_ROWS
   query: |
-    SELECT 
+    SELECT * FROM (
+    SELECT
       h.id,
       h.entry_no,
       h.entry_dt,
       h.party_id,
-      p.name as party_name,
-      COUNT(d.id) as total_items,
-      SUM(d.qty - COALESCE(d.dqty, 0)) as pending_qty
+      h.delivery_dt,
+      h.status
     FROM wms.sales_order_header h
-    JOIN wms.party p ON h.party_id = p.id
-    JOIN wms.sales_order_details d ON h.id = d.header_id
-    WHERE h.status = 'Approved' 
-      AND (d.qty - COALESCE(d.dqty, 0)) > 0
-      AND ($1::int IS NULL OR h.party_id = $1)
-    GROUP BY h.id, h.entry_no, h.entry_dt, h.party_id, p.name
-    ORDER BY h.entry_dt ASC
-  payload: [party_id]
+    WHERE h.status = 'Draft'
+      AND h.is_active = true
+    ORDER BY h.entry_dt, h.entry_no
+    ) as pending_sales_orders
+
 columns:
+  - name: id
+    label: ID
+    visible: false
   - name: entry_no
     label: SO No
+    visible: true
+    width: 120
   - name: entry_dt
-    label: Date
-  - name: pending_qty
-    label: Pending Qty
+    label: SO Date
+    visible: true
+    dataType: datetime
+    format: "DD/MM/YYYY"
+    width: 120
+  - name: delivery_dt
+    label: Delivery Date
+    format: "DD/MM/YYYY"
+    width: 120
+    visible: true
+  - name: status
+    label: Status
+    visible: true
+    width: 100
+

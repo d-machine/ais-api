@@ -50,7 +50,7 @@ sections:
         actionType: EXECUTE_QUERY
         queryInfo:
           returnType: SCALAR
-          query: SELECT wms.update_sales_order_header($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) as id;
+          query: SELECT wms.update_sales_order_header($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) as id;
           payload:
             - id
             - entry_dt
@@ -58,6 +58,7 @@ sections:
             - broker_id
             - delivery_at_id
             - trsp_id
+            - year_code
             - delivery_dt
             - status
             - remarks
@@ -206,12 +207,14 @@ sections:
         SELECT
           d.id,
           d.header_id,
+          d.row_no,
           m.name as item_name,
           u1.name as uom_pc_name,
           u2.name as uom_package_name,
           d.rate_per_pc,
           d.eqty,
           d.amount,
+          d.dqty,
           d.status,
           d.remarks
         FROM wms.sales_order_details d
@@ -233,6 +236,10 @@ sections:
       - name: id
         label: ID
         visible: false
+      - name: row_no
+        label: Row#
+        visible: true
+        width: 80
       - name: item_name
         label: Item
         visible: true
@@ -260,6 +267,11 @@ sections:
         label: Amount
         visible: true
         dataType: currency
+        width: 120
+        align: right
+      - name: dqty
+        label: Dispatched Qty
+        visible: true
         width: 120
         align: right
       - name: status

@@ -2,117 +2,263 @@ configType: FORM
 version: 1.0
 sections:
   - sectionType: FIELDS
-    sectionName: Allocation Detail
+    sectionName: Material Allocation
     queryInfo:
       returnType: SINGLE_ROW
-      # $1=ID (Detail ID or Header ID), $2=SODetailID, $3=MaterialID, $4=PendingQty, $5=ActionType
       query: |
-        SELECT 
-          CASE WHEN $5 = 'EDIT' THEN d.id ELSE 0 END as id,
-          CASE WHEN $5 = 'EDIT' THEN d.header_id ELSE $1 END as header_id,
-          CASE WHEN $5 = 'EDIT' THEN d.so_detail_id ELSE $2 END as so_detail_id,
-          CASE WHEN $5 = 'EDIT' THEN d.material_id ELSE $3 END as material_id,
+        SELECT
+          $1::numeric as header_id,
+          $2::numeric as material_id,
           m.name as material_name,
-          CASE WHEN $5 = 'EDIT' THEN d.rack_id ELSE NULL END as rack_id,
-          CASE WHEN $5 = 'EDIT' THEN d.expiry_dt ELSE NULL END as expiry_dt,
-          CASE WHEN $5 = 'EDIT' THEN d.qty ELSE 0 END as qty,
-          CASE WHEN $5 = 'EDIT' THEN 0 ELSE $4 END as max_qty
-        FROM (SELECT 1) dummy
-        LEFT JOIN wms.picking_list_details d ON d.id = $1 AND $5 = 'EDIT'
-        LEFT JOIN wms.material m ON m.id = COALESCE(d.material_id, $3)
-      payload: [id, so_detail_id, material_id, pending_qty, action_type]
+          u.name as uom_name,
+          $3::numeric as total_pending_qty,
+          $4 as so_detail_ids,
+          (
+            SELECT COALESCE(SUM(qty), 0) 
+            FROM wms.stock 
+            WHERE material_id = $2 AND is_active = true
+          ) - (
+            SELECT COALESCE(SUM(d.qty), 0) 
+            FROM wms.picking_list_details d
+            JOIN wms.picking_list_header h ON d.header_id = h.id
+            WHERE d.material_id = $2 
+              AND d.is_active = true 
+              AND h.status IN ('Draft', 'Picked')
+          ) as quantity_in_stock,
+          COALESCE(
+            (SELECT SUM(qty) FROM wms.picking_list_details 
+             WHERE header_id = $1 AND material_id = $2 AND is_active = true), 
+            0
+          ) as already_allocated_qty,
+          ($3::numeric - COALESCE(
+            (SELECT SUM(qty) FROM wms.picking_list_details 
+             WHERE header_id = $1 AND material_id = $2 AND is_active = true), 
+            0
+          )) as qty_to_pick
+        FROM wms.material m
+        LEFT JOIN wms.uom u ON m.uom_pc_id = u.id
+        WHERE m.id = $2
+      payload:
+        - header_id
+        - material_id
+        - total_pending_qty
+        - so_detail_ids
+      path:
+        - sections
+        - 0
     
-    applicableActions: [SAVE, CANCEL]
+    applicableActions:
+      - DUMMY
+      - CANCEL
+    
     actionConfig:
-      SAVE:
-        label: Save Allocation
-        actionType: EXECUTE_QUERY
-        queryInfo:
-          returnType: SCALAR
-          query: |
-            SELECT CASE 
-              WHEN $1 = 0 THEN wms.insert_picking_list_details($2, $3, $4, $5, $6, $7, $8) 
-              ELSE wms.update_picking_list_details($1, $5, $6, $7, $8) 
-            END as id;
-          payload: [id, header_id, so_detail_id, material_id, rack_id, expiry_dt, qty]
-          contextParams: [current_user_id]
-        onSuccess: exitAndComplete
-
+      DUMMY:
+        label: Save & Continue
+        actionType: DUMMY
+        handledByParent: true
+      CANCEL:
+        label: Close
+    
+    rows:
+      - columns:
+          - field: material_name
+            span: 12
+      - columns:
+          - field: total_pending_qty
+            span: 4
+          - field: already_allocated_qty
+            span: 4
+          - field: quantity_in_stock
+            span: 4
+      - columns:
+          - field: qty_to_pick
+            span: 6
+    
     fields:
-      - name: id
-        label: ID
-        type: NUMBER
-        visible: false
-      
       - name: header_id
-        label: Header ID
         type: NUMBER
         visible: false
-
-      - name: so_detail_id
-        label: SO Detail ID
-        type: NUMBER
-        visible: false
-      
       - name: material_id
-        label: Material ID
         type: NUMBER
         visible: false
-
+      - name: so_detail_ids
+        type: TEXT
+        visible: false
       - name: material_name
         label: Material
         type: TEXT
         readonly: true
-
-      - name: max_qty
-        label: Pending Qty
+      - name: total_pending_qty
+        label: Total Pending
         type: NUMBER
         readonly: true
-
-      - name: stock_id
-        label: Select Stock (FEFO)
-        type: SELECT
-        required: true
-        selectConfig:
-          resource: list-available-stock-by-material
-          labelField: display_label
-          displayField: display_label
-          selectHandler: extractor
-          currentSelection:
-            - key: stock_id
-              as: id
-          fields_to_extract:
-            - key: rack_id
-              as: rack_id
-            - key: expiry_dt
-              as: expiry_dt
-            - key: available_qty
-              as: available_qty
-        dependencies:
-          - target: [material_id]
-            handler: filterByDependency
-            required: true
-            dependencyConfig:
-              targetParam: material_id
-
-      - name: rack_id
-        label: Rack ID
+      - name: already_allocated_qty
+        label: Already Allocated
         type: NUMBER
-        visible: false
-      
+        readonly: true
+      - name: quantity_in_stock
+        label: Quantity in Stock
+        type: NUMBER
+        readonly: true
+      - name: qty_to_pick
+        label: Quantity to Pick
+        type: NUMBER
+        placeholder: "Enter quantity to allocate"
+        required: true
+
+  - sectionType: TABLE
+    sectionName: Available Stock (FIFO/FEFO)
+    queryInfo:
+      returnType: MULTIPLE_ROWS
+      query: |
+        WITH stock_data AS (
+            SELECT 
+              MIN(s.id) as stock_id,
+              s.rack_id,
+              r.code as rack_code,
+              r.name as rack_name,
+              s.expiry_dt,
+              s.batch_no,
+              (SUM(s.qty) - COALESCE((
+                  SELECT SUM(d.qty) 
+                  FROM wms.picking_list_details d 
+                  JOIN wms.picking_list_header h ON d.header_id = h.id
+                  WHERE d.material_id = $2 
+                    AND d.rack_id = s.rack_id 
+                    AND (d.expiry_dt = s.expiry_dt OR (d.expiry_dt IS NULL AND s.expiry_dt IS NULL))
+                    AND d.header_id != $1
+                    AND h.status IN ('Draft', 'Picked')
+                    AND d.is_active = true
+              ), 0)) as available_qty
+            FROM wms.stock s
+            JOIN wms.rack r ON s.rack_id = r.id
+            WHERE s.material_id = $2
+              AND s.is_active = true
+            GROUP BY 
+              s.rack_id,
+              r.code,
+              r.name,
+              s.expiry_dt,
+              s.batch_no
+        ),
+        fifo_calc AS (
+            SELECT 
+              *,
+              SUM(available_qty) OVER (ORDER BY expiry_dt ASC NULLS LAST, stock_id ASC) as running_total
+            FROM stock_data
+            WHERE available_qty > 0
+        )
+        SELECT 
+          f.*,
+          COALESCE(pld.qty, 
+            CASE 
+              WHEN $3 > 0 THEN 
+                LEAST(f.available_qty, GREATEST(0, $3 - (f.running_total - f.available_qty)))
+              ELSE 0 
+            END
+          ) as allocated_qty,
+          CASE WHEN pld.id IS NOT NULL THEN 'Picked' ELSE 'Not Picked' END as pick_status
+        FROM fifo_calc f
+        LEFT JOIN wms.picking_list_details pld ON 
+            pld.header_id = $1 
+            AND pld.material_id = $2
+            AND pld.rack_id = f.rack_id
+            AND (pld.expiry_dt = f.expiry_dt OR (pld.expiry_dt IS NULL AND f.expiry_dt IS NULL))
+            AND pld.is_active = true
+        ORDER BY f.expiry_dt ASC NULLS LAST, f.stock_id ASC
+      payload:
+        - header_id
+        - material_id
+        - qty_to_pick
+      path:
+        - sections
+        - 1
+      dependencies:
+        - target: [qty_to_pick]
+          handler: refresh
+      options:
+        applyFiltering: false
+        applySorting: false
+        applyPagination: false
+    
+    columns:
+      - name: rack_code
+        label: Rack
+        visible: true
+      - name: rack_name
+        label: Location
+        visible: true
       - name: expiry_dt
         label: Expiry Date
-        type: DATE
-        readonly: true
-      
+        visible: true
+        dataType: datetime
+      - name: batch_no
+        label: Batch No
+        visible: true
       - name: available_qty
-        label: Available Qty
-        type: NUMBER
-        readonly: true
+        label: Available
+        visible: true
+        align: right
+        dataType: number
+      - name: allocated_qty
+        label: Qty to Pick
+        visible: true
+        align: right
+        dataType: number
+      - name: pick_status
+        label: Status
+        visible: true
 
-      - name: qty
-        label: Allocate Qty
-        type: NUMBER
-        required: true
-        validators:
-          - {handler: validateMax, config: {maxField: available_qty}}
+    applicableActions:
+      - pick
+      - unpick
+    
+    actionConfig:
+      pick:
+        label: Pick
+        level: ROW
+        condition: row.pick_status === 'Not Picked'
+        actionType: DISPLAY_FORM
+        formConfig: process-manual-pick
+        payload:
+          - header_id
+          - material_id
+          - rack_id
+          - expiry_dt
+          - batch_no
+          - key: allocated_qty
+            as: qty
+        onSuccess: refresh
+      
+      unpick:
+        label: Unpick
+        level: ROW
+        condition: row.pick_status === 'Picked'
+        actionType: EXECUTE_QUERY
+        confirmationRequired: true
+        confirmationMessage: "Are you sure you want to unpick this item?"
+        queryInfo:
+          returnType: SCALAR
+          query: |
+            WITH deleted AS (
+              DELETE FROM wms.picking_list_details 
+              WHERE header_id = $1 
+                AND material_id = $2 
+                AND rack_id = $3 
+                AND (expiry_dt = $4 OR (expiry_dt IS NULL AND $4 IS NULL))
+                AND is_active = true
+            )
+            SELECT $1::numeric as id;
+          payload:
+            - header_id
+            - material_id
+            - rack_id
+            - expiry_dt
+          path:
+            - sections
+            - 1
+            - actionConfig
+            - unpick
+        onSuccess: refresh
+
+

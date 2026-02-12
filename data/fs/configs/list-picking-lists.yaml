@@ -15,23 +15,53 @@ queryInfo:
     ORDER BY h.id DESC
   payload: []
 columns:
+  - name: id
+    label: ID
+    visible: false
+    sortable: false
   - name: entry_no
     label: Entry No
+    visible: true
+    width: 120
+    sortable: true
   - name: entry_dt
     label: Date
+    dataType: date
+    visible: true
+    width: 120
+    sortable: true
   - name: party_name
     label: Customer
+    visible: true
+    width: 200
+    sortable: true
   - name: total_items
     label: Items
+    visible: true
+    width: 100
+    align: right
   - name: status
     label: Status
+    visible: true
+    width: 120
+    sortable: true
+
+applicableActions:
+  - add
+  - edit
+
 actionConfig:
-  edit:
-    label: Edit
-    actionType: NAVIGATE
-    target: edit-picking-list
-    param: id
   add:
     label: Create Picking List
-    actionType: NAVIGATE
-    target: add-picking-list
+    actionType: DISPLAY_FORM
+    formConfig: add-picking-list
+    onSuccess: refresh
+  
+  edit:
+    label: Edit
+    level: ROW
+    actionType: DISPLAY_FORM
+    formConfig: edit-picking-list
+    payload:
+      - id
+    onSuccess: refresh

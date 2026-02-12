@@ -28,6 +28,23 @@ sections:
           field: status
           condition: EQUALS
           value: Draft
+    
+    rows:
+      - columns:
+          - field: entry_no
+            span: 6
+          - field: entry_dt
+            span: 6
+      - columns:
+          - field: party_id
+            span: 12
+      - columns:
+          - field: so_ids
+            span: 12
+      - columns:
+          - field: remarks
+            span: 12
+    
     fields:
       - name: id
         label: ID
