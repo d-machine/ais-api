@@ -1,7 +1,5 @@
 import { Context } from "hono";
 import ApiService from "../services/api.service.js";
-import BaseService from "../services/base.service.js";
-import { EQueryReturnType } from "../types/general.js";
 
 export default class ApiController {
   async getMenu(c: Context) {
@@ -36,34 +34,14 @@ export default class ApiController {
       const apiService = new ApiService();
       const body = await c.req.json();
       const userId = c.get("userId");
-      
+
       console.log("Execute query request:", {
         fetchQuery: body.fetchQuery,
         configFile: body.configFile,
         path: body.path,
         payload: body.payload
       });
-      
-      // Check if this is a direct query execution
-    //   if (body.query) {
-    //     try {
-    //       const baseService = new BaseService();
-    //       const returnType = body.returnType || EQueryReturnType.SCALAR;
-    //       const result = await baseService.executeDirectQuery(
-    //         returnType,
-    //         body.query,
-    //         body.payload || []
-    //       );
-    //       return c.json(result);
-    //     } catch (error: any) {
-    //       console.error("Direct query execution error:", error);
-    //       return c.json({ 
-    //         error: "Direct query execution failed", 
-    //         details: error?.message || "Unknown error" 
-    //       }, 500);
-    //     }
-    //   }
-      
+
       // Regular config-based query execution
       try {
         const result = await apiService.handleQueryExecution(
@@ -71,21 +49,22 @@ export default class ApiController {
           userId,
           body.path,
           body.payload,
-          body.fetchQuery
+          body.fetchQuery,
+          body.mode
         );
         return c.json(result);
       } catch (error: any) {
         console.error("Config query execution error:", error);
-        return c.json({ 
-          error: "Config-based query execution failed", 
-          details: error?.message || "Unknown error" 
+        return c.json({
+          error: "Config-based query execution failed",
+          details: error?.message || "Unknown error"
         }, 500);
       }
     } catch (error: any) {
       console.error("General query execution error:", error);
-      return c.json({ 
-        error: "Failed to execute query", 
-        details: error?.message || "Unknown error" 
+      return c.json({
+        error: "Failed to execute query",
+        details: error?.message || "Unknown error"
       }, 500);
     }
   }

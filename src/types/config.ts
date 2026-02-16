@@ -3,7 +3,7 @@ import { EQueryReturnType, IFilterInfo, ISortInfo } from "./general.js";
 export enum EActionType {
   DISPLAY_FORM = "DISPLAY_FORM",
   EXECUTE_QUERY = "EXECUTE_QUERY",
-  FUNCTION_CALL = "FUNCTION_CALL"
+  FUNCTION_CALL = "FUNCTION_CALL",
 }
 
 export enum EFilterType {
@@ -26,6 +26,14 @@ export enum ESectionType {
   FIELDS = "FIELDS",
   TABLE = "TABLE",
 }
+
+export const FORM_MODES = {
+  ADD: "ADD",
+  EDIT: "EDIT",
+  VIEW: "VIEW",
+} as const;
+
+export type TFormMode = (typeof FORM_MODES)[keyof typeof FORM_MODES];
 
 export interface IBaseActionConfig {
   label: string;
@@ -79,7 +87,7 @@ export interface IInputText extends IInputBase {
 
 export interface IQueryInfo {
   returnType: EQueryReturnType;
-  query: string;
+  query: string | { [key in TFormMode]: string };
   payload?: Array<string | number>;
   contextParams?: Array<string>;
   options?: {
@@ -107,7 +115,7 @@ export interface IInputSelectWithQuery extends IInputSelectBase {
 }
 
 export interface IInputSelectWithOptions extends IInputSelectBase {
-  options: Array<{id: string | number; label: string | number}>;
+  options: Array<{ id: string | number; label: string | number }>;
 }
 
 export type TInputSelect = IInputSelectWithQuery | IInputSelectWithOptions;
@@ -147,16 +155,16 @@ export interface IListColumn {
   filterType?: EFilterType;
 }
 
-export interface IListConfig{
+export interface IListConfig {
   queryInfo: IQueryInfo;
-  applicableActions?: Array<string>;
+  applicableActions?: { [key in TFormMode]?: Array<string> };
   actionConfig?: IActionConfig;
   columns?: Array<IListColumn>;
 }
 
 export interface IBaseSectionConfig {
   sectionName: string;
-  applicableActions?: Array<string>;
+  applicableActions?: { [key in TFormMode]?: Array<string> };
   actionConfig?: IActionConfig;
 }
 

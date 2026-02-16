@@ -1,0 +1,220 @@
+configType: FORM
+version: 1.0
+
+formActions:
+  actionConfig:
+    FINISH:
+      label:
+        ADD: Finish
+        EDIT: Finish
+        VIEW: Close
+      visible: false
+      actionType: NAVIGATE
+      onSuccess: exitAndComplete
+
+sections:
+  # Section 1: State Details (FIELDS)
+  - sectionType: FIELDS
+    sectionName: state_details
+
+    # Section-level data fetching
+    queryInfo:
+      returnType: SINGLE_ROW
+      query: |
+        SELECT
+          id,
+          country_id,
+          name as state_name,
+          code as state_code,
+          descr
+        FROM
+          wms.state
+        WHERE
+          id = $1
+      payload:
+        - _context.id # Explicit: from initial context
+      path:
+        - sections
+        - 0
+
+    # Section-level actions
+    applicableActions:
+      ADD:
+        - SAVE
+        - CANCEL
+      EDIT:
+        - SAVE
+        - CANCEL
+      VIEW:
+        - EDIT
+
+    actionConfig:
+      SAVE:
+        label:
+          ADD: Create State
+          EDIT: Update State
+        actionType: EXECUTE_QUERY
+        queryInfo:
+          returnType: SCALAR
+          query:
+            ADD: |
+              SELECT wms.insert_state($1, $2, $3, $4, $5) as id;
+            EDIT: |
+              SELECT wms.update_state($1, $2, $3, $4, $5, $6) as id;
+          payload:
+            ADD:
+              - _context.country_id # From parent context
+              - state_details.state_name
+              - state_details.state_code
+              - state_details.descr
+            EDIT:
+              - _context.id # State ID
+              - _context.country_id # Country ID
+              - state_details.state_name
+              - state_details.state_code
+              - state_details.descr
+          contextParams:
+            - current_user_id
+          path:
+            - sections
+            - 0
+            - actionConfig
+            - SAVE
+        onSuccess:
+          callback: callFinish
+        onFailure: showErrorSnackbar
+
+      CANCEL:
+        label: Discard Changes
+        actionType: NAVIGATE
+        onSuccess: exitAndComplete
+
+      EDIT:
+        label: Edit
+        actionType: FUNCTION_EXECUTION
+        functionInfo:
+          name: changeMode
+          params:
+            mode: EDIT
+
+    # Row-based layout
+    rows:
+      - columns:
+          - field: state_name
+            span: 6
+          - field: state_code
+            span: 6
+      - columns:
+          - field: descr
+            span: 12
+
+    # Field definitions
+    fields:
+      - name: state_name
+        label: State Name
+        type: TEXT
+        readonly:
+          - VIEW
+        required: true
+
+      - name: state_code
+        label: State Code
+        type: TEXT
+        readonly:
+          - VIEW
+        required: true
+
+      - name: descr
+        label: Description
+        type: TEXTAREA
+        readonly:
+          - VIEW
+
+      # Hidden field to store country_id (from context)
+      - name: country_id
+        label: Country
+        type: TEXT
+        visible: false
+        defaultValue: _context.country_id
+
+  # Section 2: Districts (TABLE) - Optional nested table
+  - sectionType: TABLE
+    sectionName: districts_section
+
+    queryInfo:
+      returnType: MULTIPLE_ROWS
+      query: |
+        SELECT
+          id,
+          name as district_name,
+          code as district_code
+        FROM
+          wms.district
+        WHERE
+          state_id = $1
+      payload:
+        - _context.id # Explicit: parent state ID
+      path:
+        - sections
+        - 1
+      options:
+        applyPagination: false
+
+    applicableActions:
+      - add
+      - edit
+      - delete
+
+    actionConfig:
+      add:
+        label: Add District
+        actionType: DISPLAY_FORM
+        level: HEADER
+        formConfig: district-details
+        mode: ADD
+        payload:
+          - { key: _context.id, as: state_id }
+          - { key: _context.country_id, as: country_id }
+        onSuccess: refresh
+
+      edit:
+        label: Edit
+        actionType: DISPLAY_FORM
+        level: ROW
+        formConfig: district-details
+        mode: EDIT
+        payload:
+          - id
+          - { key: _context.id, as: state_id }
+          - { key: _context.country_id, as: country_id }
+        onSuccess: refresh
+
+      delete:
+        label: Delete
+        actionType: EXECUTE_QUERY
+        level: ROW
+        confirmationRequired: true
+        confirmationMessage: "Are you sure you want to delete '${row.district_name}'?"
+        queryInfo:
+          returnType: SCALAR
+          query: SELECT wms.delete_district($1, $2) as result;
+          payload:
+            - id # From row (district ID)
+          contextParams:
+            - current_user_id
+        onSuccess: refresh
+
+    columns:
+      - name: id
+        label: ID
+        visible: false
+
+      - name: district_name
+        label: District Name
+        visible: true
+        sortable: true
+
+      - name: district_code
+        label: District Code
+        visible: true
+        sortable: true

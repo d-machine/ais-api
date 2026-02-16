@@ -1,7 +1,6 @@
 import DBClient from "../storage/db.js";
 import CacheClient from "../storage/cache.js";
 import { EQueryReturnType } from "../types/general.js";
-import { IQueryInfo } from "../types/config.js";
 
 export default class BaseService {
   protected _db: DBClient;
@@ -18,14 +17,13 @@ export default class BaseService {
     this.executeDirectQuery = this.executeDirectQuery.bind(this);
   }
 
-  protected async executeQuery(queryInfo: IQueryInfo, params: any[] = []) {
+  protected async executeQuery({ returnType, query }: { returnType: EQueryReturnType, query: string }, params: any[] = []) {
     try {
-      const { returnType, query } = queryInfo;
       console.log("Executing query:", { query, params, returnType });
       return await this._db.executeQuery(returnType, query, params);
     } catch (error) {
       console.error("Error executing query:", error);
-      console.error("Query details:", { query: queryInfo.query, params });
+      console.error("Query details:", { query, params });
       throw error;
     }
   }

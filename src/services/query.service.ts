@@ -1,6 +1,6 @@
 import BaseService from "./base.service.js";
-import { IQueryInfo } from "../types/config.js";
-import { _isNil, _map } from "../utils/aisLodash.js";
+import { IQueryInfo, TFormMode } from "../types/config.js";
+import { _isEmpty, _isNil, _map } from "../utils/aisLodash.js";
 import {
   EFilterOperator,
   IFetchQuery,
@@ -57,9 +57,8 @@ export default class QueryService extends BaseService {
         case EFilterOperator.NOT_ENDS_WITH:
           return `${filter.field} NOT LIKE %${filterValue}`;
         default:
-          return `${filter.field} ${filter.operator || "LIKE"} %${
-            filterValue
-          }%`;
+          return `${filter.field} ${filter.operator || "LIKE"} %${filterValue
+            }%`;
       }
     }).join(" AND ");
 
@@ -90,8 +89,17 @@ export default class QueryService extends BaseService {
     return `LIMIT ${limit} OFFSET ${offset}`;
   }
 
-  public buildQuery(queryInfo: IQueryInfo, fetchQuery?: IFetchQuery) {
-    let query = queryInfo.query;
+  public buildQuery(queryInfo: IQueryInfo, fetchQuery?: IFetchQuery, mode?: TFormMode) {
+    let query = '';
+    if (typeof queryInfo.query === 'string') {
+      query = queryInfo.query;
+    } else if (mode) {
+      query = queryInfo.query[mode];
+    }
+
+    if (_isEmpty(query)) {
+      throw new Error("Query is empty");
+    }
 
     const { filtersData, sortData, paginationData } = fetchQuery || {};
     const queryOptions = queryInfo.options || {};
