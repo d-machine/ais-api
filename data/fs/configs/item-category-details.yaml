@@ -1,5 +1,5 @@
 version: 1.0
-configName: state-details
+configName: category-details
 
 # Form-level actions (global)
 applicableActions:
@@ -28,26 +28,23 @@ actionConfig:
       VIEW: Close
 
 sections:
-  # Section 1: State Details (FIELDS)
+  # Section 1: Item Category Details (FIELDS)
   - sectionType: FIELDS
-    sectionName: state_details
-    label: State Details
+    sectionName: category_details
+    label: Category Details
 
     # Section-level data fetching
     queryInfo:
       returnType: SINGLE_ROW
       query: |
-          s.id,
-          s.country_id,
-          s.name as state_name,
-          s.code as state_code,
-          c.name as country_name,
-          s.descr
+        SELECT
+          id,
+          name as item_category_name,
+          descr
         FROM
-          wms.state s
-          LEFT JOIN wms.country c ON s.country_id = c.id
+          wms.item_category
         WHERE
-          s.id = $1
+          id = $1
       payload:
         - _context.id # Explicit: from initial context
       executionConditions:
@@ -71,8 +68,8 @@ sections:
     actionConfig:
       SAVE:
         label:
-          ADD: Create State
-          EDIT: Update State
+          ADD: Create Category
+          EDIT: Update Category
         icon: Save
         variant: primary
         actionType: EXECUTE_QUERY
@@ -80,21 +77,17 @@ sections:
           returnType: SCALAR
           query:
             ADD: |
-              SELECT wms.insert_state($1, $2, $3, $4, $5) as id;
+              SELECT wms.insert_item_category($1, $2, $3) as id;
             EDIT: |
-              SELECT wms.update_state($1, $2, $3, $4, $5, $6) as id;
+              SELECT wms.update_item_category($1, $2, $3, $4) as id;
           payload:
             ADD:
-              - _context.country_id # From parent context
-              - state_details.state_name
-              - state_details.state_code
-              - state_details.descr
+              - category_details.item_category_name
+              - category_details.descr
             EDIT:
-              - _context.id # State ID
-              - _context.country_id # Country ID
-              - state_details.state_name
-              - state_details.state_code
-              - state_details.descr
+              - _context.id # Category ID
+              - category_details.item_category_name
+              - category_details.descr
           contextParams:
             - current_user_id
           path:
@@ -128,27 +121,16 @@ sections:
     # Row-based layout
     rows:
       - columns:
-          - field: state_name
-            span: 4
-          - field: state_code
-            span: 4
-          - field: country_id
-            span: 4
+          - field: item_category_name
+            span: 12
       - columns:
           - field: descr
             span: 12
 
     # Field definitions
     fields:
-      - name: state_name
-        label: State Name
-        type: TEXT
-        readonly:
-          - VIEW
-        required: true
-
-      - name: state_code
-        label: State Code
+      - name: item_category_name
+        label: Category Name
         type: TEXT
         readonly:
           - VIEW
@@ -159,24 +141,3 @@ sections:
         type: TEXTAREA
         readonly:
           - VIEW
-
-      - name: country_id
-        label: Country
-        type: SELECT
-        readonly:
-          - VIEW
-        required: true
-        multi: false
-        selectConfig:
-          resource: list-countries
-          displayField: country_name
-          selectHandler: converter
-          currentSelection:
-            - key: country_id
-              as: id
-          selectParser: converter
-          fields_to_extract:
-            - key: id
-              as: country_id
-            - key: country_name
-              as: country_name

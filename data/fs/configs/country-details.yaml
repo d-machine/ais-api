@@ -31,6 +31,7 @@ sections:
   # Section 1: Country Details (FIELDS)
   - sectionType: FIELDS
     sectionName: country_details
+    label: Country Details
 
     # Section-level data fetching
     queryInfo:

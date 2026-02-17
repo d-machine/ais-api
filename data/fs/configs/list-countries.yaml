@@ -4,6 +4,7 @@ configName: list-countries
 sections:
   - sectionType: TABLE
     sectionName: countries
+    label: Countries
 
     queryInfo:
       returnType: MULTIPLE_ROWS
