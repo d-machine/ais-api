@@ -1,13 +1,44 @@
-configType: FORM
 version: 1.0
+configName: city-district-details
+
+# Form-level actions (global)
+applicableActions:
+  ADD:
+    - FINISH
+    - CANCEL
+  EDIT:
+    - FINISH
+    - CANCEL
+  VIEW:
+    - FINISH
+    - CLOSE
+actionConfig:
+  FINISH:
+    visible: false
+    closeAction: REFRESH
+  CANCEL:
+    visible: true
+    variant: danger
+    label:
+      ADD: Discard Changes
+      EDIT: Discard Changes
+  CLOSE:
+    visible: true
+    label:
+      VIEW: Close
+
 sections:
+  # Section 1: City-District Details (FIELDS)
   - sectionType: FIELDS
-    sectionName: City-District Mapping
+    sectionName: city_district_details
+    label: City-District Mapping
+
+    # Section-level data fetching
     queryInfo:
       returnType: SINGLE_ROW
       query: |
         SELECT
-          cd.id as id,
+          cd.id,
           cd.state_id,
           s.name as state_name,
           cd.city_id,
@@ -23,25 +54,53 @@ sections:
         WHERE
           cd.id = $1
       payload:
-        - id
+        - _context.id # Explicit: from initial context
+      executionConditions:
+        - indices:
+            - 0
+          operator: IS_NOT_NIL
       path:
         - sections
         - 0
+
+    # Section-level actions
     applicableActions:
-      - SAVE
-      - CANCEL
+      ADD:
+        - SAVE
+        - CANCEL
+      EDIT:
+        - SAVE
+        - CANCEL
+      VIEW:
+        - EDIT
+
     actionConfig:
       SAVE:
-        label: Create Mapping
+        label:
+          ADD: Create Mapping
+          EDIT: Update Mapping
+        icon: Save
+        variant: primary
         actionType: EXECUTE_QUERY
         queryInfo:
           returnType: SCALAR
-          query: SELECT wms.insert_city_district($1, $2, $3, $4, $5) as id;
+          query:
+            ADD: |
+              SELECT wms.insert_city_district($1, $2, $3, $4, $5) as id;
+            EDIT: |
+              SELECT wms.update_city_district($1, $2, $3, $4, $5, $6) as id;
           payload:
-            - city_id
-            - district_id
-            - state_id
-            - descr
+            ADD:
+              - city_district_details.city_id
+              - city_district_details.district_id
+              - city_district_details.state_id
+              - city_district_details.descr
+            EDIT:
+              - _context.id # Mapping ID
+              - city_district_details.city_id
+              - city_district_details.district_id
+              - city_district_details.state_id
+              - city_district_details.descr
           contextParams:
             - current_user_id
           path:
@@ -49,11 +108,29 @@ sections:
             - 0
             - actionConfig
             - SAVE
-        onSuccess: exitAndComplete
+        onSuccess:
+          callback: HANDLE_FORM_ACTION
+          params:
+            action: FINISH
         onFailure: showErrorSnackbar
+
       CANCEL:
         label: Discard Changes
-    
+        icon: ClipboardX
+        variant: danger
+        actionType: NAVIGATE
+        onSuccess: exitAndComplete
+
+      EDIT:
+        label: Edit
+        icon: Edit
+        variant: primary
+        actionType: FUNCTION_EXECUTION
+        functionInfo:
+          name: changeMode
+          params:
+            mode: EDIT
+
     # Row-based layout
     rows:
       - columns:
@@ -66,12 +143,14 @@ sections:
       - columns:
           - field: descr
             span: 12
-    
+
     # Field definitions
     fields:
       - name: state_id
         label: State
         type: SELECT
+        readonly:
+          - VIEW
         required: true
         multi: false
         selectConfig:
@@ -87,9 +166,12 @@ sections:
               as: state_id
             - key: state_name
               as: state_name
+
       - name: city_id
         label: City
         type: SELECT
+        readonly:
+          - VIEW
         required: true
         multi: false
         selectConfig:
@@ -105,9 +187,12 @@ sections:
               as: city_id
             - key: city_name
               as: city_name
+
       - name: district_id
         label: District
         type: SELECT
+        readonly:
+          - VIEW
         required: true
         multi: false
         selectConfig:
@@ -123,6 +208,9 @@ sections:
               as: district_id
             - key: district_name
               as: district_name
+
       - name: descr
         label: Description
         type: TEXTAREA
+        readonly:
+          - VIEW

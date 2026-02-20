@@ -61,6 +61,7 @@ services:
       - "${API_PORT}:3000"
     volumes:
       - ./src:/app/src
+      - ./data:/app/data
     networks:
       - ais_network
     depends_on:

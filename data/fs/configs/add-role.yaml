@@ -1,3 +1,11 @@
+applicableActions:
+  - FINISH
+actionConfig:
+  FINISH:
+    visible: true
+    closeAction: REFRESH
+    label: Finish
+    variant: primary
 sections:
   - sectionType: FIELDS
     sectionName: Role Details
@@ -36,7 +44,8 @@ sections:
             - 0
             - actionConfig
             - SAVE
-        onSuccess: saveResponseAndGoToNextSection
+        onSuccess:
+          callback: SAVE_AND_GO_TO_NEXT
         onFailure: showErrorSnackbar
       CANCEL:
         label: Discard Changes

@@ -190,13 +190,14 @@ sections:
         multi: false
         selectConfig:
           resource: list-city-districts
+          displayField: city_name
           selectHandler: converter
           currentSelection:
             - key: city_district_id
-              as: city_district_id
+              as: id
           selectParser: converter
           fields_to_extract:
-            - key: city_district_id
+            - key: id
               as: city_district_id
-            - key: city_district_name
+            - key: city_name
               as: city_district_name

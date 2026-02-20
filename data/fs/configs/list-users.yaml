@@ -1,117 +1,154 @@
-actionType: EXECUTE_QUERY
-queryInfo:
-  returnType: MULTIPLE_ROWS
-  query: |
-    SELECT
-    user_id, username, email, full_name, reports_to, roles, is_active,
-    lub, lua 
-    FROM
-      (
-        SELECT
-          u.id as id, u.username as username,
-          u.email as email, u.first_name as first_name, u.last_name as last_name,
-          TRIM(CONCAT(u.first_name, ' ', u.last_name)) as full_name,
-          string_agg(r.name, ', ') as roles, string_agg(r.id::text, ', ') as role_ids,
-          string_agg(ur.id::text, ', ') as user_role_ids,
-          TRIM(CONCAT(rt.first_name, ' ', rt.last_name)) as reports_to,
-          u.lub as lub, u.lua as lua, u.is_active as is_active
-        FROM
-          administration.user u
-          LEFT JOIN administration.user rt ON u.reports_to = rt.id
-          LEFT JOIN administration.user_role ur ON u.id = ur.user_id
-          LEFT JOIN administration.role r ON ur.role_id = r.id
-        WHERE 
-          u.is_active = true
-        GROUP BY
-          u.id, u.username, u.email, u.first_name, u.last_name,
-          rt.first_name, rt.last_name,
-          u.lub, u.lua
-      ) as user_list_view
-  options:
-    applyAccessLevelRestrictions: false
-    applyPagenation: true
-    applySorting: true
-    applyFiltering: true
-    onSuccess: refresh
-    onFailure: showErrorPage
-applicableActions:
-  - add
-  - edit
-  - changePassword
-  - delete
-actionConfig:
-  add:
-    label: Add New User
-    actionType: DISPLAY_FORM
-    formConfig: add-user
-    onSuccess: refresh
-    accessTypeRequired: 6-ADD
-  edit:
-    label: Edit User
-    actionType: DISPLAY_FORM
-    payload:
-      - id
-    formConfig: add-user
-    onSuccess: refresh
-    accessTypeRequired: 6-EDIT
-  changePassword:
-    label: Change Password
-    actionType: DISPLAY_FORM
-    payload:
-      - id
-    formConfig: change-password
-    onSuccess: refresh
-    accessTypeRequired: 6-EDIT
-  delete:
-    label: Delete User
-    actionType: EXECUTE_QUERY
+version: 1.0
+configName: list-users
+
+sections:
+  - sectionType: TABLE
+    sectionName: users
+    label: Users
     queryInfo:
-      returnType: SINGLE_ROW
+      returnType: MULTIPLE_ROWS
+      query: |
+        SELECT
+          u.id, u.username, u.email,
+          TRIM(CONCAT(u.first_name, ' ', u.last_name)) as full_name,
+          TRIM(CONCAT(rt.first_name, ' ', rt.last_name)) as reports_to,
+          string_agg(r.name, ', ') as roles,
+          u.lua as last_updated_at,
+          TRIM(CONCAT(u2.first_name, ' ', u2.last_name)) as last_updated_by_name
+        FROM administration.user u
+        LEFT JOIN administration.user rt ON u.reports_to = rt.id
+        LEFT JOIN administration.user_role ur ON u.id = ur.user_id
+        LEFT JOIN administration.role r ON ur.role_id = r.id
+        LEFT JOIN administration.user u2 ON u.lub = u2.id
+        WHERE u.is_active = true
+        GROUP BY u.id, u.username, u.email, u.first_name, u.last_name, rt.first_name, rt.last_name, u.lua, u2.first_name, u2.last_name
       path:
-        - actionConfig
+        - sections
+        - 0
+      options:
+        applyFiltering: true
+        applySorting: true
+        applyPagination: true
+
+    applicableActions:
+      VIEW:
+        - add
+        - view
+        - edit
+        - changePassword
         - delete
-      query: Select administration.delete_user($1, $2) as id;
-      payload:
-        - id
-      contextParams:
-        - current_user_id
-    formConfig: list-users
-    onSuccess: refresh
-    onFailure: showErrorSnackbar
-    accessTypeRequired: 6-DELETE
-columns:
-  - name: username
-    label: Username
-    width: 200
-    sortable: true
-    filterType: string
-  - name: email
-    label: Email
-    width: 200
-    sortable: true
-    filterType: string
-  - name: full_name
-    label: Full Name
-    width: 200
-    sortable: true
-    filterType: string
-  - name: reports_to
-    label: Reports To
-    width: 200
-    sortable: true
-    filterType: string
-  - name: roles
-    label: Roles
-    width: 200
-    sortable: true
-    filterType: string
-  - name: lub
-    label: Last Updated By
-    width: 200
-    sortable: true
-    filterType: string
-  - name: lua
-    label: Last Updated At
-    width: 200
-    sortable: true
-    filterType: string
+
+    actionConfig:
+      add:
+        label: Add User
+        icon: UserPlus
+        variant: primary
+        actionType: DISPLAY_FORM
+        level: HEADER
+        shortcut: "F2"
+        formConfig: user-details
+        mode: ADD
+        payload: []
+        onSuccess: refresh
+      view:
+        label: View
+        icon: Eye
+        variant: secondary
+        actionType: DISPLAY_FORM
+        level: ROW
+        shortcut: "F3"
+        formConfig: user-details
+        mode: VIEW
+        payload:
+          - id
+      edit:
+        label: Edit
+        icon: Edit
+        variant: primary
+        actionType: DISPLAY_FORM
+        level: ROW
+        shortcut: "F4"
+        formConfig: user-details
+        mode: EDIT
+        payload:
+          - id
+        onSuccess: refresh
+      changePassword:
+        label: Password
+        icon: Key
+        variant: secondary
+        actionType: DISPLAY_FORM
+        level: ROW
+        formConfig: change-password
+        payload:
+          - id
+        onSuccess: refresh
+      delete:
+        label: Delete
+        icon: Trash2
+        variant: danger
+        actionType: EXECUTE_QUERY
+        level: ROW
+        shortcut: "F8"
+        confirmationRequired: true
+        queryInfo:
+          query: SELECT administration.delete_user($1, $2) as id
+          payload:
+            - id
+          contextParams:
+            - current_user_id
+          path:
+            - sections
+            - 0
+            - actionConfig
+            - delete
+        onSuccess: refresh
+
+    columns:
+      - name: id
+        label: ID
+        visible: false
+
+      - name: username
+        label: Username
+        visible: true
+        sortable: true
+        filterable: true
+        width: 150
+
+      - name: full_name
+        label: Full Name
+        visible: true
+        sortable: true
+        filterable: true
+        width: 200
+
+      - name: email
+        label: Email
+        visible: true
+        filterable: true
+        width: 200
+
+      - name: roles
+        label: Roles
+        visible: true
+        width: 200
+
+      - name: reports_to
+        label: Reports To
+        visible: true
+        width: 150
+
+      - name: last_updated_at
+        label: Last Updated
+        visible: true
+        sortable: true
+        dataType: datetime
+        format: "DD/MM/YYYY HH:mm"
+        defaultSort: DESC
+        width: 150
+
+      - name: last_updated_by_name
+        label: Updated By
+        visible: true
+        width: 150

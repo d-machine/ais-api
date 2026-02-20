@@ -1,0 +1,224 @@
+version: 1.0
+configName: user-details
+title: User Details
+
+applicableActions:
+  ADD:
+    - FINISH
+    - CANCEL
+  EDIT:
+    - FINISH
+    - CANCEL
+  VIEW:
+    - FINISH
+    - CLOSE
+
+actionConfig:
+  FINISH:
+    visible: false
+    closeAction: REFRESH
+  CANCEL:
+    visible: true
+    variant: danger
+    label:
+      ADD: Discard
+      EDIT: Discard
+    icon: X
+  CLOSE:
+    visible: true
+    variant: secondary
+    label:
+      VIEW: Close
+    icon: X
+
+sections:
+  - sectionType: FIELDS
+    sectionName: user_details
+    label: User Information
+    queryInfo:
+      returnType: SINGLE_ROW
+      query: |
+        SELECT
+          u.id, u.username, u.email, u.first_name, u.last_name,
+          u.reports_to as reports_to_id,
+          TRIM(CONCAT(rt.first_name, ' ', rt.last_name)) as reports_to_name,
+          string_agg(r.id::text, ',') as role_ids,
+          string_agg(r.name, ', ') as roles
+        FROM administration.user u
+        LEFT JOIN administration.user rt ON u.reports_to = rt.id
+        LEFT JOIN administration.user_role ur ON u.id = ur.user_id
+        LEFT JOIN administration.role r ON ur.role_id = r.id
+        WHERE u.id = $1
+        GROUP BY u.id, u.username, u.email, u.first_name, u.last_name, rt.first_name, rt.last_name
+      payload:
+        - _context.id
+      executionConditions:
+        - indices:
+            - 0
+          operator: IS_NOT_NIL
+      path:
+        - sections
+        - 0
+
+    applicableActions:
+      ADD:
+        - SAVE
+        - CANCEL
+      EDIT:
+        - SAVE
+        - CANCEL
+      VIEW:
+        - EDIT
+
+    actionConfig:
+      SAVE:
+        label:
+          ADD: Create User
+          EDIT: Update User
+        icon: Save
+        variant: primary
+        actionType: EXECUTE_QUERY
+        queryInfo:
+          returnType: SINGLE_ROW
+          query:
+            ADD: SELECT administration.insert_user($1, $2, $3, $4, $5, $6, $7) as id
+            EDIT: |
+              UPDATE administration.user SET
+                username = $2, email = $3, first_name = $4, last_name = $5,
+                reports_to = $6, lub = $8, lua = NOW()
+              WHERE id = $1;
+              -- Note: Roles update normally would be a separate function or complex query.
+              -- administration.update_user_roles(user_id, role_ids)
+              SELECT $1 as id;
+          payload:
+            ADD:
+              - user_details.username
+              - user_details.password
+              - user_details.email
+              - user_details.first_name
+              - user_details.last_name
+              - user_details.reports_to_id
+              - user_details.role_ids
+            EDIT:
+              - _context.id
+              - user_details.username
+              - user_details.email
+              - user_details.first_name
+              - user_details.last_name
+              - user_details.reports_to_id
+              - user_details.role_ids
+              - current_user_id
+          contextParams:
+            - current_user_id
+          path:
+            - sections
+            - 0
+            - actionConfig
+            - SAVE
+        onSuccess:
+          callback: HANDLE_FORM_ACTION
+          params:
+            action: FINISH
+        onFailure: showErrorSnackbar
+      CANCEL:
+        label: Discard
+        icon: X
+        variant: danger
+        actionType: NAVIGATE
+        onSuccess: exitAndComplete
+      EDIT:
+        label: Edit
+        icon: Edit
+        variant: primary
+        actionType: FUNCTION_EXECUTION
+        functionInfo:
+          name: changeMode
+          params:
+            mode: EDIT
+
+    rows:
+      - columns:
+          - field: username
+            span: 6
+          - field: password
+            span: 6
+      - columns:
+          - field: email
+            span: 12
+      - columns:
+          - field: first_name
+            span: 6
+          - field: last_name
+            span: 6
+      - columns:
+          - field: reports_to_id
+            span: 6
+          - field: role_ids
+            span: 6
+
+    fields:
+      - name: username
+        label: Username
+        type: TEXT
+        required: true
+        readonly:
+          - VIEW
+      - name: password
+        label: Password
+        type: PASSWORD
+        required: true
+        visible:
+          - ADD
+      - name: email
+        label: Email
+        type: TEXT
+        readonly:
+          - VIEW
+      - name: first_name
+        label: First Name
+        type: TEXT
+        readonly:
+          - VIEW
+      - name: last_name
+        label: Last Name
+        type: TEXT
+        readonly:
+          - VIEW
+      - name: reports_to_id
+        label: Reports To
+        type: SELECT
+        readonly:
+          - VIEW
+        selectConfig:
+          resource: list-users
+          displayField: full_name
+          selectHandler: converter
+          currentSelection:
+            - key: reports_to_id
+              as: id
+          selectParser: converter
+          fields_to_extract:
+            - key: id
+              as: reports_to_id
+            - key: full_name
+              as: reports_to_name
+      - name: role_ids
+        label: Roles
+        type: SELECT
+        required: true
+        multi: true
+        readonly:
+          - VIEW
+        selectConfig:
+          resource: list-roles
+          displayField: role_name
+          selectHandler: concatinator
+          currentSelection:
+            - key: role_ids
+              as: id
+          selectParser: splitter
+          fields_to_extract:
+            - key: id
+              as: role_ids
+            - key: role_name
+              as: role_name

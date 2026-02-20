@@ -1,5 +1,5 @@
 version: 1.0
-configName: state-details
+configName: city-details
 
 # Form-level actions (global)
 applicableActions:
@@ -28,27 +28,24 @@ actionConfig:
       VIEW: Close
 
 sections:
-  # Section 1: State Details (FIELDS)
+  # Section 1: City Details (FIELDS)
   - sectionType: FIELDS
-    sectionName: state_details
-    label: State Details
+    sectionName: city_details
+    label: City Details
 
     # Section-level data fetching
     queryInfo:
       returnType: SINGLE_ROW
       query: |
         SELECT
-          s.id,
-          s.country_id,
-          s.name as state_name,
-          s.code as state_code,
-          c.name as country_name,
-          s.descr
+          id,
+          name as city_name,
+          code as city_code,
+          descr
         FROM
-          wms.state s
-          LEFT JOIN wms.country c ON s.country_id = c.id
+          wms.city
         WHERE
-          s.id = $1
+          id = $1
       payload:
         - _context.id # Explicit: from initial context
       executionConditions:
@@ -73,8 +70,8 @@ sections:
     actionConfig:
       SAVE:
         label:
-          ADD: Create State
-          EDIT: Update State
+          ADD: Create City
+          EDIT: Update City
         icon: Save
         variant: primary
         actionType: EXECUTE_QUERY
@@ -82,21 +79,19 @@ sections:
           returnType: SCALAR
           query:
             ADD: |
-              SELECT wms.insert_state($1, $2, $3, $4, $5) as id;
+              SELECT wms.insert_city($1, $2, $3, $4) as id;
             EDIT: |
-              SELECT wms.update_state($1, $2, $3, $4, $5, $6) as id;
+              SELECT wms.update_city($1, $2, $3, $4, $5) as id;
           payload:
             ADD:
-              - state_details.state_name
-              - state_details.state_code
-              - state_details.descr
-              - state_details.country_id
+              - city_details.city_name
+              - city_details.city_code
+              - city_details.descr
             EDIT:
-              - _context.id # State ID
-              - state_details.state_name
-              - state_details.state_code
-              - state_details.descr
-              - state_details.country_id
+              - _context.id # City ID
+              - city_details.city_name
+              - city_details.city_code
+              - city_details.descr
           contextParams:
             - current_user_id
           path:
@@ -130,11 +125,9 @@ sections:
     # Row-based layout
     rows:
       - columns:
-          - field: state_name
-            span: 4
-          - field: state_code
-            span: 4
-          - field: country_id
+          - field: city_name
+            span: 8
+          - field: city_code
             span: 4
       - columns:
           - field: descr
@@ -142,43 +135,23 @@ sections:
 
     # Field definitions
     fields:
-      - name: state_name
-        label: State Name
+      - name: city_name
+        label: City Name
         type: TEXT
         readonly:
           - VIEW
         required: true
 
-      - name: state_code
-        label: State Code
+      - name: city_code
+        label: City Code
         type: TEXT
         readonly:
           - VIEW
         required: true
+        maxLength: 3
 
       - name: descr
         label: Description
         type: TEXTAREA
         readonly:
           - VIEW
-
-      - name: country_id
-        label: Country
-        type: SELECT
-        readonly:
-          - VIEW
-        required: true
-        multi: false
-        selectConfig:
-          resource: list-countries
-          displayField: country_name
-          selectHandler: converter
-          currentSelection:
-            - key: country_id
-              as: id
-          selectParser: converter
-          fields_to_extract:
-            - key: id
-              as: country_id
-            - key: country_name
-              as: country_name

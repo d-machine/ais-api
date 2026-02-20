@@ -1,0 +1,412 @@
+version: 1.0
+configName: purchase-order-details
+title: Purchase Order
+
+applicableActions:
+  ADD:
+    - FINISH
+    - CANCEL
+  EDIT:
+    - FINISH
+    - CANCEL
+  VIEW:
+    - CLOSE
+actionConfig:
+  FINISH:
+    visible: true
+    closeAction: REFRESH
+    label: Finish
+    variant: primary
+  CANCEL:
+    visible: true
+    variant: danger
+    label:
+      ADD: Discard
+      EDIT: Discard
+  CLOSE:
+    visible: true
+    variant: secondary
+    label:
+      VIEW: Close
+
+sections:
+  - sectionType: FIELDS
+    sectionName: purchase_order_header
+    label: Order Header
+    queryInfo:
+      returnType: SINGLE_ROW
+      query: |
+        SELECT
+          ph.id, ph.entry_no, ph.entry_dt, ph.vendor_id, v.name as vendor_name,
+          ph.broker_id, b.name as broker_name, ph.delivery_at_id,
+          CONCAT_WS(', ', a.adr1, a.adr2, a.adr3, c.name) as full_address,
+          ph.trsp_id, t.name as trsp_name, ph.year_code, ph.delivery_dt,
+          ph.status, ph.remarks
+        FROM wms.purchase_order_header ph
+        LEFT JOIN wms.vendor v ON ph.vendor_id = v.id
+        LEFT JOIN wms.broker b ON ph.broker_id = b.id
+        LEFT JOIN wms.address a ON ph.delivery_at_id = a.id
+        LEFT JOIN wms.city c ON a.city_id = c.id
+        LEFT JOIN wms.transport t ON ph.trsp_id = t.id
+        WHERE ph.id = $1
+      payload:
+        - _context.id
+      executionConditions:
+        - indices:
+            - 0
+          operator: IS_NOT_NIL
+      path:
+        - sections
+        - 0
+
+    applicableActions:
+      ADD:
+        - SAVE
+        - CANCEL
+      EDIT:
+        - SAVE
+        - CANCEL
+
+    actionConfig:
+      SAVE:
+        label:
+          ADD: Save Header & Continue
+          EDIT: Update Header
+        icon: Save
+        variant: primary
+        actionType: EXECUTE_QUERY
+        queryInfo:
+          returnType: SINGLE_ROW
+          query:
+            ADD: SELECT * FROM wms.insert_purchase_order_header($1, $2, $3, $4, $5, $6, $7, $8, $9)
+            EDIT: SELECT wms.update_purchase_order_header($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) as id
+          payload:
+            ADD:
+              - purchase_order_header.entry_dt
+              - purchase_order_header.vendor_id
+              - purchase_order_header.broker_id
+              - purchase_order_header.delivery_at_id
+              - purchase_order_header.trsp_id
+              - purchase_order_header.delivery_dt
+              - purchase_order_header.status
+              - purchase_order_header.remarks
+            EDIT:
+              - _context.id
+              - purchase_order_header.entry_no
+              - purchase_order_header.entry_dt
+              - purchase_order_header.vendor_id
+              - purchase_order_header.broker_id
+              - purchase_order_header.delivery_at_id
+              - purchase_order_header.trsp_id
+              - purchase_order_header.delivery_dt
+              - purchase_order_header.status
+              - purchase_order_header.remarks
+          contextParams:
+            - current_user_id
+          path:
+            - sections
+            - 0
+            - actionConfig
+            - SAVE
+        onSuccess:
+          ADD:
+            callback: SAVE_AND_GO_TO_NEXT
+          EDIT:
+            callback: HANDLE_FORM_ACTION
+            params:
+              action: FINISH
+        onFailure: showErrorSnackbar
+      CANCEL:
+        label: Discard Changes
+        icon: ClipboardX
+        variant: danger
+        actionType: NAVIGATE
+        onSuccess: exitAndComplete
+      EDIT:
+        label: Edit
+        icon: Edit
+        variant: primary
+        actionType: FUNCTION_EXECUTION
+        functionInfo:
+          name: changeMode
+          params:
+            mode: EDIT
+
+    rows:
+      - columns:
+          - field: entry_no
+            span: 3
+          - field: entry_dt
+            span: 3
+          - field: vendor_id
+            span: 6
+      - columns:
+          - field: broker_id
+            span: 4
+          - field: delivery_at_id
+            span: 4
+          - field: trsp_id
+            span: 4
+      - columns:
+          - field: year_code
+            span: 3
+          - field: delivery_dt
+            span: 3
+          - field: status
+            span: 3
+          - field: remarks
+            span: 3
+
+    fields:
+      - name: entry_no
+        label: Order No
+        type: TEXT
+        readonly: true
+      - name: entry_dt
+        label: Order Date
+        type: DATE
+        defaultValue: TODAY
+        required: true
+        readonly:
+          - VIEW
+      - name: vendor_id
+        label: Vendor
+        type: SELECT
+        required: true
+        readonly:
+          - VIEW
+        selectConfig:
+          resource: list-vendors
+          displayField: vendor_name
+          selectHandler: converter
+          selectParser: converter
+          currentSelection:
+            - key: vendor_id
+              as: id
+          fields_to_extract:
+            - key: id
+              as: vendor_id
+            - key: vendor_name
+              as: vendor_name
+      - name: broker_id
+        label: Broker
+        type: SELECT
+        readonly:
+          - VIEW
+        selectConfig:
+          resource: list-brokers
+          displayField: broker_name
+          selectHandler: converter
+          selectParser: converter
+          currentSelection:
+            - key: broker_id
+              as: id
+          fields_to_extract:
+            - key: id
+              as: broker_id
+            - key: broker_name
+              as: broker_name
+      - name: delivery_at_id
+        label: Delivery Address
+        type: SELECT
+        required: true
+        readonly:
+          - VIEW
+        selectConfig:
+          resource: list-addresses
+          displayField: full_address
+          selectHandler: converter
+          selectParser: converter
+          currentSelection:
+            - key: delivery_at_id
+              as: id
+          fields_to_extract:
+            - key: id
+              as: delivery_at_id
+            - key: full_address
+              as: full_address
+      - name: trsp_id
+        label: Transport
+        type: SELECT
+        readonly:
+          - VIEW
+        selectConfig:
+          resource: list-transports
+          displayField: trsp_name
+          selectHandler: converter
+          selectParser: converter
+          currentSelection:
+            - key: trsp_id
+              as: id
+          fields_to_extract:
+            - key: id
+              as: trsp_id
+            - key: transport_name
+              as: trsp_name
+      - name: year_code
+        label: Year Code
+        type: TEXT
+        readonly: true
+      - name: delivery_dt
+        label: Delivery Date
+        type: DATE
+        readonly:
+          - VIEW
+      - name: status
+        label: Status
+        type: TEXT
+        defaultValue: Draft
+        readonly:
+          - VIEW
+      - name: remarks
+        label: Remarks
+        type: TEXTAREA
+        readonly:
+          - VIEW
+
+  - sectionType: TABLE
+    sectionName: purchase_order_details
+    label: Line Items
+    disabled:
+      targets:
+        - - purchase_order_header
+          - id
+      conditions:
+        - operator: IS_NIL
+          indices:
+            - 0
+    queryInfo:
+      returnType: MULTIPLE_ROWS
+      query: |
+        SELECT d.id, d.row_no, m.name as item_name, u1.name as uom_pc_name,
+               u2.name as uom_package_name, d.rate_per_pc, d.eqty, d.amount,
+               d.iqty, d.status
+        FROM wms.purchase_order_details d
+        LEFT JOIN wms.material m ON d.item_id = m.id
+        LEFT JOIN wms.uom u1 ON d.euom = u1.id
+        LEFT JOIN wms.uom u2 ON d.puom = u2.id
+        WHERE d.header_id = $1 AND d.is_active = true
+        ORDER BY d.row_no
+      payload:
+        - purchase_order_header.id
+      path:
+        - sections
+        - 1
+
+    applicableActions:
+      ADD:
+        - ADD
+        - EDIT
+        - VIEW
+        - DELETE
+      EDIT:
+        - ADD
+        - EDIT
+        - VIEW
+        - DELETE
+      VIEW:
+        - VIEW
+
+    actionConfig:
+      ADD:
+        label: Add Item
+        icon: Plus
+        actionType: DISPLAY_FORM
+        level: HEADER
+        formConfig: purchase-order-item-details
+        mode: ADD
+        payload:
+          - key: id
+            as: header_id
+        onSuccess: refresh
+      VIEW:
+        label: View
+        icon: Eye
+        actionType: DISPLAY_FORM
+        level: ROW
+        formConfig: purchase-order-item-details
+        mode: VIEW
+        variant: secondary
+        payload:
+          - id
+      EDIT:
+        label: Edit
+        icon: Edit
+        actionType: DISPLAY_FORM
+        level: ROW
+        formConfig: purchase-order-item-details
+        mode: EDIT
+        variant: primary
+        payload:
+          - id
+        onSuccess: refresh
+      DELETE:
+        label: Delete
+        icon: Trash2
+        variant: danger
+        actionType: EXECUTE_QUERY
+        level: ROW
+        confirmationRequired: true
+        queryInfo:
+          query: SELECT wms.delete_purchase_order_details($1, $2) as id
+          payload:
+            - id
+          contextParams:
+            - current_user_id
+          path:
+            - sections
+            - 1
+            - actionConfig
+            - DELETE
+        onSuccess: refresh
+
+    columns:
+      - name: id
+        label: ID
+        visible: false
+      - name: row_no
+        label: Row#
+        visible: true
+        width: 80
+      - name: item_name
+        label: Item
+        visible: true
+        width: 200
+      - name: uom_pc_name
+        label: Base UOM
+        visible: true
+        width: 100
+      - name: uom_package_name
+        label: Pkg UOM
+        visible: true
+        width: 100
+      - name: rate_per_pc
+        label: Rate
+        visible: true
+        dataType: currency
+        width: 100
+        align: right
+      - name: eqty
+        label: Qty
+        visible: true
+        width: 80
+        align: right
+      - name: amount
+        label: Amount
+        visible: true
+        dataType: currency
+        width: 120
+        align: right
+      - name: iqty
+        label: Inward Qty
+        visible: true
+        width: 100
+        align: right
+      - name: status
+        label: Status
+        visible: true
+        width: 100
+      - name: remarks
+        label: Remarks
+        visible: true
+        width: 150

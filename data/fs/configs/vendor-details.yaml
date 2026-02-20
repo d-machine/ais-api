@@ -1,8 +1,39 @@
-configType: FORM
 version: 1.0
+configName: vendor-details
+
+# Form-level actions (global)
+applicableActions:
+  ADD:
+    - FINISH
+    - CANCEL
+  EDIT:
+    - FINISH
+    - CANCEL
+  VIEW:
+    - FINISH
+    - CLOSE
+actionConfig:
+  FINISH:
+    visible: false
+    closeAction: REFRESH
+  CANCEL:
+    visible: true
+    variant: danger
+    label:
+      ADD: Discard Changes
+      EDIT: Discard Changes
+  CLOSE:
+    visible: true
+    label:
+      VIEW: Close
+
 sections:
+  # Section 1: Vendor Details (FIELDS)
   - sectionType: FIELDS
-    sectionName: Vendor Details
+    sectionName: vendor_details
+    label: Vendor Details
+
+    # Section-level data fetching
     queryInfo:
       returnType: SINGLE_ROW
       query: |
@@ -44,45 +75,91 @@ sections:
         LEFT JOIN wms.country co ON v.country_id = co.id
         WHERE v.id = $1
       payload:
-        - id
+        - _context.id # Explicit: from initial context
+      executionConditions:
+        - indices:
+            - 0
+          operator: IS_NOT_NIL
       path:
         - sections
         - 0
+
+    # Section-level actions
     applicableActions:
-      - SAVE
-      - CANCEL
+      ADD:
+        - SAVE
+        - CANCEL
+      EDIT:
+        - SAVE
+        - CANCEL
+      VIEW:
+        - EDIT
+
     actionConfig:
       SAVE:
-        label: Update Vendor
+        label:
+          ADD: Create Vendor
+          EDIT: Update Vendor
+        icon: Save
+        variant: primary
         actionType: EXECUTE_QUERY
         queryInfo:
           returnType: SCALAR
-          query: SELECT wms.update_vendor($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25) as id;
+          query:
+            ADD: |
+              SELECT wms.insert_vendor($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24) as id;
+            EDIT: |
+              SELECT wms.update_vendor($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25) as id;
           payload:
-            - id
-            - category_id
-            - vendor_type
-            - vendor_name
-            - add1
-            - add2
-            - add3
-            - city_id
-            - district_id
-            - state_id
-            - country_id
-            - pincode
-            - person_name
-            - telephone
-            - email
-            - salesman
-            - pan_no
-            - cr_limit
-            - cr_days
-            - gstno
-            - aadhar_no
-            - sales_head
-            - director
-            - manager
+            ADD:
+              - vendor_details.category_id
+              - vendor_details.vendor_type
+              - vendor_details.vendor_name
+              - vendor_details.add1
+              - vendor_details.add2
+              - vendor_details.add3
+              - vendor_details.city_id
+              - vendor_details.district_id
+              - vendor_details.state_id
+              - vendor_details.country_id
+              - vendor_details.pincode
+              - vendor_details.person_name
+              - vendor_details.telephone
+              - vendor_details.email
+              - vendor_details.salesman
+              - vendor_details.pan_no
+              - vendor_details.cr_limit
+              - vendor_details.cr_days
+              - vendor_details.gstno
+              - vendor_details.aadhar_no
+              - vendor_details.sales_head
+              - vendor_details.director
+              - vendor_details.manager
+            EDIT:
+              - _context.id # ID for update
+              - vendor_details.category_id
+              - vendor_details.vendor_type
+              - vendor_details.vendor_name
+              - vendor_details.add1
+              - vendor_details.add2
+              - vendor_details.add3
+              - vendor_details.city_id
+              - vendor_details.district_id
+              - vendor_details.state_id
+              - vendor_details.country_id
+              - vendor_details.pincode
+              - vendor_details.person_name
+              - vendor_details.telephone
+              - vendor_details.email
+              - vendor_details.salesman
+              - vendor_details.pan_no
+              - vendor_details.cr_limit
+              - vendor_details.cr_days
+              - vendor_details.gstno
+              - vendor_details.aadhar_no
+              - vendor_details.sales_head
+              - vendor_details.director
+              - vendor_details.manager
           contextParams:
             - current_user_id
           path:
@@ -90,11 +167,30 @@ sections:
             - 0
             - actionConfig
             - SAVE
-        onSuccess: exitAndComplete
+        onSuccess:
+          callback: HANDLE_FORM_ACTION
+          params:
+            action: FINISH
         onFailure: showErrorSnackbar
+
       CANCEL:
         label: Discard Changes
-    
+        icon: ClipboardX
+        variant: danger
+        actionType: NAVIGATE
+        onSuccess: exitAndComplete
+
+      EDIT:
+        label: Edit
+        icon: Edit
+        variant: primary
+        actionType: FUNCTION_EXECUTION
+        functionInfo:
+          name: changeMode
+          params:
+            mode: EDIT
+
+    # Row-based layout
     rows:
       - columns:
           - field: vendor_name
@@ -144,24 +240,26 @@ sections:
           - field: sales_head
             span: 6
       - columns:
-          - field: cr_limit
-            span: 6
-          - field: cr_days
-            span: 6
-      - columns:
           - field: director
             span: 6
           - field: manager
             span: 6
-    
+      - columns:
+          - field: cr_limit
+            span: 6
+          - field: cr_days
+            span: 6
+
+    # Field definitions
     fields:
       - name: category_id
         label: Vendor Category
         type: SELECT
+        readonly:
+          - VIEW
         required: true
         selectConfig:
           resource: list-vendor-categories
-          labelField: category_name
           displayField: category_name
           selectHandler: converter
           currentSelection:
@@ -173,39 +271,50 @@ sections:
               as: category_id
             - key: category_name
               as: category_name
-      
+
       - name: vendor_type
         label: Vendor Type
         type: TEXT
+        readonly:
+          - VIEW
         required: true
-      
+
       - name: vendor_name
         label: Vendor Name
         type: TEXT
+        readonly:
+          - VIEW
         required: true
-      
+
       - name: add1
         label: Address Line 1
         type: TEXT
+        readonly:
+          - VIEW
         required: false
-      
+
       - name: add2
         label: Address Line 2
         type: TEXT
+        readonly:
+          - VIEW
         required: false
-      
+
       - name: add3
         label: Address Line 3
         type: TEXT
+        readonly:
+          - VIEW
         required: false
-      
+
       - name: country_id
         label: Country
         type: SELECT
+        readonly:
+          - VIEW
         required: true
         selectConfig:
           resource: list-countries
-          labelField: country_name
           displayField: country_name
           selectHandler: converter
           currentSelection:
@@ -217,14 +326,15 @@ sections:
               as: country_id
             - key: country_name
               as: country_name
-      
+
       - name: state_id
         label: State
         type: SELECT
+        readonly:
+          - VIEW
         required: true
         selectConfig:
           resource: list-states
-          labelField: state_name
           displayField: state_name
           selectHandler: converter
           currentSelection:
@@ -237,19 +347,21 @@ sections:
             - key: state_name
               as: state_name
         dependencies:
-          - target: [country_id]
+          - target:
+              - country_id
             handler: filterByDependency
             required: true
             dependencyConfig:
               targetParam: country_id
-      
+
       - name: city_id
         label: City
         type: SELECT
+        readonly:
+          - VIEW
         required: true
         selectConfig:
           resource: list-cities-by-state-district
-          labelField: city_name
           displayField: city_name
           selectHandler: converter
           currentSelection:
@@ -262,24 +374,27 @@ sections:
             - key: city_name
               as: city_name
         dependencies:
-          - target: [state_id]
+          - target:
+              - state_id
             handler: filterByDependency
             required: true
             dependencyConfig:
               targetParam: state_id
-          - target: [district_id]
+          - target:
+              - district_id
             handler: filterByDependency
             required: false
             dependencyConfig:
               targetParam: district_id
-      
+
       - name: district_id
         label: District
         type: SELECT
+        readonly:
+          - VIEW
         required: true
         selectConfig:
           resource: list-districts-by-state-city
-          labelField: district_name
           displayField: district_name
           selectHandler: converter
           currentSelection:
@@ -292,78 +407,106 @@ sections:
             - key: district_name
               as: district_name
         dependencies:
-          - target: [state_id]
+          - target:
+              - state_id
             handler: filterByDependency
             required: true
             dependencyConfig:
               targetParam: state_id
-          - target: [city_id]
+          - target:
+              - city_id
             handler: filterByDependency
             required: false
             dependencyConfig:
               targetParam: city_id
-      
+
       - name: pincode
         label: Pincode
         type: TEXT
+        readonly:
+          - VIEW
         required: false
-      
+
       - name: person_name
         label: Contact Person
         type: TEXT
+        readonly:
+          - VIEW
         required: false
-      
+
       - name: telephone
         label: Telephone
         type: TEXT
+        readonly:
+          - VIEW
         required: false
-      
+
       - name: email
         label: Email
         type: TEXT
+        readonly:
+          - VIEW
         required: false
-      
+
       - name: pan_no
         label: PAN No
         type: TEXT
+        readonly:
+          - VIEW
         required: false
-      
+
       - name: gstno
         label: GST No
         type: TEXT
+        readonly:
+          - VIEW
         required: false
-      
+
       - name: cr_limit
         label: Credit Limit
         type: NUMBER
+        readonly:
+          - VIEW
         required: false
-      
+
       - name: cr_days
         label: Credit Days
         type: NUMBER
+        readonly:
+          - VIEW
         required: false
-      
+
       - name: salesman
         label: Salesman
         type: TEXT
+        readonly:
+          - VIEW
         required: false
-      
+
       - name: aadhar_no
         label: Aadhaar No
         type: TEXT
+        readonly:
+          - VIEW
         required: false
-      
+
       - name: sales_head
         label: Sales Head
         type: TEXT
+        readonly:
+          - VIEW
         required: false
-      
+
       - name: director
         label: Director
         type: TEXT
+        readonly:
+          - VIEW
         required: false
-      
+
       - name: manager
         label: Manager
         type: TEXT
+        readonly:
+          - VIEW
         required: false

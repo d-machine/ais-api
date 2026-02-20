@@ -1,34 +1,51 @@
-configType: FORM
 version: 1.0
-formActions:
+configName: sales-order-details
+title: Sales Order Details
+
+applicableActions:
+  ADD:
+    - FINISH
+    - CANCEL
+  EDIT:
+    - FINISH
+    - CANCEL
+  VIEW:
+    - FINISH
+    - CLOSE
+
+actionConfig:
   FINISH:
-    label: Finish
     visible: true
-    actionType: NAVIGATE
-    onSuccess: exitAndComplete
+    closeAction: REFRESH
+    label: Finish
+    variant: primary
+  CANCEL:
+    visible: true
+    variant: danger
+    label:
+      ADD: Discard
+      EDIT: Discard
+    icon: X
+  CLOSE:
+    visible: true
+    variant: secondary
+    label:
+      VIEW: Close
+    icon: X
 
 sections:
   - sectionType: FIELDS
-    sectionName: Order Header
+    sectionName: order_header
+    label: Order Information
     queryInfo:
       returnType: SINGLE_ROW
       query: |
         SELECT
-          sh.id,
-          sh.entry_no,
-          sh.entry_dt,
-          sh.party_id,
-          p.name as party_name,
-          sh.broker_id,
-          b.name as broker_name,
-          sh.delivery_at_id,
+          sh.id, sh.entry_no, sh.entry_dt, sh.party_id, p.name as party_name,
+          sh.broker_id, b.name as broker_name, sh.delivery_at_id,
           CONCAT_WS(', ', a.adr1, a.adr2, a.adr3, c.name) as full_address,
-          sh.trsp_id,
-          t.name as trsp_name,
-          sh.year_code,
-          sh.delivery_dt,
-          sh.status,
-          sh.remarks
+          sh.trsp_id, t.name as trsp_name, sh.year_code, sh.delivery_dt,
+          sh.status, sh.remarks
         FROM wms.sales_order_header sh
         LEFT JOIN wms.party p ON sh.party_id = p.id
         LEFT JOIN wms.broker b ON sh.broker_id = b.id
@@ -37,30 +54,58 @@ sections:
         LEFT JOIN wms.transport t ON sh.trsp_id = t.id
         WHERE sh.id = $1
       payload:
-        - id
+        - _context.id
+      executionConditions:
+        - indices:
+            - 0
+          operator: IS_NOT_NIL
       path:
         - sections
         - 0
+
     applicableActions:
-      - SAVE
-      - CANCEL
+      ADD:
+        - SAVE
+        - CANCEL
+      EDIT:
+        - SAVE
+        - CANCEL
+      VIEW:
+        - EDIT
+
     actionConfig:
       SAVE:
-        label: Update Header
+        label:
+          ADD: Save & Continue
+          EDIT: Save Changes
+        icon: Save
+        variant: primary
         actionType: EXECUTE_QUERY
         queryInfo:
-          returnType: SCALAR
-          query: SELECT wms.update_sales_order_header($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) as id;
+          returnType: SINGLE_ROW
+          query:
+            ADD: SELECT * FROM wms.insert_sales_order_header($1, $2, $3, $4, $5, $6, $7, $8, $9)
+            EDIT: SELECT wms.update_sales_order_header($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) as id
           payload:
-            - id
-            - entry_dt
-            - party_id
-            - broker_id
-            - delivery_at_id
-            - trsp_id
-            - delivery_dt
-            - status
-            - remarks
+            ADD:
+              - order_header.entry_dt
+              - order_header.party_id
+              - order_header.broker_id
+              - order_header.delivery_at_id
+              - order_header.trsp_id
+              - order_header.delivery_dt
+              - order_header.status
+              - order_header.remarks
+            EDIT:
+              - id
+              - order_header.entry_dt
+              - order_header.party_id
+              - order_header.broker_id
+              - order_header.delivery_at_id
+              - order_header.trsp_id
+              - order_header.delivery_dt
+              - order_header.status
+              - order_header.remarks
           contextParams:
             - current_user_id
           path:
@@ -68,10 +113,29 @@ sections:
             - 0
             - actionConfig
             - SAVE
-        onSuccess: exitAndComplete
+        onSuccess:
+          ADD:
+            callback: SAVE_AND_GO_TO_NEXT
+          EDIT:
+            callback: HANDLE_FORM_ACTION
+            params:
+              action: FINISH
         onFailure: showErrorSnackbar
       CANCEL:
-        label: Discard Changes
+        label: Discard
+        icon: X
+        variant: danger
+        actionType: NAVIGATE
+        onSuccess: exitAndComplete
+      EDIT:
+        label: Edit
+        icon: Edit
+        variant: primary
+        actionType: FUNCTION_EXECUTION
+        functionInfo:
+          name: changeMode
+          params:
+            mode: EDIT
 
     rows:
       - columns:
@@ -101,15 +165,22 @@ sections:
             span: 12
 
     fields:
+      - name: id
+        label: ID
+        type: NUMBER
+        visible: false
       - name: entry_no
         label: Entry No
         type: TEXT
-        required: false
         readonly: true
+        placeholder: "Auto-generated"
       - name: entry_dt
         label: Entry Date
         type: DATE
         required: true
+        readonly:
+          - VIEW
+        defaultValue: "TODAY"
       - name: year_code
         label: Year Code
         type: TEXT
@@ -118,6 +189,9 @@ sections:
         label: Party
         type: SELECT
         required: true
+        readonly:
+          - VIEW
+          - EDIT
         selectConfig:
           resource: list-parties
           displayField: party_name
@@ -134,7 +208,8 @@ sections:
       - name: broker_id
         label: Broker
         type: SELECT
-        required: false
+        readonly:
+          - VIEW
         selectConfig:
           resource: list-brokers
           displayField: broker_name
@@ -152,6 +227,8 @@ sections:
         label: Delivery Address
         type: SELECT
         required: true
+        readonly:
+          - VIEW
         selectConfig:
           resource: list-addresses
           displayField: full_address
@@ -169,6 +246,8 @@ sections:
         label: Transport
         type: SELECT
         required: true
+        readonly:
+          - VIEW
         selectConfig:
           resource: list-transports
           displayField: transport_name
@@ -185,126 +264,104 @@ sections:
       - name: delivery_dt
         label: Delivery Date
         type: DATE
-        required: false
+        readonly:
+          - VIEW
       - name: status
         label: Status
         type: TEXT
-        required: true
+        readonly:
+          - VIEW
+          - EDIT
+        defaultValue: "Draft"
       - name: remarks
         label: Remarks
         type: TEXTAREA
+        readonly:
+          - VIEW
 
   - sectionType: TABLE
     sectionName: Order Details
-
+    label: Line Items
+    disabled:
+      condition: isEmpty
+      field: id
     queryInfo:
       returnType: MULTIPLE_ROWS
       query: |
         SELECT
-          d.id,
-          d.header_id,
-          d.row_no,
-          m.name as item_name,
-          u1.name as uom_pc_name,
-          u2.name as uom_package_name,
-          d.rate_per_pc,
-          d.eqty,
-          d.amount,
-          d.dqty,
-          d.status,
-          d.remarks
+          d.id, d.header_id, d.row_no, m.name as item_name,
+          u1.name as uom_pc_name, u2.name as uom_package_name,
+          d.rate_per_pc, d.eqty, d.amount, d.dqty, d.status, d.remarks
         FROM wms.sales_order_details d
         LEFT JOIN wms.material m ON d.item_id = m.id
         LEFT JOIN wms.uom u1 ON d.euom = u1.id
         LEFT JOIN wms.uom u2 ON d.puom = u2.id
         WHERE d.header_id = $1 AND d.is_active = true
+        ORDER BY d.row_no
       payload:
         - id
       path:
         - sections
         - 1
-      options:
-        applyFiltering: false
-        applySorting: false
-        applyPagination: false
 
-    columns:
-      - name: id
-        label: ID
-        visible: false
-      - name: row_no
-        label: Row#
-        visible: true
-        width: 80
-      - name: item_name
-        label: Item
-        visible: true
-        width: 200
-      - name: uom_pc_name
-        label: Base UOM
-        visible: true
-        width: 100
-      - name: uom_package_name
-        label: Pkg UOM
-        visible: true
-        width: 100
-      - name: rate_per_pc
-        label: Rate
-        visible: true
-        dataType: currency
-        width: 100
-        align: right
-      - name: eqty
-        label: Qty
-        visible: true
-        width: 80
-        align: right
-      - name: amount
-        label: Amount
-        visible: true
-        dataType: currency
-        width: 120
-        align: right
-      - name: dqty
-        label: Dispatched Qty
-        visible: true
-        width: 120
-        align: right
-      - name: status
-        label: Status
-        visible: true
-        width: 100
-      - name: remarks
-        label: Remarks
-        visible: true
-        width: 150
+    applicableActions:
+      ADD:
+        - view_item
+        - add_item
+        - edit_item
+        - delete_item
+      EDIT:
+        - view_item
+        - add_item
+        - edit_item
+        - delete_item
+      VIEW:
+        - view_item
 
     actionConfig:
-      add:
-        label: Add Item
-        actionType: DISPLAY_FORM
-        formConfig: add-sales-order-detail
-        payload:
-          - key: id
-            as: header_id
-        onSuccess: refresh
-      edit:
-        label: Edit
+      view_item:
+        label: View
+        icon: Eye
+        variant: secondary
         actionType: DISPLAY_FORM
         level: ROW
-        formConfig: edit-sales-order-detail
+        formConfig: sales-order-item-details
+        mode: VIEW
         payload:
-          - id
+          header_id: id
+          id: id
+      add_item:
+        label: Add Item
+        icon: Plus
+        variant: primary
+        actionType: DISPLAY_FORM
+        level: HEADER
+        formConfig: sales-order-item-details
+        mode: ADD
+        payload:
+          header_id: id
         onSuccess: refresh
-      delete:
+      edit_item:
+        label: Edit
+        icon: Edit
+        variant: primary
+        actionType: DISPLAY_FORM
+        level: ROW
+        formConfig: sales-order-item-details
+        mode: EDIT
+        payload:
+          header_id: id
+          id: id
+        onSuccess: refresh
+      delete_item:
         label: Delete
+        icon: Trash2
+        variant: danger
         actionType: EXECUTE_QUERY
         level: ROW
         confirmationRequired: true
-        confirmationMessage: "Delete item '${row.item_name}'?"
         queryInfo:
-          returnType: SCALAR
-          query: SELECT wms.delete_sales_order_details($1, $2) as id;
+          query: SELECT wms.delete_sales_order_details($1, $2) as id
           payload:
             - id
           contextParams:
@@ -313,6 +370,34 @@ sections:
             - sections
             - 1
             - actionConfig
-            - delete
+            - delete_item
         onSuccess: refresh
-        onFailure: showErrorSnackbar
+
+    columns:
+      - name: row_no
+        label: Row#
+        width: 80
+        align: center
+      - name: item_name
+        label: Item
+        width: 250
+      - name: rate_per_pc
+        label: Rate
+        width: 100
+        align: right
+        dataType: currency
+      - name: eqty
+        label: Qty
+        width: 100
+        align: right
+      - name: amount
+        label: Amount
+        width: 120
+        align: right
+        dataType: currency
+      - name: last_updated_at
+        label: Updated At
+        visible: false
+      - name: status
+        label: Status
+        width: 100

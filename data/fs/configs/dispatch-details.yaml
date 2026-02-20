@@ -1,0 +1,299 @@
+version: 1.0
+configName: dispatch-details
+title: Dispatch Details
+
+applicableActions:
+  ADD:
+    - FINISH
+    - CANCEL
+  EDIT:
+    - FINISH
+    - CANCEL
+  VIEW:
+    - FINISH
+    - CLOSE
+
+actionConfig:
+  FINISH:
+    visible: true
+    closeAction: REFRESH
+    label: Finish
+    variant: primary
+  CANCEL:
+    visible: true
+    variant: danger
+    label:
+      ADD: Discard
+      EDIT: Discard
+    icon: X
+  CLOSE:
+    visible: true
+    variant: secondary
+    label:
+      VIEW: Close
+    icon: X
+
+sections:
+  - sectionType: FIELDS
+    sectionName: dispatch_header
+    label: Dispatch Information
+    queryInfo:
+      returnType: SINGLE_ROW
+      query: |
+        SELECT
+          h.id, h.entry_no, h.entry_dt, h.party_id, p.name as party_name,
+          h.pl_ids, h.vehicle_no, h.driver_name, h.status, h.remarks
+        FROM wms.dispatch_header h
+        JOIN wms.party p ON h.party_id = p.id
+        WHERE h.id = $1
+      payload:
+        - _context.id
+      executionConditions:
+        - indices:
+            - 0
+          operator: IS_NOT_NIL
+      path:
+        - sections
+        - 0
+
+    applicableActions:
+      ADD:
+        - SAVE
+        - CANCEL
+      EDIT:
+        - SAVE
+        - PROCESS
+        - CANCEL
+      VIEW:
+        - EDIT
+
+    actionConfig:
+      SAVE:
+        label:
+          ADD: Save & Continue
+          EDIT: Save Changes
+        icon: Save
+        variant: primary
+        actionType: EXECUTE_QUERY
+        queryInfo:
+          returnType: SINGLE_ROW
+          query:
+            ADD: SELECT wms.insert_dispatch_header($1, $2, $3, $4, $5, $6, $7) as id
+            EDIT: SELECT wms.update_dispatch_header($1, $2, $3, $4, $5, $6, $7, $8) as id
+          payload:
+            ADD:
+              - dispatch_header.entry_dt
+              - dispatch_header.party_id
+              - dispatch_header.pl_ids
+              - dispatch_header.vehicle_no
+              - dispatch_header.driver_name
+              - dispatch_header.remarks
+            EDIT:
+              - id
+              - dispatch_header.entry_no
+              - dispatch_header.entry_dt
+              - dispatch_header.party_id
+              - dispatch_header.pl_ids
+              - dispatch_header.vehicle_no
+              - dispatch_header.driver_name
+              - dispatch_header.remarks
+          contextParams:
+            - current_user_id
+          path:
+            - sections
+            - 0
+            - actionConfig
+            - SAVE
+        onSuccess:
+          ADD:
+            callback: SAVE_AND_GO_TO_NEXT
+          EDIT:
+            callback: HANDLE_FORM_ACTION
+            params:
+              action: FINISH
+        onFailure: showErrorSnackbar
+      PROCESS:
+        label: Process Dispatch
+        icon: Truck
+        variant: primary
+        actionType: EXECUTE_QUERY
+        condition: status === 'Draft'
+        confirmationRequired: true
+        confirmationMessage: "Are you sure you want to process this dispatch? This will deduct stock and update Sales Orders."
+        queryInfo:
+          query: SELECT wms.process_dispatch($1, $2) as id
+          payload:
+            - id
+          contextParams:
+            - current_user_id
+          path:
+            - sections
+            - 0
+            - actionConfig
+            - PROCESS
+        onSuccess:
+          callback: HANDLE_FORM_ACTION
+          params:
+            action: FINISH
+      CANCEL:
+        label: Discard
+        icon: X
+        variant: danger
+        actionType: NAVIGATE
+        onSuccess: exitAndComplete
+      EDIT:
+        label: Edit
+        icon: Edit
+        variant: primary
+        actionType: FUNCTION_EXECUTION
+        functionInfo:
+          name: changeMode
+          params:
+            mode: EDIT
+
+    rows:
+      - columns:
+          - field: entry_no
+            span: 6
+          - field: entry_dt
+            span: 6
+      - columns:
+          - field: party_id
+            span: 6
+          - field: pl_ids
+            span: 6
+      - columns:
+          - field: vehicle_no
+            span: 6
+          - field: driver_name
+            span: 6
+      - columns:
+          - field: remarks
+            span: 12
+
+    fields:
+      - name: id
+        label: ID
+        type: NUMBER
+        visible: false
+      - name: entry_no
+        label: Dispatch No
+        type: TEXT
+        readonly: true
+        placeholder: "Auto-generated"
+      - name: entry_dt
+        label: Date
+        type: DATE
+        required: true
+        readonly:
+          - VIEW
+        defaultValue: "TODAY"
+      - name: party_id
+        label: Customer
+        type: SELECT
+        required: true
+        readonly:
+          - VIEW
+          - EDIT
+        selectConfig:
+          resource: list-parties
+          displayField: party_name
+          selectHandler: converter
+          currentSelection:
+            - key: party_id
+              as: id
+          selectParser: converter
+          fields_to_extract:
+            - key: id
+              as: party_id
+            - key: party_name
+              as: party_name
+      - name: pl_ids
+        label: Picking Lists
+        type: SELECT
+        required: true
+        multi: true
+        readonly:
+          - VIEW
+          - EDIT
+        selectConfig:
+          resource: list-picked-lists-by-party
+          displayField: entry_no
+          filtersData:
+            - field: party_id
+              value: "${party_id}"
+          selectHandler: concatinator
+          currentSelection:
+            - key: pl_ids
+              as: id
+          selectParser: splitter
+          fields_to_extract:
+            - key: id
+              as: pl_ids
+      - name: vehicle_no
+        label: Vehicle No
+        type: TEXT
+        readonly:
+          - VIEW
+      - name: driver_name
+        label: Driver Name
+        type: TEXT
+        readonly:
+          - VIEW
+      - name: remarks
+        label: Remarks
+        type: TEXTAREA
+        readonly:
+          - VIEW
+      - name: status
+        label: Status
+        type: TEXT
+        visible: false
+
+  - sectionType: TABLE
+    sectionName: Dispatch Items
+    label: Picked Items
+    disabled:
+      condition: isEmpty
+      field: id
+    queryInfo:
+      returnType: MULTIPLE_ROWS
+      query: |
+        SELECT 
+          d.id as picking_detail_id,
+          m.name as material_name,
+          r.code as rack_code,
+          d.expiry_dt,
+          d.qty as picked_qty,
+          COALESCE((SELECT SUM(qty) FROM wms.dispatch_details dd WHERE dd.header_id = $1 AND dd.picking_detail_id = d.id AND dd.is_active = true), 0) as dispatched_qty
+        FROM wms.picking_list_details d
+        JOIN wms.material m ON d.material_id = m.id
+        LEFT JOIN wms.rack r ON d.rack_id = r.id
+        WHERE d.header_id = ANY(string_to_array((SELECT pl_ids FROM wms.dispatch_header WHERE id = $1), ',')::int[])
+        AND d.status = 'Picked'
+        AND d.is_active = true
+      payload:
+        - id
+      path:
+        - sections
+        - 1
+
+    columns:
+      - name: material_name
+        label: Material
+        width: 250
+      - name: rack_code
+        label: Rack
+        width: 120
+      - name: expiry_dt
+        label: Expiry
+        width: 120
+        dataType: date
+      - name: picked_qty
+        label: Picked
+        width: 100
+        align: right
+      - name: dispatched_qty
+        label: Dispatched
+        width: 100
+        align: right

@@ -1,0 +1,261 @@
+version: 1.0
+configName: purchase-order-item-details
+
+sections:
+  - sectionType: FIELDS
+    sectionName: purchase_order_item_details
+    label: Purchase Order Item Details
+    queryInfo:
+      returnType: SINGLE_ROW
+      query: |
+        SELECT d.*, m.name as item_name, COALESCE(uc.no_of_pcs, 1) as conversion_factor
+        FROM wms.purchase_order_details d
+        LEFT JOIN wms.material m ON d.item_id = m.id
+        LEFT JOIN wms.uom_conversion uc ON d.euom = uc.uom_id_each AND d.puom = uc.uom_id_case
+        WHERE d.id = $1
+      payload:
+        - _context.id
+      executionConditions:
+        - indices:
+            - 0
+          operator: IS_NOT_NIL
+      path:
+        - sections
+        - 0
+
+    applicableActions:
+      ADD:
+        - SAVE
+        - CANCEL
+      EDIT:
+        - SAVE
+        - CANCEL
+      VIEW:
+        - EXIT
+
+    actionConfig:
+      SAVE:
+        label:
+          ADD: Add Item
+          EDIT: Update Item
+        icon: Save
+        variant: primary
+        actionType: EXECUTE_QUERY
+        queryInfo:
+          returnType: SINGLE_ROW
+          query:
+            ADD: SELECT wms.insert_purchase_order_details($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+            EDIT: SELECT wms.update_purchase_order_details($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
+          payload:
+            ADD:
+              - _context.header_id
+              - purchase_order_item_details.item_id
+              - purchase_order_item_details.euom
+              - purchase_order_item_details.puom
+              - purchase_order_item_details.quom
+              - purchase_order_item_details.rate_per_pc
+              - purchase_order_item_details.eqty
+              - purchase_order_item_details.pqty
+              - purchase_order_item_details.amount
+              - purchase_order_item_details.iqty
+              - purchase_order_item_details.status
+              - purchase_order_item_details.remarks
+            EDIT:
+              - _context.id
+              - purchase_order_item_details.header_id
+              - purchase_order_item_details.item_id
+              - purchase_order_item_details.euom
+              - purchase_order_item_details.puom
+              - purchase_order_item_details.quom
+              - purchase_order_item_details.rate_per_pc
+              - purchase_order_item_details.eqty
+              - purchase_order_item_details.pqty
+              - purchase_order_item_details.amount
+              - purchase_order_item_details.iqty
+              - purchase_order_item_details.status
+              - purchase_order_item_details.remarks
+          contextParams:
+            - current_user_id
+          path:
+            - sections
+            - 0
+            - actionConfig
+            - SAVE
+        onSuccess: exitAndComplete
+      CANCEL:
+        label: Cancel
+        icon: X
+        actionType: NAVIGATE
+        variant: danger
+        onSuccess: exitAndComplete
+      EXIT:
+        label: Close
+        icon: X
+        actionType: NAVIGATE
+        variant: secondary
+        onSuccess: exitAndComplete
+
+    rows:
+      - columns:
+          - field: item_id
+            span: 9
+          - field: quom
+            span: 3
+      - columns:
+          - field: rate_per_pc
+            span: 3
+          - field: pqty
+            span: 3
+          - field: eqty
+            span: 3
+          - field: amount
+            span: 3
+      - columns:
+          - field: remarks
+            span: 12
+
+    fields:
+      - name: item_id
+        label: Item
+        type: SELECT
+        required: true
+        readonly:
+          - VIEW
+        selectConfig:
+          resource: list-materials
+          displayField: item_name
+          selectHandler: converter
+          currentSelection:
+            - key: item_id
+              as: id
+          selectParser: converter
+          fields_to_extract:
+            - key: id
+              as: item_id
+            - key: material_name
+              as: item_name
+            - key: selling_rate
+              as: rate_per_pc
+            - key: conversion_factor
+              as: conversion_factor
+            - key: uom_pc_id
+              as: euom
+            - key: uom_package_id
+              as: puom
+      - name: quom
+        label: Order UOM
+        type: SELECT
+        required: true
+        readonly:
+          - VIEW
+        selectConfig:
+          resource: list-uoms
+          displayField: uom_name
+          selectHandler: converter
+          currentSelection:
+            - key: quom
+              as: id
+          selectParser: converter
+          fields_to_extract:
+            - key: id
+              as: quom
+      - name: rate_per_pc
+        label: Rate (Each)
+        type: NUMBER
+        required: true
+        readonly:
+          - VIEW
+      - name: pqty
+        label: Quantity (Pack)
+        type: NUMBER
+        readonly:
+          - VIEW
+        dependencies:
+          - targets:
+              - - quom
+              - - euom
+            handler: handleReadonly
+            handlerConditions:
+              - operator: IS_EQUAL
+                indices:
+                  - 0
+                  - 1
+          - targets:
+              - - eqty
+              - - conversion_factor
+              - - quom
+              - - euom
+            handler: calculateValue
+            operation: DIVIDE
+            targetIndices:
+              - 0
+              - 1
+            conditions:
+              - operator: IS_EQUAL
+                indices:
+                  - 2
+                  - 3
+      - name: eqty
+        label: Quantity (Each)
+        type: NUMBER
+        required: true
+        readonly:
+          - VIEW
+        dependencies:
+          - targets:
+              - - quom
+              - - puom
+            handler: handleReadonly
+            handlerConditions:
+              - operator: IS_EQUAL
+                indices:
+                  - 0
+                  - 1
+          - targets:
+              - - pqty
+              - - conversion_factor
+              - - quom
+              - - puom
+            handler: calculateValue
+            operation: MULTIPLY
+            targetIndices:
+              - 0
+              - 1
+            conditions:
+              - operator: IS_EQUAL
+                indices:
+                  - 2
+                  - 3
+      - name: amount
+        label: Total Amount
+        type: NUMBER
+        readonly: true
+        dependencies:
+          - targets:
+              - - eqty
+              - - rate_per_pc
+            handler: calculateValue
+            operation: MULTIPLY
+            targetIndices:
+              - 0
+              - 1
+      - name: remarks
+        label: Remarks
+        type: TEXTAREA
+        readonly:
+          - VIEW
+      - name: conversion_factor
+        label: Conv Factor
+        type: NUMBER
+        readonly: true
+        visible: false
+      - name: euom
+        label: Each UOM
+        type: NUMBER
+        readonly: true
+        visible: false
+      - name: puom
+        label: Pack UOM
+        type: NUMBER
+        readonly: true
+        visible: false

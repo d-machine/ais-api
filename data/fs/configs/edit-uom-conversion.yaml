@@ -69,8 +69,8 @@ sections:
           displayField: uom_each_name
           selectHandler: converter
           currentSelection:
-            - key: id
-              as: uom_id_each
+            - key: uom_id_each
+              as: id
           selectParser: converter
           fields_to_extract:
             - key: id
@@ -86,8 +86,8 @@ sections:
           displayField: uom_case_name
           selectHandler: converter
           currentSelection:
-            - key: id
-              as: uom_id_case
+            - key: uom_id_case
+              as: id
           selectParser: converter
           fields_to_extract:
             - key: id

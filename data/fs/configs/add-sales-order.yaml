@@ -1,11 +1,13 @@
 configType: FORM
 version: 1.0
-formActions:
+applicableActions:
+  - FINISH
+actionConfig:
   FINISH:
-    label: Finish
     visible: true
-    actionType: NAVIGATE
-    onSuccess: exitAndComplete
+    closeAction: REFRESH
+    label: Finish
+    variant: primary
 
 sections:
   - sectionType: FIELDS
@@ -19,14 +21,13 @@ sections:
         actionType: EXECUTE_QUERY
         queryInfo:
           returnType: SINGLE_ROW
-          query: SELECT * FROM wms.insert_sales_order_header($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+          query: SELECT * FROM wms.insert_sales_order_header($1, $2, $3, $4, $5, $6, $7, $8, $9)
           payload:
             - entry_dt
             - party_id
             - broker_id
             - delivery_at_id
             - trsp_id
-            - year_code
             - delivery_dt
             - status
             - remarks
@@ -38,12 +39,11 @@ sections:
             - actionConfig
             - SAVE
         onSuccess:
-          callback: updateContextAndEnableNext
-          nextSectionToEnable: "Order Details"
+          callback: SAVE_AND_GO_TO_NEXT
         onFailure: showErrorSnackbar
       CANCEL:
         label: Discard
-    
+
     rows:
       - columns:
           - field: entry_no
@@ -70,7 +70,7 @@ sections:
       - columns:
           - field: remarks
             span: 12
-    
+
     fields:
       - name: entry_no
         label: Entry No
@@ -86,8 +86,7 @@ sections:
       - name: year_code
         label: Year Code
         type: TEXT
-        required: true
-        defaultValue: "2025"
+        readonly: true
       - name: party_id
         label: Party
         type: SELECT
@@ -145,7 +144,6 @@ sections:
         required: true
         selectConfig:
           resource: list-transports
-          labelField: transport_name
           displayField: transport_name
           selectHandler: converter
           currentSelection:
@@ -175,7 +173,7 @@ sections:
     disabled:
       condition: isEmpty
       field: id
-    
+
     # Inline list config from list-sales-order-details.yaml
     queryInfo:
       returnType: MULTIPLE_ROWS
@@ -197,7 +195,7 @@ sections:
         LEFT JOIN wms.uom u2 ON d.puom = u2.id
         WHERE d.header_id = $1 AND d.is_active = true
       payload:
-        - id  # Uses 'id' from form context as 'header_id' param
+        - id # Uses 'id' from form context as 'header_id' param
       path:
         - sections
         - 1

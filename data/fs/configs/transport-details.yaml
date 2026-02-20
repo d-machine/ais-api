@@ -1,7 +1,7 @@
 version: 1.0
-configName: category-details
+configName: transport-details
+title: Transport Details
 
-# Form-level actions (global)
 applicableActions:
   ADD:
     - FINISH
@@ -12,6 +12,7 @@ applicableActions:
   VIEW:
     - FINISH
     - CLOSE
+
 actionConfig:
   FINISH:
     visible: false
@@ -20,33 +21,28 @@ actionConfig:
     visible: true
     variant: danger
     label:
-      ADD: Discard Changes
-      EDIT: Discard Changes
+      ADD: Discard
+      EDIT: Discard
+    icon: X
   CLOSE:
     visible: true
+    variant: secondary
     label:
       VIEW: Close
+    icon: X
 
 sections:
-  # Section 1: Item Category Details (FIELDS)
   - sectionType: FIELDS
-    sectionName: category_details
-    label: Category Details
-
-    # Section-level data fetching
+    sectionName: transport_details
+    label: Transport Information
     queryInfo:
       returnType: SINGLE_ROW
       query: |
-        SELECT
-          id,
-          name as item_category_name,
-          descr
-        FROM
-          wms.item_category
-        WHERE
-          id = $1
+        SELECT id, name as transport_name, descr
+        FROM wms.transport
+        WHERE id = $1
       payload:
-        - _context.id # Explicit: from initial context
+        - _context.id
       executionConditions:
         - indices:
             - 0
@@ -55,7 +51,6 @@ sections:
         - sections
         - 0
 
-    # Section-level actions
     applicableActions:
       ADD:
         - SAVE
@@ -69,46 +64,36 @@ sections:
     actionConfig:
       SAVE:
         label:
-          ADD: Create Category
-          EDIT: Update Category
+          ADD: Create Transport
+          EDIT: Update Transport
         icon: Save
         variant: primary
         actionType: EXECUTE_QUERY
         queryInfo:
-          returnType: SCALAR
           query:
-            ADD: |
-              SELECT wms.insert_item_category($1, $2, $3) as id;
-            EDIT: |
-              SELECT wms.update_item_category($1, $2, $3, $4) as id;
+            ADD: SELECT wms.insert_transport($1, $2, $3) as id
+            EDIT: SELECT wms.update_transport($1, $2, $3, $4) as id
           payload:
             ADD:
-              - category_details.item_category_name
-              - category_details.descr
+              - transport_details.transport_name
+              - transport_details.descr
             EDIT:
-              - _context.id # Category ID
-              - category_details.item_category_name
-              - category_details.descr
+              - _context.id
+              - transport_details.transport_name
+              - transport_details.descr
           contextParams:
             - current_user_id
-          path:
-            - sections
-            - 0
-            - actionConfig
-            - SAVE
         onSuccess:
           callback: HANDLE_FORM_ACTION
           params:
             action: FINISH
         onFailure: showErrorSnackbar
-
       CANCEL:
-        label: Discard Changes
-        icon: ClipboardX
+        label: Discard
+        icon: X
         variant: danger
         actionType: NAVIGATE
         onSuccess: exitAndComplete
-
       EDIT:
         label: Edit
         icon: Edit
@@ -119,24 +104,21 @@ sections:
           params:
             mode: EDIT
 
-    # Row-based layout
     rows:
       - columns:
-          - field: item_category_name
+          - field: transport_name
             span: 12
       - columns:
           - field: descr
             span: 12
 
-    # Field definitions
     fields:
-      - name: item_category_name
-        label: Category Name
+      - name: transport_name
+        label: Transport Name
         type: TEXT
+        required: true
         readonly:
           - VIEW
-        required: true
-
       - name: descr
         label: Description
         type: TEXTAREA

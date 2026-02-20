@@ -1,0 +1,268 @@
+version: 1.0
+configName: sales-order-item-details
+title: Sales Order Item Details
+
+applicableActions:
+  ADD:
+    - SAVE
+    - CANCEL
+  EDIT:
+    - SAVE
+    - CANCEL
+  VIEW:
+    - CLOSE
+
+actionConfig:
+  SAVE:
+    label:
+      ADD: Add Item
+      EDIT: Update Item
+    icon: Save
+    variant: primary
+    actionType: EXECUTE_QUERY
+    queryInfo:
+      returnType: SINGLE_ROW
+      query: |
+        SELECT CASE
+          WHEN $1 > 0 THEN wms.update_sales_order_details($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
+          ELSE wms.insert_sales_order_details($2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
+        END as id;
+      payload:
+        - id
+        - order_item_detail.header_id
+        - order_item_detail.material_id
+        - order_item_detail.euom
+        - order_item_detail.puom
+        - order_item_detail.quom
+        - order_item_detail.rate_per_pc
+        - order_item_detail.eqty
+        - order_item_detail.pqty
+        - order_item_detail.amount
+        - order_item_detail.dqty
+        - order_item_detail.status
+        - order_item_detail.remarks
+      contextParams:
+        - current_user_id
+      path:
+        - actionConfig
+        - SAVE
+    onSuccess: exitAndComplete
+  CANCEL:
+    label: Discard
+    icon: X
+    variant: danger
+    actionType: NAVIGATE
+    onSuccess: exitAndComplete
+  CLOSE:
+    label: Close
+    icon: X
+    variant: secondary
+    actionType: NAVIGATE
+    onSuccess: exitAndComplete
+
+sections:
+  - sectionType: FIELDS
+    sectionName: order_item_detail
+    label: Item Information
+    queryInfo:
+      returnType: SINGLE_ROW
+      query: |
+        SELECT
+          COALESCE($2, 0) as id,
+          $1 as header_id,
+          CASE WHEN $2 > 0 THEN d.item_id ELSE NULL END as material_id,
+          m.name as material_name,
+          d.euom, d.puom, d.quom,
+          d.rate_per_pc, d.eqty, d.pqty, d.amount, d.dqty, d.status, d.remarks,
+          COALESCE(uc.no_of_pcs, 1) as conversion_factor
+        FROM wms.sales_order_details d
+        LEFT JOIN wms.material m ON d.item_id = m.id
+        LEFT JOIN wms.uom_conversion uc ON d.euom = uc.uom_id_each AND d.puom = uc.uom_id_case
+        WHERE d.id = $2
+      payload:
+        - header_id
+        - id
+      executionConditions:
+        - indices:
+            - 1
+          operator: IS_NOT_NIL
+          source: context
+          key: id
+      path:
+        - sections
+        - 0
+
+    rows:
+      - columns:
+          - field: material_id
+            span: 12
+      - columns:
+          - field: euom
+            span: 6
+          - field: puom
+            span: 6
+      - columns:
+          - field: quom
+            span: 4
+          - field: eqty
+            span: 4
+          - field: pqty
+            span: 4
+      - columns:
+          - field: rate_per_pc
+            span: 4
+          - field: amount
+            span: 4
+          - field: dqty
+            span: 4
+      - columns:
+          - field: status
+            span: 6
+          - field: remarks
+            span: 6
+
+    fields:
+      - name: id
+        label: ID
+        type: NUMBER
+        visible: false
+      - name: header_id
+        label: Header ID
+        type: NUMBER
+        visible: false
+      - name: material_id
+        label: Item
+        type: SELECT
+        required: true
+        readonly:
+          - VIEW
+          - EDIT
+        selectConfig:
+          resource: list-materials
+          displayField: material_name
+          selectHandler: converter
+          currentSelection:
+            - key: material_id
+              as: id
+          selectParser: converter
+          fields_to_extract:
+            - key: id
+              as: material_id
+            - key: material_name
+              as: material_name
+            - key: selling_rate
+              as: rate_per_pc
+            - key: conversion_factor
+              as: conversion_factor
+            - key: uom_pc_id
+              as: euom
+            - key: uom_package_id
+              as: puom
+      - name: conversion_factor
+        label: Conv Factor
+        type: NUMBER
+        visible: false
+      - name: euom
+        label: Base UOM
+        type: NUMBER
+        visible: false
+      - name: puom
+        label: Package UOM
+        type: NUMBER
+        visible: false
+      - name: quom
+        label: Order UOM
+        type: SELECT
+        required: true
+        readonly:
+          - VIEW
+        selectConfig:
+          resource: list-uoms-by-material
+          filtersData:
+            - field: material_id
+              value: "${material_id}"
+          displayField: uom_name
+          selectHandler: converter
+          currentSelection:
+            - key: quom
+              as: id
+          selectParser: converter
+          fields_to_extract:
+            - key: id
+              as: quom
+      - name: eqty
+        label: Qty (Each)
+        type: NUMBER
+        required: true
+        readonly:
+          - VIEW
+        dependencies:
+          - target:
+              - pqty
+              - conversion_factor
+              - quom
+            handler: calculateValue
+            dependencyConfig:
+              operation: MULTIPLY
+              operands:
+                - pqty
+                - conversion_factor
+              condition:
+                field: quom
+                compareWithField: puom
+      - name: pqty
+        label: Qty (Pack)
+        type: NUMBER
+        required: true
+        readonly:
+          - VIEW
+        dependencies:
+          - target:
+              - eqty
+              - conversion_factor
+              - quom
+            handler: calculateValue
+            dependencyConfig:
+              operation: DIVIDE
+              operands:
+                - eqty
+                - conversion_factor
+              condition:
+                field: quom
+                compareWithField: euom
+      - name: rate_per_pc
+        label: Rate
+        type: NUMBER
+        required: true
+        readonly:
+          - VIEW
+      - name: amount
+        label: Amount
+        type: NUMBER
+        readonly: true
+        dependencies:
+          - target:
+              - eqty
+              - rate_per_pc
+            handler: calculateValue
+            dependencyConfig:
+              operation: MULTIPLY
+              operands:
+                - eqty
+                - rate_per_pc
+      - name: dqty
+        label: Dispatched
+        type: NUMBER
+        readonly: true
+        defaultValue: 0
+      - name: status
+        label: Status
+        type: TEXT
+        readonly:
+          - VIEW
+        defaultValue: "Pending"
+      - name: remarks
+        label: Remarks
+        type: TEXTAREA
+        readonly:
+          - VIEW

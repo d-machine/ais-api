@@ -1,117 +1,161 @@
-configType: LIST
 version: 1.0
-queryInfo:
-  returnType: MULTIPLE_ROWS
-  query: |
-    SELECT 
-      h.id,
-      h.entry_no,
-      h.entry_dt,
-      v.name as vendor_name,
-      h.invoice_no,
-      h.invoice_dt,
-      h.status,
-      h.remarks
-    FROM wms.inward_header h
-    LEFT JOIN wms.vendor v ON h.vendor_id = v.id
-    WHERE h.is_active = true
-  payload: []
-  options:
-    applyFiltering: true
-    applySorting: true
-    applyPagination: true
+configName: list-inwards
 
-columns:
-  - name: id
-    label: ID
-    visible: false
-  - name: entry_no
-    label: Entry No
-    visible: true
-    width: 150
-    sortable: true
-    filterable: true
-  - name: entry_dt
-    label: Entry Date
-    visible: true
-    width: 120
-    dataType: date
-    sortable: true
-  - name: vendor_name
-    label: Vendor
-    visible: true
-    width: 200
-    sortable: true
-    filterable: true
-  - name: invoice_no
-    label: Invoice No
-    visible: true
-    width: 150
-  - name: invoice_dt
-    label: Invoice Date
-    visible: true
-    width: 120
-    dataType: date
-  - name: status
-    label: Status
-    visible: true
-    width: 100
-    sortable: true
-    filterable: true
-  - name: remarks
-    label: Remarks
-    visible: true
-    width: 200
-
-actionConfig:
-  add:
-    label: Create Inward
-    actionType: DISPLAY_FORM
-    formConfig: add-inward
-    onSuccess: refresh
-  edit:
-    label: Edit
-    actionType: DISPLAY_FORM
-    level: ROW
-    formConfig: edit-inward
-    payload:
-      - id
-    onSuccess: refresh
-  process:
-    label: Process
-    actionType: EXECUTE_QUERY
-    level: ROW
-    condition: row.status === 'Draft'
-    confirmationRequired: true
-    confirmationMessage: "Are you sure you want to process Inward Entry '${row.entry_no}'? This will lock the entry and update stock."
+sections:
+  - sectionType: TABLE
+    sectionName: inwards
+    label: Inwards
     queryInfo:
-      returnType: SCALAR
-      query: SELECT wms.process_inward($1, $2) as id;
-      payload:
-        - id
-      contextParams:
-        - current_user_id
+      returnType: MULTIPLE_ROWS
+      query: |
+        SELECT 
+          h.id, h.entry_no, h.entry_dt, v.name as vendor_name,
+          h.invoice_no, h.invoice_dt, h.status,
+          h.lua as last_updated_at,
+          TRIM(CONCAT(u.first_name, ' ', u.last_name)) as last_updated_by_name
+        FROM wms.inward_header h
+        LEFT JOIN wms.vendor v ON h.vendor_id = v.id
+        LEFT JOIN administration.user u ON h.lub = u.id
+        WHERE h.is_active = true
       path:
-        - actionConfig
+        - sections
+        - 0
+      options:
+        applyFiltering: true
+        applySorting: true
+        applyPagination: true
+
+    applicableActions:
+      VIEW:
+        - add
+        - view
+        - edit
         - process
-    onSuccess: refresh
-    onFailure: showErrorSnackbar
-  delete:
-    label: Delete
-    actionType: EXECUTE_QUERY
-    level: ROW
-    condition: row.status === 'Draft'
-    confirmationRequired: true
-    confirmationMessage: "Are you sure you want to delete Inward Entry '${row.entry_no}'?"
-    queryInfo:
-      returnType: SCALAR
-      query: UPDATE wms.inward_header SET is_active = false, lub = $2, lua = NOW() WHERE id = $1 RETURNING id;
-      payload:
-        - id
-      contextParams:
-        - current_user_id
-      path:
-        - actionConfig
         - delete
-    onSuccess: refresh
-    onFailure: showErrorSnackbar
+
+    actionConfig:
+      add:
+        label: Create Inward
+        icon: Plus
+        variant: primary
+        actionType: DISPLAY_FORM
+        level: HEADER
+        shortcut: "F2"
+        formConfig: inward-details
+        mode: ADD
+        payload: []
+        onSuccess: refresh
+      view:
+        label: View
+        icon: Eye
+        variant: secondary
+        actionType: DISPLAY_FORM
+        level: ROW
+        shortcut: "F3"
+        formConfig: inward-details
+        mode: VIEW
+        payload:
+          - id
+      edit:
+        label: Edit
+        icon: Edit
+        variant: primary
+        actionType: DISPLAY_FORM
+        level: ROW
+        shortcut: "F4"
+        formConfig: inward-details
+        mode: EDIT
+        payload:
+          - id
+        onSuccess: refresh
+      process:
+        label: Process
+        icon: CheckCircle
+        variant: primary
+        actionType: EXECUTE_QUERY
+        level: ROW
+        condition: row.status === 'Draft'
+        confirmationRequired: true
+        confirmationMessage: "Are you sure you want to process Inward Entry '${row.entry_no}'? This will lock the entry and update stock."
+        queryInfo:
+          query: SELECT wms.process_inward($1, $2) as id
+          payload:
+            - id
+          contextParams:
+            - current_user_id
+          path:
+            - sections
+            - 0
+            - actionConfig
+            - process
+        onSuccess: refresh
+      delete:
+        label: Delete
+        icon: Trash2
+        variant: danger
+        actionType: EXECUTE_QUERY
+        level: ROW
+        shortcut: "F8"
+        condition: row.status === 'Draft'
+        confirmationRequired: true
+        queryInfo:
+          query: UPDATE wms.inward_header SET is_active = false, lub = $2, lua = NOW() WHERE id = $1 RETURNING id
+          payload:
+            - id
+          contextParams:
+            - current_user_id
+          path:
+            - sections
+            - 0
+            - actionConfig
+            - delete
+        onSuccess: refresh
+
+    columns:
+      - name: id
+        label: ID
+        visible: false
+
+      - name: entry_no
+        label: Entry No
+        visible: true
+        sortable: true
+        filterable: true
+        width: 150
+
+      - name: entry_dt
+        label: Entry Date
+        visible: true
+        dataType: date
+        width: 120
+
+      - name: vendor_name
+        label: Vendor
+        visible: true
+        sortable: true
+        filterable: true
+        width: 200
+
+      - name: invoice_no
+        label: Invoice No
+        visible: true
+        width: 150
+
+      - name: status
+        label: Status
+        visible: true
+        width: 100
+
+      - name: last_updated_at
+        label: Last Updated
+        visible: true
+        sortable: true
+        dataType: datetime
+        format: "DD/MM/YYYY HH:mm"
+        defaultSort: DESC
+        width: 150
+
+      - name: last_updated_by_name
+        label: Updated By
+        visible: true
+        width: 150

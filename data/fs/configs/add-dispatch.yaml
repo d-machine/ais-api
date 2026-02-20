@@ -29,7 +29,17 @@ sections:
         required: true
         selectConfig:
           resource: list-parties
-          displayField: name
+          displayField: party_name
+          selectHandler: converter
+          currentSelection:
+            - key: party_id
+              as: id
+          selectParser: converter
+          fields_to_extract:
+            - key: id
+              as: party_id
+            - key: party_name
+              as: party_name
 
       - name: pl_ids
         label: Picked Lists
@@ -38,6 +48,14 @@ sections:
         selectConfig:
           resource: list-picked-lists-by-party
           displayField: entry_no
+          selectHandler: concatinator
+          currentSelection:
+            - key: pl_ids
+              as: id
+          selectParser: splitter
+          fields_to_extract:
+            - key: id
+              as: pl_ids
         dependencies:
           - target: [party_id]
             handler: filterByDependency

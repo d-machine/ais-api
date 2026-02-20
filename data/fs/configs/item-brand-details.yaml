@@ -1,0 +1,172 @@
+version: 1.0
+configName: brand-details
+
+# Form-level actions (global)
+applicableActions:
+  ADD:
+    - FINISH
+    - CANCEL
+  EDIT:
+    - FINISH
+    - CANCEL
+  VIEW:
+    - FINISH
+    - CLOSE
+actionConfig:
+  FINISH:
+    visible: false
+    closeAction: REFRESH
+  CANCEL:
+    visible: true
+    variant: danger
+    label:
+      ADD: Discard Changes
+      EDIT: Discard Changes
+  CLOSE:
+    visible: true
+    label:
+      VIEW: Close
+
+sections:
+  # Section 1: Brand Details (FIELDS)
+  - sectionType: FIELDS
+    sectionName: brand_details
+    label: Brand Details
+
+    # Section-level data fetching
+    queryInfo:
+      returnType: SINGLE_ROW
+      query: |
+        SELECT
+          ib.id,
+          ib.brand_name,
+          ib.category_id,
+          icm.name as item_category_name,
+          ib.descr
+        FROM
+          wms.item_brand ib
+          LEFT JOIN wms.item_category icm ON ib.category_id = icm.id
+        WHERE
+          ib.id = $1
+      payload:
+        - _context.id # Explicit: from initial context
+      executionConditions:
+        - indices:
+            - 0
+          operator: IS_NOT_NIL
+      path:
+        - sections
+        - 0
+
+    # Section-level actions
+    applicableActions:
+      ADD:
+        - SAVE
+        - CANCEL
+      EDIT:
+        - SAVE
+        - CANCEL
+      VIEW:
+        - EDIT
+
+    actionConfig:
+      SAVE:
+        label:
+          ADD: Create Brand
+          EDIT: Update Brand
+        icon: Save
+        variant: primary
+        actionType: EXECUTE_QUERY
+        queryInfo:
+          returnType: SCALAR
+          query:
+            ADD: |
+              SELECT wms.insert_item_brand($1, $2, $3, $4) as id;
+            EDIT: |
+              SELECT wms.update_item_brand($1, $2, $3, $4, $5) as id;
+          payload:
+            ADD:
+              - brand_details.brand_name
+              - brand_details.category_id
+              - brand_details.descr
+            EDIT:
+              - _context.id # Brand ID
+              - brand_details.brand_name
+              - brand_details.category_id
+              - brand_details.descr
+          contextParams:
+            - current_user_id
+          path:
+            - sections
+            - 0
+            - actionConfig
+            - SAVE
+        onSuccess:
+          callback: HANDLE_FORM_ACTION
+          params:
+            action: FINISH
+        onFailure: showErrorSnackbar
+
+      CANCEL:
+        label: Discard Changes
+        icon: ClipboardX
+        variant: danger
+        actionType: NAVIGATE
+        onSuccess: exitAndComplete
+
+      EDIT:
+        label: Edit
+        icon: Edit
+        variant: primary
+        actionType: FUNCTION_EXECUTION
+        functionInfo:
+          name: changeMode
+          params:
+            mode: EDIT
+
+    # Row-based layout
+    rows:
+      - columns:
+          - field: brand_name
+            span: 6
+          - field: category_id
+            span: 6
+      - columns:
+          - field: descr
+            span: 12
+
+    # Field definitions
+    fields:
+      - name: brand_name
+        label: Brand Name
+        type: TEXT
+        readonly:
+          - VIEW
+        required: true
+
+      - name: category_id
+        label: Category
+        type: SELECT
+        readonly:
+          - VIEW
+        required: true
+        multi: false
+        selectConfig:
+          resource: list-item-categories
+          displayField: category_name
+          selectHandler: converter
+          currentSelection:
+            - key: category_id
+              as: id
+          selectParser: converter
+          fields_to_extract:
+            - key: id
+              as: category_id
+            - key: item_category_name
+              as: category_name
+
+      - name: descr
+        label: Description
+        type: TEXTAREA
+        readonly:
+          - VIEW

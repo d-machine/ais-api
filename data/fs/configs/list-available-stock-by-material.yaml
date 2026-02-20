@@ -43,7 +43,8 @@ queryInfo:
             AND d.is_active = true
       ), 0)) > 0
     ORDER BY s.expiry_dt ASC NULLS LAST, s.id ASC
-  payload: [material_id]
+  payload:
+    - material_id
 columns:
   - name: display_label
     label: Stock Batch (FEFO)

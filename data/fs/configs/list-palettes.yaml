@@ -57,7 +57,7 @@ actionConfig:
         - current_user_id
       path:
         - actionConfig
-        - DELETE
+        - delete
     onSuccess: refresh
     onFailure: showErrorSnackbar
 

@@ -1,0 +1,275 @@
+version: 1.0
+configName: inward-item-details
+title: Inward Item Details
+
+applicableActions:
+  ADD:
+    - SAVE
+    - CANCEL
+  EDIT:
+    - SAVE
+    - CANCEL
+  VIEW:
+    - CLOSE
+
+actionConfig:
+  SAVE:
+    label:
+      ADD: Add Item
+      EDIT: Update Item
+    icon: Save
+    variant: primary
+    actionType: EXECUTE_QUERY
+    queryInfo:
+      returnType: SINGLE_ROW
+      query: |
+        SELECT CASE
+          WHEN $1 > 0 THEN wms.update_inward_details($1, $2, $3, $4, $5, $6, $7, $8, 0, 0, $9, $10, $11)
+          ELSE wms.insert_inward_details($2, $3, $4, $5, $6, $7, $8, 0, 0, $9, $10, $11)
+        END as id;
+      payload:
+        - inward_item_detail.inward_detail_id
+        - inward_item_detail.header_id
+        - inward_item_detail.material_id
+        - inward_item_detail.po_detail_id
+        - inward_item_detail.quom
+        - inward_item_detail.euom
+        - inward_item_detail.puom
+        - inward_item_detail.eqty
+        - inward_item_detail.expiry_dt
+        - inward_item_detail.batch_no
+        - inward_item_detail.remarks
+      contextParams:
+        - current_user_id
+      path:
+        - actionConfig
+        - SAVE
+    onSuccess: exitAndComplete
+  CANCEL:
+    label: Discard
+    icon: X
+    variant: danger
+    actionType: NAVIGATE
+    onSuccess: exitAndComplete
+  CLOSE:
+    label: Close
+    icon: X
+    variant: secondary
+    actionType: NAVIGATE
+    onSuccess: exitAndComplete
+
+sections:
+  - sectionType: FIELDS
+    sectionName: inward_item_detail
+    label: Item Information
+    queryInfo:
+      returnType: SINGLE_ROW
+      query: |
+        SELECT 
+          COALESCE($2, 0) as inward_detail_id,
+          $1 as header_id,
+          CASE WHEN $2 > 0 THEN d.material_id ELSE pod.item_id END as material_id,
+          m.name as material_name,
+          CASE WHEN $2 > 0 THEN d.po_detail_id ELSE pod.id END as po_detail_id,
+          pod.eqty as po_eqty,
+          CASE WHEN $2 > 0 THEN d.euom ELSE m.uom_pc_id END as euom,
+          u_each.name as euom_name,
+          CASE WHEN $2 > 0 THEN d.puom ELSE m.uom_package_id END as puom,
+          u_pkg.name as puom_name,
+          CASE WHEN $2 > 0 THEN d.quom ELSE NULL END as quom,
+          COALESCE(d.eqty, 0) as eqty,
+          COALESCE(d.pqty, 0) as pqty,
+          d.expiry_dt, d.batch_no, d.remarks,
+          COALESCE(uc.no_of_pcs, 1) as conversion_factor
+        FROM wms.purchase_order_details pod
+        JOIN wms.material m ON pod.item_id = m.id
+        LEFT JOIN wms.inward_details d ON d.po_detail_id = pod.id AND d.id = COALESCE($2, 0)
+        LEFT JOIN wms.uom u_each ON CASE WHEN $2 > 0 THEN d.euom ELSE m.uom_pc_id END = u_each.id
+        LEFT JOIN wms.uom u_pkg ON CASE WHEN $2 > 0 THEN d.puom ELSE m.uom_package_id END = u_pkg.id
+        LEFT JOIN wms.uom_conversion uc ON m.uom_pc_id = uc.uom_id_each AND m.uom_package_id = uc.uom_id_case
+        WHERE pod.id = $3
+      payload:
+        - header_id
+        - inward_detail_id
+        - po_detail_id
+      path:
+        - sections
+        - 0
+
+    rows:
+      - columns:
+          - field: material_name
+            span: 12
+      - columns:
+          - field: euom
+            span: 6
+          - field: puom
+            span: 6
+      - columns:
+          - field: po_eqty
+            span: 4
+          - field: quom
+            span: 4
+          - field: eqty
+            span: 2
+          - field: pqty
+            span: 2
+      - columns:
+          - field: expiry_dt
+            span: 6
+          - field: batch_no
+            span: 6
+      - columns:
+          - field: remarks
+            span: 12
+
+    fields:
+      - name: inward_detail_id
+        label: ID
+        type: NUMBER
+        visible: false
+      - name: header_id
+        label: Header ID
+        type: NUMBER
+        visible: false
+      - name: po_detail_id
+        label: PO Detail ID
+        type: NUMBER
+        visible: false
+      - name: conversion_factor
+        label: Conv Factor
+        type: NUMBER
+        visible: false
+      - name: material_name
+        label: Item
+        type: TEXT
+        readonly: true
+      - name: material_id
+        label: Item ID
+        type: NUMBER
+        visible: false
+      - name: euom
+        label: Base UOM
+        type: SELECT
+        required: true
+        readonly:
+          - VIEW
+        selectConfig:
+          resource: list-uoms-by-material
+          filtersData:
+            - field: material_id
+              value: "${material_id}"
+          displayField: uom_name
+          selectHandler: converter
+          currentSelection:
+            - key: euom
+              as: id
+          selectParser: converter
+          fields_to_extract:
+            - key: id
+              as: euom
+            - key: uom_name
+              as: euom_name
+      - name: puom
+        label: Package UOM
+        type: SELECT
+        required: true
+        readonly:
+          - VIEW
+        selectConfig:
+          resource: list-uoms-by-material
+          filtersData:
+            - field: material_id
+              value: "${material_id}"
+          displayField: uom_name
+          selectHandler: converter
+          currentSelection:
+            - key: puom
+              as: id
+          selectParser: converter
+          fields_to_extract:
+            - key: id
+              as: puom
+            - key: uom_name
+              as: puom_name
+      - name: po_eqty
+        label: PO Qty (Each)
+        type: NUMBER
+        readonly: true
+      - name: quom
+        label: Inward UOM
+        type: SELECT
+        required: true
+        readonly:
+          - VIEW
+        selectConfig:
+          resource: list-uoms-by-material
+          filtersData:
+            - field: material_id
+              value: "${material_id}"
+          displayField: uom_name
+          selectHandler: converter
+          currentSelection:
+            - key: quom
+              as: id
+          selectParser: converter
+          fields_to_extract:
+            - key: id
+              as: quom
+            - key: uom_name
+              as: quom_name
+      - name: eqty
+        label: Qty (Each)
+        type: NUMBER
+        required: true
+        readonly:
+          - VIEW
+        dependencies:
+          - target:
+              - pqty
+              - conversion_factor
+              - quom
+            handler: calculateValue
+            dependencyConfig:
+              operation: MULTIPLY
+              operands:
+                - pqty
+                - conversion_factor
+              condition:
+                field: quom
+                compareWithField: puom
+      - name: pqty
+        label: Qty (Pack)
+        type: NUMBER
+        required: true
+        readonly:
+          - VIEW
+        dependencies:
+          - target:
+              - eqty
+              - conversion_factor
+              - quom
+            handler: calculateValue
+            dependencyConfig:
+              operation: DIVIDE
+              operands:
+                - eqty
+                - conversion_factor
+              condition:
+                field: quom
+                compareWithField: euom
+      - name: expiry_dt
+        label: Expiry Date
+        type: DATE
+        readonly:
+          - VIEW
+      - name: batch_no
+        label: Batch No
+        type: TEXT
+        readonly:
+          - VIEW
+      - name: remarks
+        label: Remarks
+        type: TEXTAREA
+        readonly:
+          - VIEW

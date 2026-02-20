@@ -1,0 +1,385 @@
+version: 1.0
+configName: inward-details
+title: Inward Details
+
+applicableActions:
+  ADD:
+    - FINISH
+    - CANCEL
+  EDIT:
+    - FINISH
+    - CANCEL
+  VIEW:
+    - FINISH
+    - CLOSE
+
+actionConfig:
+  FINISH:
+    visible: true
+    closeAction: REFRESH
+    label: Finish
+    variant: primary
+  CANCEL:
+    visible: true
+    variant: danger
+    label:
+      ADD: Discard
+      EDIT: Discard
+    icon: X
+  CLOSE:
+    visible: true
+    variant: secondary
+    label:
+      VIEW: Close
+    icon: X
+
+sections:
+  - sectionType: FIELDS
+    sectionName: inward_header
+    label: Inward Information
+    queryInfo:
+      returnType: SINGLE_ROW
+      query: |
+        SELECT
+          h.id, h.entry_no, h.entry_dt, h.vendor_id, v.name as vendor_name,
+          h.po_ids,
+          (SELECT string_agg(ph.entry_no, ',' ORDER BY ph.id)
+           FROM wms.purchase_order_header ph
+           WHERE ph.id = ANY(string_to_array(h.po_ids, ',')::int[])) as po_entry_nos,
+          h.invoice_no, h.invoice_dt, h.status, h.remarks
+        FROM wms.inward_header h
+        LEFT JOIN wms.vendor v ON h.vendor_id = v.id
+        WHERE h.id = $1
+      payload:
+        - _context.id
+      executionConditions:
+        - indices:
+            - 0
+          operator: IS_NOT_NIL
+      path:
+        - sections
+        - 0
+
+    applicableActions:
+      ADD:
+        - SAVE
+        - CANCEL
+      EDIT:
+        - SAVE
+        - PROCESS
+        - CANCEL
+      VIEW:
+        - EDIT
+
+    actionConfig:
+      SAVE:
+        label:
+          ADD: Save & Continue
+          EDIT: Save Changes
+        icon: Save
+        variant: primary
+        actionType: EXECUTE_QUERY
+        queryInfo:
+          returnType: SINGLE_ROW
+          query:
+            ADD: SELECT * from wms.insert_inward_header($1, $2, $3, $4, $5, $6, $7)
+            EDIT: SELECT wms.update_inward_header($1, $2, $3, $4, $5, $6, $7, $8) as id
+          payload:
+            ADD:
+              - inward_header.entry_dt
+              - inward_header.vendor_id
+              - inward_header.po_ids
+              - inward_header.invoice_no
+              - inward_header.invoice_dt
+              - inward_header.remarks
+            EDIT:
+              - id
+              - inward_header.entry_no
+              - inward_header.entry_dt
+              - inward_header.vendor_id
+              - inward_header.po_ids
+              - inward_header.invoice_no
+              - inward_header.invoice_dt
+              - inward_header.remarks
+          contextParams:
+            - current_user_id
+          path:
+            - sections
+            - 0
+            - actionConfig
+            - SAVE
+        onSuccess:
+          ADD:
+            callback: SAVE_AND_GO_TO_NEXT
+          EDIT:
+            callback: HANDLE_FORM_ACTION
+            params:
+              action: FINISH
+        onFailure: showErrorSnackbar
+      PROCESS:
+        label: Process Inward
+        icon: CheckCircle
+        variant: primary
+        actionType: EXECUTE_QUERY
+        condition: status === 'Draft'
+        confirmationRequired: true
+        confirmationMessage: "This will lock the Inward Entry and update stock. Continue?"
+        queryInfo:
+          query: SELECT wms.process_inward($1, $2) as id
+          payload:
+            - id
+          contextParams:
+            - current_user_id
+          path:
+            - sections
+            - 0
+            - actionConfig
+            - PROCESS
+        onSuccess:
+          callback: HANDLE_FORM_ACTION
+          params:
+            action: FINISH
+      CANCEL:
+        label: Discard
+        icon: X
+        variant: danger
+        actionType: NAVIGATE
+        onSuccess: exitAndComplete
+      EDIT:
+        label: Edit
+        icon: Edit
+        variant: primary
+        actionType: FUNCTION_EXECUTION
+        functionInfo:
+          name: changeMode
+          params:
+            mode: EDIT
+
+    rows:
+      - columns:
+          - field: entry_no
+            span: 6
+          - field: entry_dt
+            span: 6
+      - columns:
+          - field: vendor_id
+            span: 6
+          - field: po_ids
+            span: 6
+      - columns:
+          - field: invoice_no
+            span: 6
+          - field: invoice_dt
+            span: 6
+      - columns:
+          - field: remarks
+            span: 12
+
+    fields:
+      - name: id
+        label: ID
+        type: NUMBER
+        visible: false
+      - name: entry_no
+        label: Entry No
+        type: TEXT
+        readonly: true
+        placeholder: "Auto-generated"
+      - name: entry_dt
+        label: Entry Date
+        type: DATE
+        required: true
+        readonly:
+          - VIEW
+        defaultValue: "TODAY"
+      - name: vendor_id
+        label: Vendor
+        type: SELECT
+        required: true
+        readonly:
+          - VIEW
+          - EDIT
+        selectConfig:
+          resource: list-vendors
+          displayField: vendor_name
+          selectHandler: converter
+          currentSelection:
+            - key: vendor_id
+              as: id
+          selectParser: converter
+          fields_to_extract:
+            - key: id
+              as: vendor_id
+            - key: vendor_name
+              as: vendor_name
+      - name: po_ids
+        label: Purchase Orders
+        type: SELECT
+        required: true
+        multi: true
+        readonly:
+          - VIEW
+          - EDIT
+        selectConfig:
+          resource: list-purchase-orders
+          displayField: po_entry_nos
+          selectionMode: "multiple"
+          selectHandler: concatinator
+          currentSelection:
+            - key: po_ids
+              as: id
+          selectParser: splitter
+          fields_to_extract:
+            - key: id
+              as: po_ids
+            - key: entry_no
+              as: po_entry_nos
+        dependencies:
+          - targets:
+              - - vendor_id
+            handler: filterByDependency
+            filters:
+              - targetParam: vendor_id
+                targetIndex: 0
+      - name: invoice_no
+        label: Invoice No
+        type: TEXT
+        readonly:
+          - VIEW
+      - name: invoice_dt
+        label: Invoice Date
+        type: DATE
+        readonly:
+          - VIEW
+      - name: remarks
+        label: Remarks
+        type: TEXTAREA
+        readonly:
+          - VIEW
+      - name: status
+        label: Status
+        type: TEXT
+        visible: false
+
+  - sectionType: TABLE
+    sectionName: Inward Details
+    label: Line Items
+    disabled:
+      condition: isEmpty
+      field: id
+    queryInfo:
+      returnType: MULTIPLE_ROWS
+      query: |
+        SELECT 
+          id.id as inward_detail_id,
+          pod.id as po_detail_id,
+          poh.entry_no as po_entry_no,
+          pod.row_no as po_row_no,
+          m.name as material_name,
+          pod.eqty as po_eqty,
+          (pod.eqty - COALESCE(pod.iqty, 0)) as balance_qty,
+          COALESCE(id.eqty, 0) as inward_qty,
+          CASE WHEN id.id IS NOT NULL THEN 'EXISTING' ELSE 'PENDING' END as row_type
+        FROM wms.purchase_order_details pod
+        JOIN wms.purchase_order_header poh ON pod.header_id = poh.id
+        JOIN wms.material m ON pod.item_id = m.id
+        LEFT JOIN wms.inward_details id ON id.po_detail_id = pod.id AND id.header_id = $1 AND id.is_active = true
+        WHERE poh.id = ANY(string_to_array((SELECT po_ids FROM wms.inward_header WHERE id = $1), ',')::int[])
+        AND pod.is_active = true
+        ORDER BY poh.entry_no, pod.row_no
+      payload:
+        - id
+      path:
+        - sections
+        - 1
+
+    applicableActions:
+      ADD:
+        - view_item
+        - add_item
+        - edit_item
+      EDIT:
+        - view_item
+        - add_item
+        - edit_item
+      VIEW:
+        - view_item
+
+    actionConfig:
+      view_item:
+        label: View
+        icon: Eye
+        variant: secondary
+        actionType: DISPLAY_FORM
+        level: ROW
+        formConfig: inward-item-details
+        mode: VIEW
+        payload:
+          - key: id
+            as: header_id
+          - key: inward_detail_id
+            as: inward_detail_id
+          - key: po_detail_id
+            as: po_detail_id
+      add_item:
+        label: Inward
+        icon: Plus
+        variant: primary
+        actionType: DISPLAY_FORM
+        level: ROW
+        condition: row.row_type === 'PENDING'
+        formConfig: inward-item-details
+        mode: ADD
+        payload:
+          - key: id
+            as: header_id
+          - key: po_detail_id
+            as: po_detail_id
+        onSuccess: refresh
+      edit_item:
+        label: Edit
+        icon: Edit
+        variant: primary
+        actionType: DISPLAY_FORM
+        level: ROW
+        condition: row.row_type === 'EXISTING'
+        formConfig: inward-item-details
+        mode: EDIT
+        payload:
+          - key: id
+            as: header_id
+          - key: inward_detail_id
+            as: inward_detail_id
+          - key: po_detail_id
+            as: po_detail_id
+        onSuccess: refresh
+
+    columns:
+      - name: po_entry_no
+        label: PO No
+        visible: true
+        width: 120
+      - name: po_row_no
+        label: Row #
+        visible: true
+        width: 80
+        align: center
+      - name: material_name
+        label: Material
+        visible: true
+        width: 250
+      - name: po_eqty
+        label: Ordered
+        visible: true
+        width: 100
+        align: right
+      - name: balance_qty
+        label: Balance
+        visible: true
+        width: 100
+        align: right
+      - name: inward_qty
+        label: Inwarded
+        visible: true
+        width: 100
+        align: right

@@ -1,70 +1,117 @@
-actionType: EXECUTE_QUERY
-queryInfo:
-  returnType: MULTIPLE_ROWS
-  query: |
-    SELECT
-    role_id, role_name, descr, lub, lua
-    FROM
-      (
-        Select 
-          id as role_id, name as role_name, descr, 
-          lub, lua
-        from
-          administration.role
-        where
-          is_active = true
-      ) as role_list_view
-  options:
-    applyAccessLevelRestrictions: false
-    applyPagenation: true
-    applySorting: true
-    applyFiltering: true
-    onSuccess: refresh
-    onFailure: showErrorPage
-applicableActions:
-  - add
-  - edit
-  - delete
-actionConfig:
-  add:
-    label: Add New Role
-    actionType: DISPLAY_FORM
-    formConfig: add-role
-    onSuccess: refresh
-    accessTypeRequired: 7-ADD
-  edit:
-    label: Edit Role
-    actionType: DISPLAY_FORM
-    payload:
-      - role_id
-    formConfig: add-role
-    onSuccess: refresh
-    accessTypeRequired: 7-EDIT
-  delete:
-    label: Delete Role
-    actionType: EXECUTE_QUERY
+version: 1.0
+configName: list-roles
+
+sections:
+  - sectionType: TABLE
+    sectionName: roles
+    label: Roles
     queryInfo:
-      returnType: SINGLE_ROW
+      returnType: MULTIPLE_ROWS
+      query: |
+        SELECT
+          id, name as role_name, descr,
+          lua as last_updated_at,
+          TRIM(CONCAT(u.first_name, ' ', u.last_name)) as last_updated_by_name
+        FROM administration.role r
+        LEFT JOIN administration.user u ON r.lub = u.id
+        WHERE r.is_active = true
       path:
-        - actionConfig
+        - sections
+        - 0
+      options:
+        applyFiltering: true
+        applySorting: true
+        applyPagination: true
+
+    applicableActions:
+      VIEW:
+        - add
+        - view
+        - edit
         - delete
-      query: Select administration.delete_role($1, $2) as id;
-      payload:
-        - role_id
-      contextParams:
-        - current_user_id
-    formConfig: list-roles
-    onSuccess: refresh
-    onFailure: showErrorSnackbar
-    accessTypeRequired: 7-DELETE
-columns:
-  - name: role_name
-    label: Role Name
-    width: 200
-    sortable: true
-    filterType: string
-  - name: descr
-    label: descr
-    width: 600
-    sortable: true
-    filterType: string
+
+    actionConfig:
+      add:
+        label: Add Role
+        icon: Plus
+        variant: primary
+        actionType: DISPLAY_FORM
+        level: HEADER
+        shortcut: "F2"
+        formConfig: role-details
+        mode: ADD
+        payload: []
+        onSuccess: refresh
+      view:
+        label: View
+        icon: Eye
+        variant: secondary
+        actionType: DISPLAY_FORM
+        level: ROW
+        shortcut: "F3"
+        formConfig: role-details
+        mode: VIEW
+        payload:
+          - id
+      edit:
+        label: Edit
+        icon: Edit
+        variant: primary
+        actionType: DISPLAY_FORM
+        level: ROW
+        shortcut: "F4"
+        formConfig: role-details
+        mode: EDIT
+        payload:
+          - id
+        onSuccess: refresh
+      delete:
+        label: Delete
+        icon: Trash2
+        variant: danger
+        actionType: EXECUTE_QUERY
+        level: ROW
+        shortcut: "F8"
+        confirmationRequired: true
+        queryInfo:
+          query: SELECT administration.delete_role($1, $2) as id
+          payload:
+            - id
+          contextParams:
+            - current_user_id
+          path:
+            - sections
+            - 0
+            - actionConfig
+            - delete
+        onSuccess: refresh
+
+    columns:
+      - name: id
+        label: ID
+        visible: false
+
+      - name: role_name
+        label: Role Name
+        visible: true
+        sortable: true
+        filterable: true
+        width: 200
+
+      - name: descr
+        label: Description
+        visible: true
+
+      - name: last_updated_at
+        label: Last Updated
+        visible: true
+        sortable: true
+        dataType: datetime
+        format: "DD/MM/YYYY HH:mm"
+        defaultSort: DESC
+        width: 150
+
+      - name: last_updated_by_name
+        label: Updated By
+        visible: true
+        width: 150

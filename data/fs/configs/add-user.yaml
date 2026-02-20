@@ -86,13 +86,14 @@ sections:
         multi: false
         selectConfig:
           resource: list-users
+          displayField: full_name
           selectHandler: converter
           currentSelection:
             - key: reports_to_id
-              as: user_id
+              as: id
           selectParser: converter
           fields_to_extract:
-            - key: user_id
+            - key: id
               as: reports_to_id
             - key: full_name
               as: reports_to_name
@@ -103,13 +104,14 @@ sections:
         multi: true
         selectConfig:
           resource: list-roles
+          displayField: role_name
+          selectHandler: concatinator
           currentSelection:
             - key: role_ids
-              as: role_id
+              as: id
           selectParser: splitter
-          selectHandler: concatinator
           fields_to_extract:
-            - key: role_id
+            - key: id
               as: role_ids
             - key: role_name
               as: roles

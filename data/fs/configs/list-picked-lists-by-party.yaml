@@ -13,7 +13,8 @@ queryInfo:
       AND status = 'Picked'
       AND is_active = true
     ORDER BY entry_dt DESC
-  payload: [party_id]
+  payload:
+    - party_id
 columns:
   - name: entry_no
     label: Picking List No

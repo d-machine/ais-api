@@ -1,37 +1,139 @@
-configType: LIST
 version: 1.0
-queryInfo:
-  returnType: MULTIPLE_ROWS
-  query: |
-    SELECT 
-      h.id,
-      h.entry_no,
-      h.entry_dt,
-      p.name as party_name,
-      h.status,
-      h.vehicle_no
-    FROM wms.dispatch_header h
-    JOIN wms.party p ON h.party_id = p.id
-    WHERE h.is_active = true
-    ORDER BY h.entry_dt DESC, h.id DESC
-columns:
-  - name: entry_no
-    label: Dispatch No
-  - name: entry_dt
-    label: Date
-  - name: party_name
-    label: Customer
-  - name: vehicle_no
-    label: Vehicle
-  - name: status
-    label: Status
-actionConfig:
-  add:
-    label: New Dispatch
-    actionType: OPEN_FORM
-    formConfig: add-dispatch
-  edit:
-    label: Edit
-    actionType: OPEN_FORM
-    formConfig: edit-dispatch
-    payload: [id]
+configName: list-dispatches
+
+sections:
+  - sectionType: TABLE
+    sectionName: dispatches
+    label: Dispatches
+    queryInfo:
+      returnType: MULTIPLE_ROWS
+      query: |
+        SELECT 
+          h.id, h.entry_no, h.entry_dt, p.name as party_name,
+          h.status, h.vehicle_no,
+          h.lua as last_updated_at,
+          TRIM(CONCAT(u.first_name, ' ', u.last_name)) as last_updated_by_name
+        FROM wms.dispatch_header h
+        JOIN wms.party p ON h.party_id = p.id
+        LEFT JOIN administration.user u ON h.lub = u.id
+        WHERE h.is_active = true
+      path:
+        - sections
+        - 0
+      options:
+        applyFiltering: true
+        applySorting: true
+        applyPagination: true
+
+    applicableActions:
+      VIEW:
+        - add
+        - view
+        - edit
+        - delete
+
+    actionConfig:
+      add:
+        label: New Dispatch
+        icon: Plus
+        variant: primary
+        actionType: DISPLAY_FORM
+        level: HEADER
+        shortcut: "F2"
+        formConfig: dispatch-details
+        mode: ADD
+        payload: []
+        onSuccess: refresh
+      view:
+        label: View
+        icon: Eye
+        variant: secondary
+        actionType: DISPLAY_FORM
+        level: ROW
+        shortcut: "F3"
+        formConfig: dispatch-details
+        mode: VIEW
+        payload:
+          - id
+      edit:
+        label: Edit
+        icon: Edit
+        variant: primary
+        actionType: DISPLAY_FORM
+        level: ROW
+        shortcut: "F4"
+        formConfig: dispatch-details
+        mode: EDIT
+        payload:
+          - id
+        onSuccess: refresh
+      delete:
+        label: Delete
+        icon: Trash2
+        variant: danger
+        actionType: EXECUTE_QUERY
+        level: ROW
+        shortcut: "F8"
+        condition: row.status === 'Draft'
+        confirmationRequired: true
+        queryInfo:
+          query: UPDATE wms.dispatch_header SET is_active = false, lub = $2, lua = NOW() WHERE id = $1 RETURNING id
+          payload:
+            - id
+          contextParams:
+            - current_user_id
+          path:
+            - sections
+            - 0
+            - actionConfig
+            - delete
+        onSuccess: refresh
+
+    columns:
+      - name: id
+        label: ID
+        visible: false
+
+      - name: entry_no
+        label: Dispatch No
+        visible: true
+        sortable: true
+        filterable: true
+        width: 150
+
+      - name: entry_dt
+        label: Date
+        visible: true
+        dataType: date
+        width: 120
+
+      - name: party_name
+        label: Customer
+        visible: true
+        sortable: true
+        filterable: true
+        width: 200
+
+      - name: vehicle_no
+        label: Vehicle
+        visible: true
+        width: 120
+
+      - name: status
+        label: Status
+        visible: true
+        width: 100
+
+      - name: last_updated_at
+        label: Last Updated
+        visible: true
+        sortable: true
+        dataType: datetime
+        format: "DD/MM/YYYY HH:mm"
+        defaultSort: DESC
+        width: 150
+
+      - name: last_updated_by_name
+        label: Updated By
+        visible: true
+        width: 150

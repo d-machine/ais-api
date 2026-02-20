@@ -68,7 +68,7 @@ sections:
         onFailure: showErrorSnackbar
       CANCEL:
         label: Cancel
-    
+
     rows:
       - columns:
           - field: item_id
@@ -92,7 +92,7 @@ sections:
             span: 6
           - field: remarks
             span: 6
-            
+
     fields:
       - name: id
         label: ID
@@ -139,14 +139,13 @@ sections:
               as: euom
             - key: uom_package_id
               as: puom
-      
+
       - name: quom
         label: Quantity UOM
         type: SELECT
         required: true
         selectConfig:
           resource: list-uoms-by-material
-          labelField: uom_name
           displayField: uom_name
           selectHandler: converter
           currentSelection:
@@ -205,7 +204,7 @@ sections:
         label: Rate (Per Pc)
         type: NUMBER
         required: true
-      
+
       - name: amount
         label: Amount
         type: NUMBER
@@ -217,14 +216,14 @@ sections:
             dependencyConfig:
               operation: MULTIPLY
               operands: [eqty, rate_per_pc]
-      
+
       - name: dqty
         label: Dispatched Qty
         type: NUMBER
         required: false
         defaultValue: 0
         readonly: true
-      
+
       - name: status
         label: Status
         type: TEXT

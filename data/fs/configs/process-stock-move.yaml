@@ -90,7 +90,7 @@ sections:
           selectHandler: converter
           currentSelection:
             - key: to_rack_id
-              as: to_rack_id
+              as: id
           selectParser: converter
           fields_to_extract:
             - key: id

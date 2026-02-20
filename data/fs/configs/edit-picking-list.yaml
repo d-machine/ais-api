@@ -69,10 +69,12 @@ sections:
         selectConfig:
           resource: list-parties
           displayField: name
+          selectHandler: converter
           currentSelection:
             - key: party_id
               as: id
-      
+          selectParser: converter
+
       - name: so_ids
         label: Pending Sales Orders
         type: MULTI_SELECT
@@ -80,9 +82,11 @@ sections:
         selectConfig:
           resource: list-pending-sales-orders
           displayField: entry_no
+          selectHandler: concatinator
           currentSelection:
             - key: so_ids
               as: id
+          selectParser: splitter
         dependencies:
           - target: [party_id]
             handler: filterByDependency

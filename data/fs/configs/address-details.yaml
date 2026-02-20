@@ -1,8 +1,39 @@
-configType: FORM
 version: 1.0
+configName: address-details
+
+# Form-level actions (global)
+applicableActions:
+  ADD:
+    - FINISH
+    - CANCEL
+  EDIT:
+    - FINISH
+    - CANCEL
+  VIEW:
+    - FINISH
+    - CLOSE
+actionConfig:
+  FINISH:
+    visible: false
+    closeAction: REFRESH
+  CANCEL:
+    visible: true
+    variant: danger
+    label:
+      ADD: Discard Changes
+      EDIT: Discard Changes
+  CLOSE:
+    visible: true
+    label:
+      VIEW: Close
+
 sections:
+  # Section 1: Address Details (FIELDS)
   - sectionType: FIELDS
-    sectionName: Address Details
+    sectionName: address_details
+    label: Address Details
+
+    # Section-level data fetching
     queryInfo:
       returnType: SINGLE_ROW
       query: |
@@ -27,29 +58,59 @@ sections:
         LEFT JOIN wms.country co ON s.country_id = co.id
         WHERE a.id = $1
       payload:
-        - id
+        - _context.id # Explicit: from initial context
+      executionConditions:
+        - indices:
+            - 0
+          operator: IS_NOT_NIL
       path:
         - sections
         - 0
+
+    # Section-level actions
     applicableActions:
-      - SAVE
-      - CANCEL
+      ADD:
+        - SAVE
+        - CANCEL
+      EDIT:
+        - SAVE
+        - CANCEL
+      VIEW:
+        - EDIT
+
     actionConfig:
       SAVE:
-        label: Update Address
+        label:
+          ADD: Create Address
+          EDIT: Update Address
+        icon: Save
+        variant: primary
         actionType: EXECUTE_QUERY
         queryInfo:
           returnType: SCALAR
-          query: SELECT wms.update_address($1, $2, $3, $4, $5, $6, $7, $8, $9) as id;
+          query:
+            ADD: |
+              SELECT wms.insert_address($1, $2, $3, $4, $5, $6, $7, $8) as id;
+            EDIT: |
+              SELECT wms.update_address($1, $2, $3, $4, $5, $6, $7, $8, $9) as id;
           payload:
-            - id
-            - adr1
-            - adr2
-            - adr3
-            - city_id
-            - district_id
-            - state_id
-            - country_id
+            ADD:
+              - address_details.adr1
+              - address_details.adr2
+              - address_details.adr3
+              - address_details.city_id
+              - address_details.district_id
+              - address_details.state_id
+              - address_details.country_id
+            EDIT:
+              - _context.id
+              - address_details.adr1
+              - address_details.adr2
+              - address_details.adr3
+              - address_details.city_id
+              - address_details.district_id
+              - address_details.state_id
+              - address_details.country_id
           contextParams:
             - current_user_id
           path:
@@ -57,11 +118,29 @@ sections:
             - 0
             - actionConfig
             - SAVE
-        onSuccess: exitAndComplete
+        onSuccess:
+          callback: HANDLE_FORM_ACTION
+          params:
+            action: FINISH
         onFailure: showErrorSnackbar
+
       CANCEL:
         label: Discard Changes
-    
+        icon: ClipboardX
+        variant: danger
+        actionType: NAVIGATE
+        onSuccess: exitAndComplete
+
+      EDIT:
+        label: Edit
+        icon: Edit
+        variant: primary
+        actionType: FUNCTION_EXECUTION
+        functionInfo:
+          name: changeMode
+          params:
+            mode: EDIT
+
     # Row-based layout
     rows:
       - columns:
@@ -83,26 +162,35 @@ sections:
             span: 6
           - field: district_id
             span: 6
-    
+
     # Field definitions
     fields:
       - name: adr1
         label: Address Line 1
         type: TEXT
+        readonly:
+          - VIEW
         required: true
+
       - name: adr2
         label: Address Line 2
         type: TEXT
+        readonly:
+          - VIEW
         required: false
+
       - name: adr3
         label: Address Line 3
         type: TEXT
+        readonly:
+          - VIEW
         required: false
-      
-      # Country field
+
       - name: country_id
         label: Country
         type: SELECT
+        readonly:
+          - VIEW
         required: true
         selectConfig:
           resource: list-countries
@@ -117,11 +205,12 @@ sections:
               as: country_id
             - key: country_name
               as: country_name
-      
-      # State field - depends on Country
+
       - name: state_id
         label: State
         type: SELECT
+        readonly:
+          - VIEW
         required: true
         selectConfig:
           resource: list-states
@@ -137,16 +226,18 @@ sections:
             - key: state_name
               as: state_name
         dependencies:
-          - target: [country_id]
+          - target:
+              - country_id
             handler: filterByDependency
             required: true
             dependencyConfig:
               targetParam: country_id
-      
-      # City field - depends on State AND District
+
       - name: city_id
         label: City
         type: SELECT
+        readonly:
+          - VIEW
         required: true
         selectConfig:
           resource: list-cities-by-state-district
@@ -162,21 +253,24 @@ sections:
             - key: city_name
               as: city_name
         dependencies:
-          - target: [state_id]
+          - target:
+              - state_id
             handler: filterByDependency
             required: true
             dependencyConfig:
               targetParam: state_id
-          - target: [district_id]
+          - target:
+              - district_id
             handler: filterByDependency
             required: false
             dependencyConfig:
               targetParam: district_id
-      
-      # District field - depends on State AND City
+
       - name: district_id
         label: District
         type: SELECT
+        readonly:
+          - VIEW
         required: true
         selectConfig:
           resource: list-districts-by-state-city
@@ -192,12 +286,14 @@ sections:
             - key: district_name
               as: district_name
         dependencies:
-          - target: [state_id]
+          - target:
+              - state_id
             handler: filterByDependency
             required: true
             dependencyConfig:
               targetParam: state_id
-          - target: [city_id]
+          - target:
+              - city_id
             handler: filterByDependency
             required: false
             dependencyConfig:

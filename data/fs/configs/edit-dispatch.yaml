@@ -52,10 +52,12 @@ sections:
         selectConfig:
           resource: list-parties
           displayField: name
+          selectHandler: converter
           currentSelection:
             - key: party_id
               as: id
-      
+          selectParser: converter
+
       - name: pl_ids
         label: Picking Lists
         type: MULTI_SELECT
@@ -63,9 +65,11 @@ sections:
         selectConfig:
           resource: list-picked-lists-by-party
           displayField: entry_no
+          selectHandler: concatinator
           currentSelection:
             - key: pl_ids
               as: id
+          selectParser: splitter
         dependencies:
           - target: [party_id]
             handler: filterByDependency

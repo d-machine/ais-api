@@ -718,21 +718,28 @@ CREATE OR REPLACE FUNCTION wms.insert_sales_order_header(
     broker_id INTEGER,
     delivery_at_id INTEGER,
     trsp_id INTEGER,
-    year_code VARCHAR(4),
     delivery_dt TIMESTAMP,
     status VARCHAR(255),
     remarks VARCHAR(255),
     current_user_id INTEGER
 ) RETURNS TABLE (id INTEGER, entry_no VARCHAR) AS $$
-DECLARE 
+DECLARE
     new_sales_header_id INT;
     new_entry_no VARCHAR(6);
     max_entry_no INT;
+    _year_code VARCHAR(4);
 BEGIN
+    -- Compute fiscal year (April-based)
+    _year_code := CASE
+        WHEN EXTRACT(MONTH FROM CURRENT_DATE) >= 4
+        THEN TO_CHAR(CURRENT_DATE, 'YYYY')
+        ELSE TO_CHAR(CURRENT_DATE - INTERVAL '1 year', 'YYYY')
+    END;
+
     -- Auto-generate entry_no
-    SELECT COALESCE(MAX(CAST(sh.entry_no AS INTEGER)), 0) INTO max_entry_no 
+    SELECT COALESCE(MAX(CAST(sh.entry_no AS INTEGER)), 0) INTO max_entry_no
     FROM wms.sales_order_header sh;
-    
+
     new_entry_no := LPAD((max_entry_no + 1)::TEXT, 6, '0');
 
     INSERT INTO wms.sales_order_header(
@@ -749,20 +756,20 @@ BEGIN
         lub
     )
     VALUES (
-        new_entry_no, 
+        new_entry_no,
         entry_dt,
         party_id,
         broker_id,
         delivery_at_id,
         trsp_id,
-        year_code,
+        _year_code,
         delivery_dt,
         status,
         remarks,
         current_user_id
     )
     RETURNING wms.sales_order_header.id INTO new_sales_header_id;
-    
+
     RETURN QUERY SELECT new_sales_header_id, new_entry_no;
 END;
 $$ LANGUAGE plpgsql;
@@ -775,7 +782,6 @@ CREATE OR REPLACE FUNCTION wms.update_sales_order_header(
     _broker_id INTEGER,
     _delivery_at_id INTEGER,
     _trsp_id INTEGER,
-    _year_code VARCHAR(4),
     _delivery_dt TIMESTAMP,
     _status VARCHAR(255),
     _remarks VARCHAR(255),
@@ -788,7 +794,6 @@ BEGIN
         broker_id = _broker_id,
         delivery_at_id = _delivery_at_id,
         trsp_id = _trsp_id,
-        year_code = _year_code,
         delivery_dt = _delivery_dt,
         status = _status,
         remarks = _remarks,
@@ -997,17 +1002,24 @@ CREATE OR REPLACE FUNCTION wms.insert_purchase_order_header(
     _broker_id INTEGER,
     _delivery_at_id INTEGER,
     _trsp_id INTEGER,
-    _year_code VARCHAR(4),
     _delivery_dt TIMESTAMP,
     _status VARCHAR(255),
     _remarks VARCHAR(255),
     _current_user_id INTEGER
 ) RETURNS TABLE (id INTEGER, entry_no VARCHAR(10)) AS $$
-DECLARE 
+DECLARE
     _new_id INTEGER;
     _new_entry_no VARCHAR(10);
     _max_entry_no INTEGER;
+    _year_code VARCHAR(4);
 BEGIN
+    -- Compute fiscal year: starts April 1st
+    _year_code := CASE
+        WHEN EXTRACT(MONTH FROM CURRENT_DATE) >= 4
+        THEN TO_CHAR(CURRENT_DATE, 'YYYY')
+        ELSE TO_CHAR(CURRENT_DATE - INTERVAL '1 year', 'YYYY')
+    END;
+
     -- Auto-generate entry_no with PO prefix
     SELECT COALESCE(
         MAX((REGEXP_REPLACE(ph.entry_no, '[^0-9]', '', 'g'))::INT),
@@ -1015,11 +1027,11 @@ BEGIN
     ) INTO _max_entry_no
     FROM wms.purchase_order_header ph
     WHERE ph.entry_no ~ '^PO[0-9]+';
-    
+
     _new_entry_no := 'PO' || LPAD((_max_entry_no + 1)::TEXT, 6, '0');
 
     INSERT INTO wms.purchase_order_header(
-        entry_no, entry_dt, vendor_id, broker_id, delivery_at_id, 
+        entry_no, entry_dt, vendor_id, broker_id, delivery_at_id,
         trsp_id, year_code, delivery_dt, status, remarks, lub
     )
     VALUES (
@@ -1041,7 +1053,6 @@ CREATE OR  REPLACE FUNCTION wms.update_purchase_order_header(
     broker_id INTEGER,
     delivery_at_id INTEGER,
     trsp_id INTEGER,
-    year_code VARCHAR(4),
     delivery_dt TIMESTAMP,
     status VARCHAR(255),
     remarks VARCHAR(255),
@@ -1054,7 +1065,6 @@ BEGIN
         vendor_id = vendor_id,
         delivery_at_id = delivery_at_id,
         trsp_id = trsp_id,
-        year_code = year_code,
         delivery_dt = delivery_dt,
         status =status,
         remarks = remarks,

@@ -1,130 +1,160 @@
-configType: LIST
 version: 1.0
+configName: list-purchase-orders
 
-queryInfo:
-  returnType: MULTIPLE_ROWS
-  query: |
-    SELECT * FROM (
-      SELECT
-        ph.id,
-        ph.entry_no,
-        ph.entry_dt,
-        ph.vendor_id,
-        v.name as vendor_name,
-        b.name as broker_name,
-        ph.status,
-        COALESCE(SUM(pd.eqty), 0) as total_qty,
-        COALESCE(SUM(pd.amount), 0) as total_amount,
-        ph.lua as last_updated_at,
-        TRIM(CONCAT(u.first_name, ' ', u.last_name)) as last_updated_by_name
-      FROM wms.purchase_order_header ph
-      LEFT JOIN wms.vendor v ON ph.vendor_id = v.id
-      LEFT JOIN wms.broker b ON ph.broker_id = b.id
-      LEFT JOIN wms.purchase_order_details pd ON ph.id = pd.header_id AND pd.is_active = true
-      LEFT JOIN administration.user u ON ph.lub = u.id
-      WHERE ph.is_active = true
-      GROUP BY ph.id, ph.entry_no, ph.entry_dt, ph.vendor_id, v.name, b.name, ph.status, ph.lua, u.first_name, u.last_name
-    ) as po
-  options:
-    applyFiltering: true
-    applySorting: true
-    applyPagination: true
-    pageSize: 50
-  path: []
-
-columns:
-  - name: id
-    label: ID
-    visible: false
-    sortable: false
-  - name: entry_no
-    label: Entry No
-    visible: true
-    sortable: true
-    filterable: true
-    width: 100
-  - name: entry_dt
-    label: Entry Date
-    visible: true
-    sortable: true
-    dataType: datetime
-    format: "DD/MM/YYYY"
-    width: 120
-  - name: vendor_name
-    label: Vendor
-    visible: true
-    sortable: true
-    filterable: true
-    width: 200
-  - name: broker_name
-    label: Broker
-    visible: true
-    sortable: true
-    filterable: true
-    width: 150
-  - name: status
-    label: Status
-    visible: true
-    sortable: true
-    width: 100
-  - name: total_qty
-    label: Total Qty
-    visible: true
-    sortable: false
-    width: 100
-    align: right
-  - name: total_amount
-    label: Total Amount
-    visible: true
-    sortable: false
-    dataType: currency
-    width: 120
-    align: right
-  - name: last_updated_at
-    label: Last Updated
-    visible: true
-    sortable: true
-    dataType: datetime
-    format: "DD/MM/YYYY HH:mm"
-    defaultSort: DESC
-    width: 150
-  - name: last_updated_by_name
-    label: Updated By
-    visible: true
-    width: 150
-
-actionConfig:
-  add:
-    label: New Order
-    actionType: DISPLAY_FORM
-    shortcut: F2
-    formConfig: add-purchase-order
-    onSuccess: refresh
-  edit:
-    label: Edit
-    actionType: DISPLAY_FORM
-    shortcut: F4
-    level: ROW
-    formConfig: edit-purchase-order
-    payload:
-      - id
-    onSuccess: refresh
-  delete:
-    label: Delete
-    actionType: EXECUTE_QUERY
-    shortcut: F8
-    level: ROW
-    confirmationRequired: true
-    confirmationMessage: "Are you sure you want to delete Order '${row.entry_no}'?"
+sections:
+  - sectionType: TABLE
+    sectionName: purchase_orders
+    label: Purchase Orders
     queryInfo:
-      returnType: SCALAR
-      query: SELECT wms.delete_purchase_order_header($1, $2) as id;
-      payload:
-        - id
-      contextParams:
-        - current_user_id
+      returnType: MULTIPLE_ROWS
+      query: |
+        SELECT ph.id, ph.entry_no, ph.entry_dt, v.name as vendor_name, 
+               b.name as broker_name, ph.status,
+               COALESCE(SUM(pd.eqty), 0) as total_qty,
+               COALESCE(SUM(pd.amount), 0) as total_amount,
+               ph.lua as last_updated_at,
+               TRIM(CONCAT(u.first_name, ' ', u.last_name)) as last_updated_by_name
+        FROM wms.purchase_order_header ph
+        LEFT JOIN wms.vendor v ON ph.vendor_id = v.id
+        LEFT JOIN wms.broker b ON ph.broker_id = b.id
+        LEFT JOIN wms.purchase_order_details pd ON ph.id = pd.header_id AND pd.is_active = true
+        LEFT JOIN administration.user u ON ph.lub = u.id
+        WHERE ph.is_active = true
+        GROUP BY ph.id, ph.entry_no, ph.entry_dt, v.name, b.name, ph.status, ph.lua, u.first_name, u.last_name
       path:
-        - actionConfig
+        - sections
+        - 0
+      options:
+        applyFiltering: true
+        applySorting: true
+        applyPagination: true
+
+    applicableActions:
+      VIEW:
+        - add
+        - view
+        - edit
         - delete
-    onSuccess: refresh
-    onFailure: showErrorSnackbar
+
+    actionConfig:
+      add:
+        label: New Order
+        icon: Plus
+        actionType: DISPLAY_FORM
+        shortcut: F2
+        variant: primary
+        formConfig: purchase-order-details
+        mode: ADD
+      view:
+        label: View
+        icon: Eye
+        actionType: DISPLAY_FORM
+        shortcut: F3
+        variant: secondary
+        level: ROW
+        formConfig: purchase-order-details
+        mode: VIEW
+        payload:
+          - id
+      edit:
+        label: Edit
+        icon: Edit
+        actionType: DISPLAY_FORM
+        shortcut: F4
+        variant: primary
+        level: ROW
+        formConfig: purchase-order-details
+        mode: EDIT
+        payload:
+          - id
+        onSuccess: refresh
+      delete:
+        label: Delete
+        icon: Trash2
+        actionType: EXECUTE_QUERY
+        shortcut: F8
+        variant: danger
+        level: ROW
+        confirmationRequired: true
+        queryInfo:
+          query: SELECT wms.delete_purchase_order_header($1, $2) as id
+          payload:
+            - id
+          contextParams:
+            - current_user_id
+          path:
+            - sections
+            - 0
+            - actionConfig
+            - delete
+        onSuccess: refresh
+
+    columns:
+      - name: id
+        label: ID
+        visible: false
+
+      - name: entry_no
+        label: Order No
+        visible: true
+        sortable: true
+        filterable: true
+        width: 120
+
+      - name: entry_dt
+        label: Date
+        visible: true
+        sortable: true
+        filterable: true
+        dataType: date
+        format: "DD/MM/YYYY"
+        width: 120
+
+      - name: vendor_name
+        label: Vendor
+        visible: true
+        sortable: true
+        filterable: true
+        width: 200
+
+      - name: broker_name
+        label: Broker
+        visible: true
+        sortable: true
+        filterable: true
+        width: 150
+
+      - name: total_qty
+        label: Total Qty
+        visible: true
+        sortable: true
+        dataType: number
+        width: 100
+
+      - name: total_amount
+        label: Amount
+        visible: true
+        sortable: true
+        dataType: currency
+        width: 120
+
+      - name: status
+        label: Status
+        visible: true
+        sortable: true
+        filterable: true
+        width: 100
+
+      - name: last_updated_at
+        label: Last Updated
+        visible: true
+        sortable: true
+        dataType: datetime
+        format: "DD/MM/YYYY HH:mm"
+        defaultSort: DESC
+        width: 150
+
+      - name: last_updated_by_name
+        label: Updated By
+        visible: true
+        width: 150

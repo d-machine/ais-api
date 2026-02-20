@@ -1,0 +1,354 @@
+version: 1.0
+configName: broker-details
+title: Broker Details
+
+applicableActions:
+  ADD:
+    - FINISH
+    - CANCEL
+  EDIT:
+    - FINISH
+    - CANCEL
+  VIEW:
+    - FINISH
+    - CLOSE
+
+actionConfig:
+  FINISH:
+    visible: false
+    closeAction: REFRESH
+  CANCEL:
+    visible: true
+    variant: danger
+    label:
+      ADD: Discard
+      EDIT: Discard
+    icon: X
+  CLOSE:
+    visible: true
+    variant: secondary
+    label:
+      VIEW: Close
+    icon: X
+
+sections:
+  - sectionType: FIELDS
+    sectionName: broker_details
+    label: Broker Information
+    queryInfo:
+      returnType: SINGLE_ROW
+      query: |
+        SELECT
+          b.id, b.broker_type, b.name as broker_name, b.add1, b.add2, b.add3,
+          b.city, b.pincode, b.person_name, b.telephone, b.email,
+          b.salesman, b.pan_no, b.cr_limit, b.cr_days, b.gstno,
+          b.aadhar_no, b.sales_head, b.director, b.manager,
+          b.city_district_id, b.state_id, b.country_id
+        FROM wms.broker b
+        WHERE b.id = $1
+      payload:
+        - _context.id
+      executionConditions:
+        - indices:
+            - 0
+          operator: IS_NOT_NIL
+      path:
+        - sections
+        - 0
+
+    applicableActions:
+      ADD:
+        - SAVE
+        - CANCEL
+      EDIT:
+        - SAVE
+        - CANCEL
+      VIEW:
+        - EDIT
+
+    actionConfig:
+      SAVE:
+        label:
+          ADD: Create Broker
+          EDIT: Update Broker
+        icon: Save
+        variant: primary
+        actionType: EXECUTE_QUERY
+        queryInfo:
+          query:
+            ADD: SELECT wms.insert_broker($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20) as id
+            EDIT: |
+              UPDATE wms.broker SET
+                broker_type = $2, name = $3, add1 = $4, add2 = $5, add3 = $6,
+                city = $7, pincode = $8, person_name = $9, telephone = $10,
+                email = $11, salesman = $12, pan_no = $13, cr_limit = $14,
+                cr_days = $15, gstno = $16, aadhar_no = $17, sales_head = $18,
+                director = $19, manager = $20, city_district_id = $21,
+                state_id = $22, country_id = $23, lub = $24, lua = NOW()
+              WHERE id = $1 RETURNING id;
+          payload:
+            ADD:
+              - broker_details.broker_type
+              - broker_details.broker_name
+              - broker_details.add1
+              - broker_details.add2
+              - broker_details.add3
+              - broker_details.city
+              - broker_details.pincode
+              - broker_details.person_name
+              - broker_details.telephone
+              - broker_details.email
+              - broker_details.salesman
+              - broker_details.pan_no
+              - broker_details.cr_limit
+              - broker_details.cr_days
+              - broker_details.gstno
+              - broker_details.aadhar_no
+              - broker_details.sales_head
+              - broker_details.director
+              - broker_details.manager
+              - broker_details.city_district_id
+              - broker_details.state_id
+              - broker_details.country_id
+            EDIT:
+              - _context.id
+              - broker_details.broker_type
+              - broker_details.broker_name
+              - broker_details.add1
+              - broker_details.add2
+              - broker_details.add3
+              - broker_details.city
+              - broker_details.pincode
+              - broker_details.person_name
+              - broker_details.telephone
+              - broker_details.email
+              - broker_details.salesman
+              - broker_details.pan_no
+              - broker_details.cr_limit
+              - broker_details.cr_days
+              - broker_details.gstno
+              - broker_details.aadhar_no
+              - broker_details.sales_head
+              - broker_details.director
+              - broker_details.manager
+              - broker_details.city_district_id
+              - broker_details.state_id
+              - broker_details.country_id
+          contextParams:
+            - current_user_id
+        onSuccess:
+          callback: HANDLE_FORM_ACTION
+          params:
+            action: FINISH
+        onFailure: showErrorSnackbar
+      CANCEL:
+        label: Discard
+        icon: X
+        variant: danger
+        actionType: NAVIGATE
+        onSuccess: exitAndComplete
+      EDIT:
+        label: Edit
+        icon: Edit
+        variant: primary
+        actionType: FUNCTION_EXECUTION
+        functionInfo:
+          name: changeMode
+          params:
+            mode: EDIT
+
+    rows:
+      - columns:
+          - field: broker_name
+            span: 8
+          - field: broker_type
+            span: 4
+      - columns:
+          - field: add1
+            span: 12
+      - columns:
+          - field: add2
+            span: 6
+          - field: add3
+            span: 6
+      - columns:
+          - field: city
+            span: 4
+          - field: pincode
+            span: 4
+          - field: person_name
+            span: 4
+      - columns:
+          - field: telephone
+            span: 4
+          - field: email
+            span: 4
+          - field: salesman
+            span: 4
+      - columns:
+          - field: pan_no
+            span: 4
+          - field: cr_limit
+            span: 4
+          - field: cr_days
+            span: 4
+      - columns:
+          - field: gstno
+            span: 6
+          - field: aadhar_no
+            span: 6
+      - columns:
+          - field: sales_head
+            span: 4
+          - field: director
+            span: 4
+          - field: manager
+            span: 4
+      - columns:
+          - field: country_id
+            span: 4
+          - field: state_id
+            span: 4
+          - field: city_district_id
+            span: 4
+
+    fields:
+      - name: broker_name
+        label: Broker Name
+        type: TEXT
+        required: true
+        readonly:
+          - VIEW
+      - name: broker_type
+        label: Broker Type
+        type: TEXT
+        required: true
+        readonly:
+          - VIEW
+      - name: add1
+        label: Address Line 1
+        type: TEXT
+        readonly:
+          - VIEW
+      - name: add2
+        label: Address Line 2
+        type: TEXT
+        readonly:
+          - VIEW
+      - name: add3
+        label: Address Line 3
+        type: TEXT
+        readonly:
+          - VIEW
+      - name: city
+        label: City
+        type: TEXT
+        readonly:
+          - VIEW
+      - name: pincode
+        label: Pincode
+        type: TEXT
+        readonly:
+          - VIEW
+      - name: person_name
+        label: Contact Person
+        type: TEXT
+        readonly:
+          - VIEW
+      - name: telephone
+        label: Telephone
+        type: TEXT
+        readonly:
+          - VIEW
+      - name: email
+        label: Email
+        type: TEXT
+        readonly:
+          - VIEW
+      - name: salesman
+        label: Salesman
+        type: TEXT
+        readonly:
+          - VIEW
+      - name: pan_no
+        label: PAN No
+        type: TEXT
+        readonly:
+          - VIEW
+      - name: cr_limit
+        label: Credit Limit
+        type: NUMBER
+        readonly:
+          - VIEW
+      - name: cr_days
+        label: Credit Days
+        type: NUMBER
+        readonly:
+          - VIEW
+      - name: gstno
+        label: GST No
+        type: TEXT
+        readonly:
+          - VIEW
+      - name: aadhar_no
+        label: Aadhaar No
+        type: TEXT
+        readonly:
+          - VIEW
+      - name: sales_head
+        label: Sales Head
+        type: TEXT
+        readonly:
+          - VIEW
+      - name: director
+        label: Director
+        type: TEXT
+        readonly:
+          - VIEW
+      - name: manager
+        label: Manager
+        type: TEXT
+        readonly:
+          - VIEW
+      - name: country_id
+        label: Country
+        type: SELECT
+        required: true
+        readonly:
+          - VIEW
+        selectConfig:
+          resource: list-countries
+          displayField: country_name
+          fields_to_extract:
+            - key: id
+              as: country_id
+            - key: country_name
+              as: country_name
+      - name: state_id
+        label: State
+        type: SELECT
+        required: true
+        readonly:
+          - VIEW
+        selectConfig:
+          resource: list-states
+          displayField: state_name
+          fields_to_extract:
+            - key: id
+              as: state_id
+            - key: state_name
+              as: state_name
+      - name: city_district_id
+        label: City District
+        type: SELECT
+        required: true
+        readonly:
+          - VIEW
+        selectConfig:
+          resource: list-city-districts
+          displayField: city_district_name
+          fields_to_extract:
+            - key: city_district_id
+              as: city_district_id
+            - key: city_district_name
+              as: city_district_name

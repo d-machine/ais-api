@@ -1,8 +1,39 @@
-configType: FORM
 version: 1.0
+configName: material-details
+
+# Form-level actions (global)
+applicableActions:
+  ADD:
+    - FINISH
+    - CANCEL
+  EDIT:
+    - FINISH
+    - CANCEL
+  VIEW:
+    - FINISH
+    - CLOSE
+actionConfig:
+  FINISH:
+    visible: false
+    closeAction: REFRESH
+  CANCEL:
+    visible: true
+    variant: danger
+    label:
+      ADD: Discard Changes
+      EDIT: Discard Changes
+  CLOSE:
+    visible: true
+    label:
+      VIEW: Close
+
 sections:
+  # Section 1: Material Details (FIELDS)
   - sectionType: FIELDS
-    sectionName: Material Details
+    sectionName: material_details
+    label: Material Details
+
+    # Section-level data fetching
     queryInfo:
       returnType: SINGLE_ROW
       query: |
@@ -27,30 +58,61 @@ sections:
         LEFT JOIN wms.uom u2 ON m.uom_package_id = u2.id
         WHERE m.id = $1
       payload:
-        - id
+        - _context.id # Explicit: from initial context
+      executionConditions:
+        - indices:
+            - 0
+          operator: IS_NOT_NIL
       path:
         - sections
         - 0
+
+    # Section-level actions
     applicableActions:
-      - SAVE
-      - CANCEL
+      ADD:
+        - SAVE
+        - CANCEL
+      EDIT:
+        - SAVE
+        - CANCEL
+      VIEW:
+        - EDIT
+
     actionConfig:
       SAVE:
-        label: Update Material
+        label:
+          ADD: Create Material
+          EDIT: Update Material
+        icon: Save
+        variant: primary
         actionType: EXECUTE_QUERY
         queryInfo:
           returnType: SCALAR
-          query: SELECT wms.update_material($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) as id;
+          query:
+            ADD: |
+              SELECT wms.insert_material($1, $2, $3, $4, $5, $6, $7, $8, $9) as id;
+            EDIT: |
+              SELECT wms.update_material($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) as id;
           payload:
-            - id
-            - material_name
-            - descr
-            - category_id
-            - brand_id
-            - uom_pc_id
-            - uom_package_id
-            - mrp
-            - selling_rate
+            ADD:
+              - material_details.material_name
+              - material_details.descr
+              - material_details.category_id
+              - material_details.brand_id
+              - material_details.uom_pc_id
+              - material_details.uom_package_id
+              - material_details.mrp
+              - material_details.selling_rate
+            EDIT:
+              - _context.id
+              - material_details.material_name
+              - material_details.descr
+              - material_details.category_id
+              - material_details.brand_id
+              - material_details.uom_pc_id
+              - material_details.uom_package_id
+              - material_details.mrp
+              - material_details.selling_rate
           contextParams:
             - current_user_id
           path:
@@ -58,11 +120,30 @@ sections:
             - 0
             - actionConfig
             - SAVE
-        onSuccess: exitAndComplete
+        onSuccess:
+          callback: HANDLE_FORM_ACTION
+          params:
+            action: FINISH
         onFailure: showErrorSnackbar
+
       CANCEL:
         label: Discard Changes
-    
+        icon: ClipboardX
+        variant: danger
+        actionType: NAVIGATE
+        onSuccess: exitAndComplete
+
+      EDIT:
+        label: Edit
+        icon: Edit
+        variant: primary
+        actionType: FUNCTION_EXECUTION
+        functionInfo:
+          name: changeMode
+          params:
+            mode: EDIT
+
+    # Row-based layout
     rows:
       - columns:
           - field: material_name
@@ -84,19 +165,24 @@ sections:
       - columns:
           - field: descr
             span: 12
-    
+
+    # Field definitions
     fields:
       - name: material_name
         label: Material Name
         type: TEXT
+        readonly:
+          - VIEW
         required: true
+
       - name: category_id
         label: Category
         type: SELECT
+        readonly:
+          - VIEW
         required: true
         selectConfig:
           resource: list-item-categories
-          labelField: item_category_name
           displayField: category_name
           selectHandler: converter
           currentSelection:
@@ -106,18 +192,20 @@ sections:
           fields_to_extract:
             - key: id
               as: category_id
-            - key: item_category_name
+            - key: category_name
               as: category_name
+
       - name: brand_id
         label: Brand
         type: SELECT
+        readonly:
+          - VIEW
         required: true
         disabled:
           condition: isEmpty
           field: category_id
         selectConfig:
           resource: list-item-brands
-          labelField: brand_name
           displayField: brand_name
           selectHandler: converter
           currentSelection:
@@ -130,14 +218,18 @@ sections:
             - key: brand_name
               as: brand_name
           dependencies:
-            - target: [category_id]
+            - target:
+                - category_id
               handler: filterByDependency
               required: true
               dependencyConfig:
                 targetParam: category_id
+
       - name: uom_pc_id
         label: Base UOM
         type: SELECT
+        readonly:
+          - VIEW
         required: true
         selectConfig:
           resource: list-uoms
@@ -152,9 +244,12 @@ sections:
               as: uom_pc_id
             - key: uom_name
               as: uom_pc_name
+
       - name: uom_package_id
         label: Package UOM
         type: SELECT
+        readonly:
+          - VIEW
         required: false
         disabled:
           condition: isEmpty
@@ -173,19 +268,30 @@ sections:
             - key: uom_case_name
               as: uom_package_name
           dependencies:
-            - target: [uom_pc_id]
+            - target:
+                - uom_pc_id
               handler: filterByDependency
               required: true
               dependencyConfig:
                 targetParam: uom_id_each
+
       - name: mrp
         label: MRP
         type: NUMBER
+        readonly:
+          - VIEW
         required: false
+
       - name: selling_rate
         label: Selling Rate
         type: NUMBER
+        readonly:
+          - VIEW
         required: false
+
       - name: descr
         label: Description
         type: TEXTAREA
+        readonly:
+          - VIEW
+        required: false

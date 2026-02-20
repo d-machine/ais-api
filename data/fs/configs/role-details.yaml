@@ -1,0 +1,252 @@
+version: 1.0
+configName: role-details
+title: Role Details
+
+applicableActions:
+  ADD:
+    - FINISH
+    - CANCEL
+  EDIT:
+    - FINISH
+    - CANCEL
+  VIEW:
+    - FINISH
+    - CLOSE
+
+actionConfig:
+  FINISH:
+    visible: true
+    closeAction: REFRESH
+    label: Finish
+    variant: primary
+  CANCEL:
+    visible: true
+    variant: danger
+    label:
+      ADD: Discard
+      EDIT: Discard
+    icon: X
+  CLOSE:
+    visible: true
+    variant: secondary
+    label:
+      VIEW: Close
+    icon: X
+
+sections:
+  - sectionType: FIELDS
+    sectionName: role_details
+    label: Role Information
+    queryInfo:
+      returnType: SINGLE_ROW
+      query: |
+        SELECT id as role_id, name as role_name, descr
+        FROM administration.role
+        WHERE id = $1
+      payload:
+        - _context.id
+      executionConditions:
+        - indices:
+            - 0
+          operator: IS_NOT_NIL
+      path:
+        - sections
+        - 0
+
+    applicableActions:
+      ADD:
+        - SAVE
+        - CANCEL
+      EDIT:
+        - SAVE
+        - CANCEL
+      VIEW:
+        - EDIT
+
+    actionConfig:
+      SAVE:
+        label:
+          ADD: Create Role
+          EDIT: Update Role
+        icon: Save
+        variant: primary
+        actionType: EXECUTE_QUERY
+        queryInfo:
+          returnType: SINGLE_ROW
+          query:
+            ADD: SELECT administration.insert_role($1, $2, $3) as id
+            EDIT: |
+              UPDATE administration.role SET
+                name = $2, descr = $3, lub = $4, lua = NOW()
+              WHERE id = $1 RETURNING id;
+          payload:
+            ADD:
+              - role_details.role_name
+              - role_details.descr
+            EDIT:
+              - _context.id
+              - role_details.role_name
+              - role_details.descr
+          contextParams:
+            - current_user_id
+          path:
+            - sections
+            - 0
+            - actionConfig
+            - SAVE
+        onSuccess:
+          ADD:
+            callback: SAVE_AND_GO_TO_NEXT
+          EDIT:
+            callback: HANDLE_FORM_ACTION
+            params:
+              action: FINISH
+        onFailure: showErrorSnackbar
+      CANCEL:
+        label: Discard
+        icon: X
+        variant: danger
+        actionType: NAVIGATE
+        onSuccess: exitAndComplete
+      EDIT:
+        label: Edit
+        icon: Edit
+        variant: primary
+        actionType: FUNCTION_EXECUTION
+        functionInfo:
+          name: changeMode
+          params:
+            mode: EDIT
+
+    rows:
+      - columns:
+          - field: role_name
+            span: 12
+      - columns:
+          - field: descr
+            span: 12
+
+    fields:
+      - name: role_name
+        label: Role Name
+        type: TEXT
+        required: true
+        readonly:
+          - VIEW
+      - name: descr
+        label: Description
+        type: TEXTAREA
+        readonly:
+          - VIEW
+
+  - sectionType: TABLE
+    sectionName: claims
+    label: Permissions (Claims)
+    executionConditions:
+      - indices:
+          - 0
+        operator: IS_NOT_NIL
+        source: context
+        key: id
+    queryInfo:
+      returnType: MULTIPLE_ROWS
+      query: |
+        SELECT
+          c.id as claim_id, r.name as resource_name,
+          r.id as resource_id, c.access_type_ids
+        FROM administration.claim c
+        JOIN administration.resource r ON c.resource_id = r.id
+        WHERE c.role_id = $1
+      payload:
+        - _context.id
+      path:
+        - sections
+        - 1
+
+    applicableActions:
+      ADD:
+        - save_claim
+        - delete_claim
+      EDIT:
+        - save_claim
+        - delete_claim
+      VIEW: []
+
+    actionConfig:
+      save_claim:
+        label: Save
+        icon: Save
+        variant: primary
+        actionType: EXECUTE_QUERY
+        queryInfo:
+          query: SELECT administration.insert_or_update_role_claim($1, $2, $3, $4, $5) as id;
+          payload:
+            - _context.id
+            - claims.resource_id
+            - claims.access_type_ids
+            - claims.access_level_id # Assuming global for now as per legacy
+            - claims.claim_id
+          contextParams:
+            - current_user_id
+          path:
+            - sections
+            - 1
+            - actionConfig
+            - save_claim
+        onSuccess: refresh
+      delete_claim:
+        label: Delete
+        icon: Trash2
+        variant: danger
+        actionType: EXECUTE_QUERY
+        level: ROW
+        confirmationRequired: true
+        queryInfo:
+          query: SELECT administration.delete_claim($1, $2) as id;
+          payload:
+            - claim_id
+          contextParams:
+            - current_user_id
+          path:
+            - sections
+            - 1
+            - actionConfig
+            - delete_claim
+        onSuccess: refresh
+
+    columns:
+      - name: claim_id
+        label: ID
+        visible: false
+      - name: resource_id
+        label: Resource
+        type: SELECT
+        width: 300
+        selectConfig:
+          resource: list-resources # You might need to verify this config exists
+          displayField: name
+          fields_to_extract:
+            - key: id
+              as: resource_id
+            - key: name
+              as: resource_name
+      - name: access_type_ids
+        label: Access Types
+        type: SELECT
+        multi: true
+        width: 300
+        selectConfig:
+          options:
+            - id: "READ"
+              name: "READ"
+            - id: "ADD"
+              name: "ADD"
+            - id: "EDIT"
+              name: "EDIT"
+            - id: "DELETE"
+              name: "DELETE"
+          selectHandler: concatinator
+          selectParser: splitter
+          fields_to_extract:
+            - key: id
+              as: access_type_ids

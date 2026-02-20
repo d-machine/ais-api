@@ -1,5 +1,13 @@
 configType: FORM
 version: 1.0
+applicableActions:
+  - FINISH
+actionConfig:
+  FINISH:
+    visible: true
+    closeAction: REFRESH
+    label: Finish
+    variant: primary
 sections:
   - sectionType: FIELDS
     sectionName: Picking List Header
@@ -27,8 +35,7 @@ sections:
             - actionConfig
             - SAVE
         onSuccess:
-          callback: updateContextAndEnableNext
-          nextSectionToEnable: "Select SO Details"
+          callback: SAVE_AND_GO_TO_NEXT
       
       CANCEL:
         label: Cancel
