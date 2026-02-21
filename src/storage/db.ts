@@ -136,8 +136,12 @@ export default class DBClient {
       const result = await this.pool.query(query, params);
       console.log("Query result:", { rowCount: result.rowCount });
 
-      if (_isNil(result) || result.rows.length === 0) {
+      if (_isNil(result)) {
         return null;
+      }
+
+      if (result.rows.length === 0) {
+        return queryType === EQueryReturnType.MULTIPLE_ROWS ? [] : null;
       }
 
       switch (queryType) {

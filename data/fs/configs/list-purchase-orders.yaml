@@ -20,7 +20,7 @@ sections:
           LEFT JOIN wms.broker b ON ph.broker_id = b.id
           LEFT JOIN wms.purchase_order_details pd ON ph.id = pd.header_id AND pd.is_active = true
           LEFT JOIN administration.user u ON ph.lub = u.id
-          WHERE ph.is_active = true AND ph.status != 'Completed'
+          WHERE ph.is_active = true
           GROUP BY ph.id, ph.entry_no, ph.entry_dt, v.name, b.name, ph.status, ph.lua, u.first_name, u.last_name
         ) sub
       path:

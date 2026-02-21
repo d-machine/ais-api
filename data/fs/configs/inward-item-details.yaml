@@ -188,6 +188,10 @@ sections:
             filters:
               - targetParam: material_id
                 targetIndex: 0
+            conditions:
+              - operator: IS_NOT_NIL
+                indices:
+                  - 0
       - name: puom
         label: Package UOM
         type: SELECT
@@ -214,6 +218,10 @@ sections:
             filters:
               - targetParam: material_id
                 targetIndex: 0
+            conditions:
+              - operator: IS_NOT_NIL
+                indices:
+                  - 0
       - name: po_eqty
         label: PO Qty (Each)
         type: NUMBER
@@ -244,6 +252,10 @@ sections:
             filters:
               - targetParam: material_id
                 targetIndex: 0
+            conditions:
+              - operator: IS_NOT_NIL
+                indices:
+                  - 0
       - name: eqty
         label: Qty (Each)
         type: NUMBER

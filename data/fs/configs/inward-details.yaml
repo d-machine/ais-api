@@ -234,6 +234,10 @@ sections:
               as: po_ids
             - key: entry_no
               as: po_entry_nos
+          staticFilters:
+            - field: status
+              value: Completed
+              operator: NOT_EQUAL
         dependencies:
           - targets:
               - - vendor_id
