@@ -2,62 +2,6 @@ version: 1.0
 configName: inward-item-details
 title: Inward Item Details
 
-applicableActions:
-  ADD:
-    - SAVE
-    - CANCEL
-  EDIT:
-    - SAVE
-    - CANCEL
-  VIEW:
-    - CLOSE
-
-actionConfig:
-  SAVE:
-    label:
-      ADD: Add Item
-      EDIT: Update Item
-    icon: Save
-    variant: primary
-    actionType: EXECUTE_QUERY
-    queryInfo:
-      returnType: SINGLE_ROW
-      query: |
-        SELECT CASE
-          WHEN $1 > 0 THEN wms.update_inward_details($1, $2, $3, $4, $5, $6, $7, $8, 0, 0, $9, $10, $11)
-          ELSE wms.insert_inward_details($2, $3, $4, $5, $6, $7, $8, 0, 0, $9, $10, $11)
-        END as id;
-      payload:
-        - inward_item_detail.inward_detail_id
-        - inward_item_detail.header_id
-        - inward_item_detail.material_id
-        - inward_item_detail.po_detail_id
-        - inward_item_detail.quom
-        - inward_item_detail.euom
-        - inward_item_detail.puom
-        - inward_item_detail.eqty
-        - inward_item_detail.expiry_dt
-        - inward_item_detail.batch_no
-        - inward_item_detail.remarks
-      contextParams:
-        - current_user_id
-      path:
-        - actionConfig
-        - SAVE
-    onSuccess: exitAndComplete
-  CANCEL:
-    label: Discard
-    icon: X
-    variant: danger
-    actionType: NAVIGATE
-    onSuccess: exitAndComplete
-  CLOSE:
-    label: Close
-    icon: X
-    variant: secondary
-    actionType: NAVIGATE
-    onSuccess: exitAndComplete
-
 sections:
   - sectionType: FIELDS
     sectionName: inward_item_detail
@@ -65,7 +9,7 @@ sections:
     queryInfo:
       returnType: SINGLE_ROW
       query: |
-        SELECT 
+        SELECT
           COALESCE($2, 0) as inward_detail_id,
           $1 as header_id,
           CASE WHEN $2 > 0 THEN d.material_id ELSE pod.item_id END as material_id,
@@ -95,6 +39,76 @@ sections:
       path:
         - sections
         - 0
+
+    applicableActions:
+      ADD:
+        - SAVE
+        - CANCEL
+      EDIT:
+        - SAVE
+        - CANCEL
+      VIEW:
+        - CLOSE
+
+    actionConfig:
+      SAVE:
+        label:
+          ADD: Add Item
+          EDIT: Update Item
+        icon: Save
+        variant: primary
+        actionType: EXECUTE_QUERY
+        queryInfo:
+          returnType: SINGLE_ROW
+          query:
+            ADD: SELECT wms.insert_inward_details($1, $2, $3, $4, $5, $6, $7, $8, 0, 0, $9, $10, $11, $12) as id
+            EDIT: SELECT wms.update_inward_details($1, $2, $3, $4, $5, $6, $7, $8, $9, 0, 0, $10, $11, $12, $13) as id
+          payload:
+            ADD:
+              - inward_item_detail.header_id
+              - inward_item_detail.material_id
+              - inward_item_detail.po_detail_id
+              - inward_item_detail.quom
+              - inward_item_detail.euom
+              - inward_item_detail.puom
+              - inward_item_detail.eqty
+              - inward_item_detail.pqty
+              - inward_item_detail.expiry_dt
+              - inward_item_detail.batch_no
+              - inward_item_detail.remarks
+            EDIT:
+              - inward_item_detail.inward_detail_id
+              - inward_item_detail.header_id
+              - inward_item_detail.material_id
+              - inward_item_detail.po_detail_id
+              - inward_item_detail.quom
+              - inward_item_detail.euom
+              - inward_item_detail.puom
+              - inward_item_detail.eqty
+              - inward_item_detail.pqty
+              - inward_item_detail.expiry_dt
+              - inward_item_detail.batch_no
+              - inward_item_detail.remarks
+          contextParams:
+            - current_user_id
+          path:
+            - sections
+            - 0
+            - actionConfig
+            - SAVE
+        onSuccess: exitAndComplete
+      CANCEL:
+        label: Discard
+        icon: X
+        variant: danger
+        actionType: NAVIGATE
+        onSuccess: exitAndComplete
+      CLOSE:
+        label: Close
+        icon: X
+        variant: secondary
+        actionType: NAVIGATE
+        onSuccess: exitAndComplete
 
     rows:
       - columns:
@@ -156,9 +170,6 @@ sections:
           - VIEW
         selectConfig:
           resource: list-uoms-by-material
-          filtersData:
-            - field: material_id
-              value: "${material_id}"
           displayField: uom_name
           selectHandler: converter
           currentSelection:
@@ -170,6 +181,13 @@ sections:
               as: euom
             - key: uom_name
               as: euom_name
+        dependencies:
+          - targets:
+              - - material_id
+            handler: filterByDependency
+            filters:
+              - targetParam: material_id
+                targetIndex: 0
       - name: puom
         label: Package UOM
         type: SELECT
@@ -178,9 +196,6 @@ sections:
           - VIEW
         selectConfig:
           resource: list-uoms-by-material
-          filtersData:
-            - field: material_id
-              value: "${material_id}"
           displayField: uom_name
           selectHandler: converter
           currentSelection:
@@ -192,6 +207,13 @@ sections:
               as: puom
             - key: uom_name
               as: puom_name
+        dependencies:
+          - targets:
+              - - material_id
+            handler: filterByDependency
+            filters:
+              - targetParam: material_id
+                targetIndex: 0
       - name: po_eqty
         label: PO Qty (Each)
         type: NUMBER
@@ -204,9 +226,6 @@ sections:
           - VIEW
         selectConfig:
           resource: list-uoms-by-material
-          filtersData:
-            - field: material_id
-              value: "${material_id}"
           displayField: uom_name
           selectHandler: converter
           currentSelection:
@@ -218,6 +237,13 @@ sections:
               as: quom
             - key: uom_name
               as: quom_name
+        dependencies:
+          - targets:
+              - - material_id
+            handler: filterByDependency
+            filters:
+              - targetParam: material_id
+                targetIndex: 0
       - name: eqty
         label: Qty (Each)
         type: NUMBER
@@ -225,19 +251,30 @@ sections:
         readonly:
           - VIEW
         dependencies:
-          - target:
-              - pqty
-              - conversion_factor
-              - quom
+          - targets:
+              - - quom
+              - - puom
+            handler: handleReadonly
+            handlerConditions:
+              - operator: IS_EQUAL
+                indices:
+                  - 0
+                  - 1
+          - targets:
+              - - pqty
+              - - conversion_factor
+              - - quom
+              - - puom
             handler: calculateValue
-            dependencyConfig:
-              operation: MULTIPLY
-              operands:
-                - pqty
-                - conversion_factor
-              condition:
-                field: quom
-                compareWithField: puom
+            operation: MULTIPLY
+            targetIndices:
+              - 0
+              - 1
+            conditions:
+              - operator: IS_EQUAL
+                indices:
+                  - 2
+                  - 3
       - name: pqty
         label: Qty (Pack)
         type: NUMBER
@@ -245,19 +282,30 @@ sections:
         readonly:
           - VIEW
         dependencies:
-          - target:
-              - eqty
-              - conversion_factor
-              - quom
+          - targets:
+              - - quom
+              - - euom
+            handler: handleReadonly
+            handlerConditions:
+              - operator: IS_EQUAL
+                indices:
+                  - 0
+                  - 1
+          - targets:
+              - - eqty
+              - - conversion_factor
+              - - quom
+              - - euom
             handler: calculateValue
-            dependencyConfig:
-              operation: DIVIDE
-              operands:
-                - eqty
-                - conversion_factor
-              condition:
-                field: quom
-                compareWithField: euom
+            operation: DIVIDE
+            targetIndices:
+              - 0
+              - 1
+            conditions:
+              - operator: IS_EQUAL
+                indices:
+                  - 2
+                  - 3
       - name: expiry_dt
         label: Expiry Date
         type: DATE

@@ -1,27 +1,42 @@
-configType: LIST
 version: 1.0
-queryInfo:
-  returnType: MULTIPLE_ROWS
-  query: |
-    SELECT * FROM (
-    SELECT u.id, u.name as uom_name, m.id as material_id
-    FROM wms.uom u
-    JOIN wms.material m ON (m.uom_pc_id = u.id OR m.uom_package_id = u.id)
-    WHERE u.is_active = true
-    ) as uom_list
-  options:
-    applyFiltering: true
-    applySorting: true
-    applyPagination: false
-  path: []
+configName: list-uoms-by-material
 
-columns:
-  - name: id
-    label: ID
-    visible: false
-  - name: uom_name
-    label: UOM
-    visible: true
-  - name: material_id
-    label: Material ID
-    visible: false
+sections:
+  - sectionType: TABLE
+    sectionName: uoms_by_material
+    label: UOMs by Material
+
+    queryInfo:
+      returnType: MULTIPLE_ROWS
+      query: |
+        SELECT * FROM (
+          SELECT u.id, u.name as uom_name, m.id as material_id
+          FROM wms.uom u
+          JOIN wms.material m ON m.uom_pc_id = u.id
+          WHERE u.is_active = true
+          UNION
+          SELECT u.id, u.name as uom_name, m.id as material_id
+          FROM wms.uom u
+          JOIN wms.material m ON m.uom_package_id = u.id
+          WHERE u.is_active = true
+        ) sub
+      path:
+        - sections
+        - 0
+      options:
+        applyFiltering: true
+        applySorting: false
+        applyPagination: false
+
+    columns:
+      - name: id
+        label: ID
+        visible: false
+
+      - name: uom_name
+        label: UOM
+        visible: true
+
+      - name: material_id
+        label: Material ID
+        visible: false

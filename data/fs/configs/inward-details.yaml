@@ -237,6 +237,13 @@ sections:
         dependencies:
           - targets:
               - - vendor_id
+            handler: handleReadonly
+            handlerConditions:
+              - operator: IS_NIL
+                indices:
+                  - 0
+          - targets:
+              - - vendor_id
             handler: filterByDependency
             filters:
               - targetParam: vendor_id
@@ -270,7 +277,8 @@ sections:
     queryInfo:
       returnType: MULTIPLE_ROWS
       query: |
-        SELECT 
+        SELECT
+          $1::integer as header_id,
           id.id as inward_detail_id,
           pod.id as po_detail_id,
           poh.entry_no as po_entry_no,
@@ -315,7 +323,7 @@ sections:
         formConfig: inward-item-details
         mode: VIEW
         payload:
-          - key: id
+          - key: header_id
             as: header_id
           - key: inward_detail_id
             as: inward_detail_id
@@ -331,7 +339,7 @@ sections:
         formConfig: inward-item-details
         mode: ADD
         payload:
-          - key: id
+          - key: header_id
             as: header_id
           - key: po_detail_id
             as: po_detail_id
@@ -346,7 +354,7 @@ sections:
         formConfig: inward-item-details
         mode: EDIT
         payload:
-          - key: id
+          - key: header_id
             as: header_id
           - key: inward_detail_id
             as: inward_detail_id
