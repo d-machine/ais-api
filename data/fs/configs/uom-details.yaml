@@ -80,7 +80,7 @@ sections:
             ADD: |
               SELECT wms.insert_uom($1, $2, $3) as id;
             EDIT: |
-              SELECT wms.update_uom_master($1, $2, $3, $4) as id;
+              SELECT wms.update_uom($1, $2, $3, $4) as id;
           payload:
             ADD:
               - uom_details.uom_name
