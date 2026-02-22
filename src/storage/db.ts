@@ -86,6 +86,7 @@ export default class DBClient {
         // picking_list
         "picking_list_header.sql",
         "picking_list_details.sql",
+        "picking_list_so_allocation.sql",
         //dispatch
         "dispatch_header.sql",
         "dispatch_details.sql",
