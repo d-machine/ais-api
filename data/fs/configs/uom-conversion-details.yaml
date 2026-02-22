@@ -1,8 +1,38 @@
-configType: FORM
 version: 1.0
+configName: uom-conversion-details
+
+# Form-level actions (global)
+applicableActions:
+  ADD:
+    - FINISH
+    - CANCEL
+  EDIT:
+    - FINISH
+    - CANCEL
+  VIEW:
+    - FINISH
+    - CLOSE
+actionConfig:
+  FINISH:
+    visible: false
+    closeAction: REFRESH
+  CANCEL:
+    visible: true
+    variant: danger
+    label:
+      ADD: Discard Changes
+      EDIT: Discard Changes
+  CLOSE:
+    visible: true
+    label:
+      VIEW: Close
+
 sections:
   - sectionType: FIELDS
-    sectionName: UOM Conversion Details
+    sectionName: uom_conversion_details
+    label: UOM Conversion Details
+
+    # Section-level data fetching
     queryInfo:
       returnType: SINGLE_ROW
       query: |
@@ -18,25 +48,51 @@ sections:
         LEFT JOIN wms.uom u2 ON uc.uom_id_case = u2.id
         WHERE uc.id = $1
       payload:
-        - id
+        - _context.id # Explicit: from initial context
+      executionConditions:
+        - indices:
+            - 0
+          operator: IS_NOT_NIL
       path:
         - sections
         - 0
+
+    # Section-level actions
     applicableActions:
-      - SAVE
-      - CANCEL
+      ADD:
+        - SAVE
+        - CANCEL
+      EDIT:
+        - SAVE
+        - CANCEL
+      VIEW:
+        - EDIT
+
     actionConfig:
       SAVE:
-        label: Update Conversion
+        label:
+          ADD: Create Conversion
+          EDIT: Update Conversion
+        icon: Save
+        variant: primary
         actionType: EXECUTE_QUERY
         queryInfo:
           returnType: SCALAR
-          query: SELECT wms.update_uom_conversion($1, $2, $3, $4, $5) as id;
+          query:
+            ADD: |
+              SELECT wms.insert_uom_conversion($1, $2, $3, $4) as id;
+            EDIT: |
+              SELECT wms.update_uom_conversion($1, $2, $3, $4, $5) as id;
           payload:
-            - id
-            - uom_id_each
-            - uom_id_case
-            - no_of_pcs
+            ADD:
+              - uom_conversion_details.uom_id_each
+              - uom_conversion_details.uom_id_case
+              - uom_conversion_details.no_of_pcs
+            EDIT:
+              - _context.id # UOM Conversion ID
+              - uom_conversion_details.uom_id_each
+              - uom_conversion_details.uom_id_case
+              - uom_conversion_details.no_of_pcs
           contextParams:
             - current_user_id
           path:
@@ -44,11 +100,30 @@ sections:
             - 0
             - actionConfig
             - SAVE
-        onSuccess: exitAndComplete
+        onSuccess:
+          callback: HANDLE_FORM_ACTION
+          params:
+            action: FINISH
         onFailure: showErrorSnackbar
+
       CANCEL:
         label: Discard Changes
-    
+        icon: ClipboardX
+        variant: danger
+        actionType: NAVIGATE
+        onSuccess: exitAndComplete
+
+      EDIT:
+        label: Edit
+        icon: Edit
+        variant: primary
+        actionType: FUNCTION_EXECUTION
+        functionInfo:
+          name: changeMode
+          params:
+            mode: EDIT
+
+    # Row-based layout
     rows:
       - columns:
           - field: uom_id_each
@@ -58,11 +133,14 @@ sections:
       - columns:
           - field: no_of_pcs
             span: 12
-    
+
+    # Field definitions
     fields:
       - name: uom_id_each
         label: Base UOM
         type: SELECT
+        readonly:
+          - VIEW
         required: true
         selectConfig:
           resource: list-uoms
@@ -77,9 +155,12 @@ sections:
               as: uom_id_each
             - key: uom_name
               as: uom_each_name
+
       - name: uom_id_case
         label: Package UOM
         type: SELECT
+        readonly:
+          - VIEW
         required: true
         selectConfig:
           resource: list-uoms
@@ -94,7 +175,10 @@ sections:
               as: uom_id_case
             - key: uom_name
               as: uom_case_name
+
       - name: no_of_pcs
         label: Conversion Factor (No. of Base Units in Package)
         type: NUMBER
+        readonly:
+          - VIEW
         required: true

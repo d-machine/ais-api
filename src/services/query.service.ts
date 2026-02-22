@@ -32,6 +32,8 @@ export default class QueryService extends BaseService {
           return `${filter.field} IS NOT NULL`;
         case EFilterOperator.EQUAL:
           return `${filter.field} = ${filterValue}`;
+        case EFilterOperator.NOT_EQUAL:
+          return `${filter.field} != ${filterValue}`;
         case EFilterOperator.LESS_THAN_OR_EQUAL:
           return `${filter.field} <= ${filterValue}`;
         case EFilterOperator.GREATER_THAN_OR_EQUAL:
