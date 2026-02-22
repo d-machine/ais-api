@@ -1,5 +1,5 @@
 version: 1.0
-configName: list-categories
+configName: list-item-categories
 
 sections:
   - sectionType: TABLE

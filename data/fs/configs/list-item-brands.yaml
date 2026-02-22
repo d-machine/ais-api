@@ -1,5 +1,5 @@
 version: 1.0
-configName: list-brands
+configName: list-item-brands
 
 sections:
   - sectionType: TABLE

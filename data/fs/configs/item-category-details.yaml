@@ -1,5 +1,5 @@
 version: 1.0
-configName: category-details
+configName: item-category-details
 
 # Form-level actions (global)
 applicableActions:
