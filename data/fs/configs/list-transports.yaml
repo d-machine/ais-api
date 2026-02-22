@@ -22,6 +22,12 @@ sections:
         applyFiltering: true
         applySorting: true
         applyPagination: true
+        pageSize: 50
+        pageSizeOptions:
+          - 10
+          - 25
+          - 50
+          - 100
 
     applicableActions:
       VIEW:
@@ -73,8 +79,10 @@ sections:
         level: ROW
         shortcut: "F8"
         confirmationRequired: true
+        confirmationMessage: "Are you sure you want to delete '${row.transport_name}'?"
         queryInfo:
-          query: SELECT wms.delete_transport($1, $2) as id
+          returnType: SCALAR
+          query: SELECT wms.delete_transport($1, $2) as id;
           payload:
             - id
           contextParams:
@@ -85,6 +93,7 @@ sections:
             - actionConfig
             - delete
         onSuccess: refresh
+        onFailure: showErrorSnackbar
 
     columns:
       - name: id

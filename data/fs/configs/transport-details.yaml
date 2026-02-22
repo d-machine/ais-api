@@ -1,7 +1,7 @@
 version: 1.0
 configName: transport-details
-title: Transport Details
 
+# Form-level actions (global)
 applicableActions:
   ADD:
     - FINISH
@@ -12,7 +12,6 @@ applicableActions:
   VIEW:
     - FINISH
     - CLOSE
-
 actionConfig:
   FINISH:
     visible: false
@@ -21,20 +20,19 @@ actionConfig:
     visible: true
     variant: danger
     label:
-      ADD: Discard
-      EDIT: Discard
-    icon: X
+      ADD: Discard Changes
+      EDIT: Discard Changes
   CLOSE:
     visible: true
-    variant: secondary
     label:
       VIEW: Close
-    icon: X
 
 sections:
   - sectionType: FIELDS
     sectionName: transport_details
-    label: Transport Information
+    label: Transport Details
+
+    # Section-level data fetching
     queryInfo:
       returnType: SINGLE_ROW
       query: |
@@ -42,7 +40,7 @@ sections:
         FROM wms.transport
         WHERE id = $1
       payload:
-        - _context.id
+        - _context.id # Explicit: from initial context
       executionConditions:
         - indices:
             - 0
@@ -51,6 +49,7 @@ sections:
         - sections
         - 0
 
+    # Section-level actions
     applicableActions:
       ADD:
         - SAVE
@@ -70,30 +69,40 @@ sections:
         variant: primary
         actionType: EXECUTE_QUERY
         queryInfo:
+          returnType: SCALAR
           query:
-            ADD: SELECT wms.insert_transport($1, $2, $3) as id
-            EDIT: SELECT wms.update_transport($1, $2, $3, $4) as id
+            ADD: |
+              SELECT wms.insert_transport($1, $2, $3) as id;
+            EDIT: |
+              SELECT wms.update_transport($1, $2, $3, $4) as id;
           payload:
             ADD:
               - transport_details.transport_name
               - transport_details.descr
             EDIT:
-              - _context.id
+              - _context.id # Transport ID
               - transport_details.transport_name
               - transport_details.descr
           contextParams:
             - current_user_id
+          path:
+            - sections
+            - 0
+            - actionConfig
+            - SAVE
         onSuccess:
           callback: HANDLE_FORM_ACTION
           params:
             action: FINISH
         onFailure: showErrorSnackbar
+
       CANCEL:
-        label: Discard
-        icon: X
+        label: Discard Changes
+        icon: ClipboardX
         variant: danger
         actionType: NAVIGATE
         onSuccess: exitAndComplete
+
       EDIT:
         label: Edit
         icon: Edit
@@ -104,6 +113,7 @@ sections:
           params:
             mode: EDIT
 
+    # Row-based layout
     rows:
       - columns:
           - field: transport_name
@@ -112,13 +122,15 @@ sections:
           - field: descr
             span: 12
 
+    # Field definitions
     fields:
       - name: transport_name
         label: Transport Name
         type: TEXT
-        required: true
         readonly:
           - VIEW
+        required: true
+
       - name: descr
         label: Description
         type: TEXTAREA
