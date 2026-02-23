@@ -3,16 +3,19 @@ version: 1.0
 queryInfo:
   returnType: MULTIPLE_ROWS
   query: |
-    SELECT 
+    SELECT
       s.id,
       m.name as material_name,
+      me.ean_code,
+      s.batch_no,
       r.name as rack_name,
       s.qty,
       u.name as uom_name,
       s.rate,
       s.remarks
     FROM wms.stock s
-    JOIN wms.material m ON s.material_id = m.id
+    LEFT JOIN wms.material_ean me ON s.ean_id = me.id
+    LEFT JOIN wms.material m ON me.material_id = m.id
     JOIN wms.rack r ON s.rack_id = r.id
     JOIN wms.uom u ON s.uom_id = u.id
     WHERE s.is_active = true AND s.qty > 0
@@ -30,6 +33,18 @@ columns:
     label: Material
     visible: true
     width: 200
+    sortable: true
+    filterable: true
+  - name: ean_code
+    label: EAN Code
+    visible: true
+    width: 150
+    sortable: true
+    filterable: true
+  - name: batch_no
+    label: Batch No
+    visible: true
+    width: 120
     sortable: true
     filterable: true
   - name: rack_name

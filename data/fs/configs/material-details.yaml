@@ -10,11 +10,9 @@ applicableActions:
     - FINISH
     - CANCEL
   VIEW:
-    - FINISH
     - CLOSE
 actionConfig:
   FINISH:
-    visible: false
     closeAction: REFRESH
   CANCEL:
     visible: true
@@ -44,18 +42,10 @@ sections:
           m.category_id,
           ic.name as category_name,
           m.brand_id,
-          ib.brand_name,
-          m.uom_pc_id,
-          u1.name as uom_pc_name,
-          m.uom_package_id,
-          u2.name as uom_package_name,
-          m.mrp,
-          m.selling_rate
+          ib.brand_name
         FROM wms.material m
         LEFT JOIN wms.item_category ic ON m.category_id = ic.id
         LEFT JOIN wms.item_brand ib ON m.brand_id = ib.id
-        LEFT JOIN wms.uom u1 ON m.uom_pc_id = u1.id
-        LEFT JOIN wms.uom u2 ON m.uom_package_id = u2.id
         WHERE m.id = $1
       payload:
         - _context.id # Explicit: from initial context
@@ -90,29 +80,21 @@ sections:
           returnType: SCALAR
           query:
             ADD: |
-              SELECT wms.insert_material($1, $2, $3, $4, $5, $6, $7, $8, $9) as id;
+              SELECT wms.insert_material($1, $2, $3, $4, $5) as id;
             EDIT: |
-              SELECT wms.update_material($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) as id;
+              SELECT wms.update_material($1, $2, $3, $4, $5, $6) as id;
           payload:
             ADD:
               - material_details.material_name
               - material_details.descr
               - material_details.category_id
               - material_details.brand_id
-              - material_details.uom_pc_id
-              - material_details.uom_package_id
-              - material_details.mrp
-              - material_details.selling_rate
             EDIT:
               - _context.id
               - material_details.material_name
               - material_details.descr
               - material_details.category_id
               - material_details.brand_id
-              - material_details.uom_pc_id
-              - material_details.uom_package_id
-              - material_details.mrp
-              - material_details.selling_rate
           contextParams:
             - current_user_id
           path:
@@ -120,10 +102,7 @@ sections:
             - 0
             - actionConfig
             - SAVE
-        onSuccess:
-          callback: HANDLE_FORM_ACTION
-          params:
-            action: FINISH
+        onSuccess: SAVE_AND_GO_TO_NEXT
         onFailure: showErrorSnackbar
 
       CANCEL:
@@ -152,16 +131,6 @@ sections:
             span: 3
           - field: brand_id
             span: 3
-      - columns:
-          - field: uom_pc_id
-            span: 6
-          - field: uom_package_id
-            span: 6
-      - columns:
-          - field: mrp
-            span: 6
-          - field: selling_rate
-            span: 6
       - columns:
           - field: descr
             span: 12
@@ -225,73 +194,147 @@ sections:
               dependencyConfig:
                 targetParam: category_id
 
-      - name: uom_pc_id
-        label: Base UOM
-        type: SELECT
-        readonly:
-          - VIEW
-        required: true
-        selectConfig:
-          resource: list-uoms
-          displayField: uom_pc_name
-          selectHandler: converter
-          currentSelection:
-            - key: uom_pc_id
-              as: id
-          selectParser: converter
-          fields_to_extract:
-            - key: id
-              as: uom_pc_id
-            - key: uom_name
-              as: uom_pc_name
-
-      - name: uom_package_id
-        label: Package UOM
-        type: SELECT
-        readonly:
-          - VIEW
-        required: false
-        disabled:
-          condition: isEmpty
-          field: uom_pc_id
-        selectConfig:
-          resource: list-uom-conversions
-          displayField: uom_package_name
-          selectHandler: converter
-          currentSelection:
-            - key: uom_package_id
-              as: uom_id_case
-          selectParser: converter
-          fields_to_extract:
-            - key: uom_id_case
-              as: uom_package_id
-            - key: uom_case_name
-              as: uom_package_name
-          dependencies:
-            - target:
-                - uom_pc_id
-              handler: filterByDependency
-              required: true
-              dependencyConfig:
-                targetParam: uom_id_each
-
-      - name: mrp
-        label: MRP
-        type: NUMBER
-        readonly:
-          - VIEW
-        required: false
-
-      - name: selling_rate
-        label: Selling Rate
-        type: NUMBER
-        readonly:
-          - VIEW
-        required: false
-
       - name: descr
         label: Description
         type: TEXTAREA
         readonly:
           - VIEW
         required: false
+
+  # Section 2: EAN List (TABLE) — visible when material already exists (EDIT / VIEW)
+  - sectionType: TABLE
+    sectionName: ean_list
+    label: EAN List
+
+    queryInfo:
+      returnType: MULTIPLE_ROWS
+      query: |
+        SELECT
+          e.id,
+          e.ean_code,
+          e.label,
+          u1.name AS uom_pc_name,
+          u2.name AS uom_package_name,
+          e.mrp,
+          e.selling_rate
+        FROM wms.material_ean e
+        LEFT JOIN wms.uom u1 ON e.uom_pc_id = u1.id
+        LEFT JOIN wms.uom u2 ON e.uom_package_id = u2.id
+        WHERE e.material_id = $1 AND e.is_active = true
+      payload:
+        - _context.id
+      executionConditions:
+        - indices:
+            - 0
+          operator: IS_NOT_NIL
+      path:
+        - sections
+        - 1
+      options:
+        applyFiltering: false
+        applySorting: false
+        applyPagination: false
+
+    applicableActions:
+      EDIT:
+        - add
+        - edit
+        - delete
+      VIEW:
+        - view
+
+    actionConfig:
+      add:
+        label: Add EAN
+        icon: Plus
+        variant: primary
+        actionType: DISPLAY_FORM
+        level: HEADER
+        formConfig: material-ean-details
+        mode: ADD
+        payload:
+          - id
+        onSuccess: refresh
+
+      view:
+        label: View
+        icon: Eye
+        variant: secondary
+        actionType: DISPLAY_FORM
+        level: ROW
+        formConfig: material-ean-details
+        mode: VIEW
+        payload:
+          - id
+
+      edit:
+        label: Edit
+        icon: Edit
+        variant: primary
+        actionType: DISPLAY_FORM
+        level: ROW
+        formConfig: material-ean-details
+        mode: EDIT
+        payload:
+          - id
+        onSuccess: refresh
+
+      delete:
+        label: Delete
+        icon: Trash2
+        variant: danger
+        actionType: EXECUTE_QUERY
+        level: ROW
+        confirmationRequired: true
+        confirmationMessage: "Are you sure you want to delete EAN '${row.ean_code}'?"
+        queryInfo:
+          returnType: SCALAR
+          query: SELECT wms.delete_material_ean($1, $2) as id;
+          payload:
+            - id
+          contextParams:
+            - current_user_id
+          path:
+            - sections
+            - 1
+            - actionConfig
+            - delete
+        onSuccess: refresh
+        onFailure: showErrorSnackbar
+
+    columns:
+      - name: id
+        label: ID
+        visible: false
+
+      - name: ean_code
+        label: EAN Code
+        visible: true
+        width: 150
+
+      - name: label
+        label: Label
+        visible: true
+        width: 200
+
+      - name: uom_pc_name
+        label: Base UOM
+        visible: true
+        width: 100
+
+      - name: uom_package_name
+        label: Package UOM
+        visible: true
+        width: 120
+
+      - name: mrp
+        label: MRP
+        visible: true
+        dataType: currency
+        width: 100
+
+      - name: selling_rate
+        label: Selling Rate
+        visible: true
+        dataType: currency
+        width: 120

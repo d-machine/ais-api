@@ -65,6 +65,7 @@ export default class DBClient {
         "uom.sql",
         "uom_conversion.sql",
         "material.sql",
+        "material_ean.sql",
         // warehouse
         "rack.sql",
         // broker

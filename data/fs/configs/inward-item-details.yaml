@@ -12,13 +12,14 @@ sections:
         SELECT
           COALESCE($2, 0) as inward_detail_id,
           $1 as header_id,
-          CASE WHEN $2 > 0 THEN d.material_id ELSE pod.item_id END as material_id,
+          pod.item_id as material_id,
           m.name as material_name,
           CASE WHEN $2 > 0 THEN d.po_detail_id ELSE pod.id END as po_detail_id,
-          pod.eqty as po_eqty,
-          CASE WHEN $2 > 0 THEN d.euom ELSE m.uom_pc_id END as euom,
+          (pod.eqty - COALESCE(pod.iqty, 0) + COALESCE(d.eqty, 0)) as po_eqty,
+          CASE WHEN $2 > 0 THEN d.ean_id ELSE NULL END as ean_id,
+          CASE WHEN $2 > 0 THEN d.euom ELSE NULL END as euom,
           u_each.name as euom_name,
-          CASE WHEN $2 > 0 THEN d.puom ELSE m.uom_package_id END as puom,
+          CASE WHEN $2 > 0 THEN d.puom ELSE NULL END as puom,
           u_pkg.name as puom_name,
           CASE WHEN $2 > 0 THEN d.quom ELSE NULL END as quom,
           COALESCE(d.eqty, 0) as eqty,
@@ -28,9 +29,10 @@ sections:
         FROM wms.purchase_order_details pod
         JOIN wms.material m ON pod.item_id = m.id
         LEFT JOIN wms.inward_details d ON d.po_detail_id = pod.id AND d.id = COALESCE($2, 0)
-        LEFT JOIN wms.uom u_each ON CASE WHEN $2 > 0 THEN d.euom ELSE m.uom_pc_id END = u_each.id
-        LEFT JOIN wms.uom u_pkg ON CASE WHEN $2 > 0 THEN d.puom ELSE m.uom_package_id END = u_pkg.id
-        LEFT JOIN wms.uom_conversion uc ON m.uom_pc_id = uc.uom_id_each AND m.uom_package_id = uc.uom_id_case
+        LEFT JOIN wms.material_ean me ON d.ean_id = me.id
+        LEFT JOIN wms.uom u_each ON d.euom = u_each.id
+        LEFT JOIN wms.uom u_pkg ON d.puom = u_pkg.id
+        LEFT JOIN wms.uom_conversion uc ON me.uom_pc_id = uc.uom_id_each AND me.uom_package_id = uc.uom_id_case
         WHERE pod.id = $3
       payload:
         - header_id
@@ -66,7 +68,7 @@ sections:
           payload:
             ADD:
               - inward_item_detail.header_id
-              - inward_item_detail.material_id
+              - inward_item_detail.ean_id
               - inward_item_detail.po_detail_id
               - inward_item_detail.quom
               - inward_item_detail.euom
@@ -79,7 +81,7 @@ sections:
             EDIT:
               - inward_item_detail.inward_detail_id
               - inward_item_detail.header_id
-              - inward_item_detail.material_id
+              - inward_item_detail.ean_id
               - inward_item_detail.po_detail_id
               - inward_item_detail.quom
               - inward_item_detail.euom
@@ -113,12 +115,9 @@ sections:
     rows:
       - columns:
           - field: material_name
-            span: 12
-      - columns:
-          - field: euom
-            span: 6
-          - field: puom
-            span: 6
+            span: 8
+          - field: ean_id
+            span: 4
       - columns:
           - field: po_eqty
             span: 4
@@ -154,76 +153,56 @@ sections:
         label: Conv Factor
         type: NUMBER
         visible: false
-      - name: material_name
-        label: Item
-        type: TEXT
-        readonly: true
       - name: material_id
         label: Item ID
         type: NUMBER
         visible: false
-      - name: euom
-        label: Base UOM
+      - name: material_name
+        label: Item
+        type: TEXT
+        readonly: true
+      - name: ean_id
+        label: EAN
         type: SELECT
         required: true
         readonly:
           - VIEW
         selectConfig:
-          resource: list-uoms-by-material
-          displayField: uom_name
+          resource: list-material-eans
+          displayField: ean_code
           selectHandler: converter
           currentSelection:
-            - key: euom
+            - key: ean_id
               as: id
           selectParser: converter
           fields_to_extract:
             - key: id
+              as: ean_id
+            - key: uom_pc_id
               as: euom
-            - key: uom_name
-              as: euom_name
-        dependencies:
-          - targets:
-              - - material_id
-            handler: filterByDependency
-            filters:
-              - targetParam: material_id
-                targetIndex: 0
-            conditions:
-              - operator: IS_NOT_NIL
-                indices:
-                  - 0
-      - name: puom
-        label: Package UOM
-        type: SELECT
-        required: true
-        readonly:
-          - VIEW
-        selectConfig:
-          resource: list-uoms-by-material
-          displayField: uom_name
-          selectHandler: converter
-          currentSelection:
-            - key: puom
-              as: id
-          selectParser: converter
-          fields_to_extract:
-            - key: id
+            - key: uom_package_id
               as: puom
-            - key: uom_name
-              as: puom_name
-        dependencies:
-          - targets:
-              - - material_id
-            handler: filterByDependency
-            filters:
-              - targetParam: material_id
-                targetIndex: 0
-            conditions:
-              - operator: IS_NOT_NIL
-                indices:
-                  - 0
+          dependencies:
+            - targets:
+                - - material_id
+              handler: filterByDependency
+              filters:
+                - targetParam: material_id
+                  targetIndex: 0
+              conditions:
+                - operator: IS_NOT_NIL
+                  indices:
+                    - 0
+      - name: euom
+        label: Base UOM ID
+        type: NUMBER
+        visible: false
+      - name: puom
+        label: Package UOM ID
+        type: NUMBER
+        visible: false
       - name: po_eqty
-        label: PO Qty (Each)
+        label: Balance PO Qty (Each)
         type: NUMBER
         readonly: true
       - name: quom
@@ -233,7 +212,7 @@ sections:
         readonly:
           - VIEW
         selectConfig:
-          resource: list-uoms-by-material
+          resource: list-uoms-by-ean
           displayField: uom_name
           selectHandler: converter
           currentSelection:
@@ -245,17 +224,19 @@ sections:
               as: quom
             - key: uom_name
               as: quom_name
-        dependencies:
-          - targets:
-              - - material_id
-            handler: filterByDependency
-            filters:
-              - targetParam: material_id
-                targetIndex: 0
-            conditions:
-              - operator: IS_NOT_NIL
-                indices:
-                  - 0
+            - key: conversion_factor
+              as: conversion_factor
+          dependencies:
+            - targets:
+                - - ean_id
+              handler: filterByDependency
+              filters:
+                - targetParam: ean_id
+                  targetIndex: 0
+              conditions:
+                - operator: IS_NOT_NIL
+                  indices:
+                    - 0
       - name: eqty
         label: Qty (Each)
         type: NUMBER

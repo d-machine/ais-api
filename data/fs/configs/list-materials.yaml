@@ -15,21 +15,11 @@ sections:
           m.descr,
           ic.name as category_name,
           ib.brand_name,
-          m.uom_pc_id,
-          u1.name as uom_pc_name,
-          m.uom_package_id,
-          u2.name as uom_package_name,
-          m.mrp,
-          m.selling_rate,
-          COALESCE(uc.no_of_pcs, 1) as conversion_factor,
           m.lua as last_updated_at,
           TRIM(CONCAT(u.first_name, ' ', u.last_name)) as last_updated_by_name
         FROM wms.material m
         LEFT JOIN wms.item_category ic ON m.category_id = ic.id
         LEFT JOIN wms.item_brand ib ON m.brand_id = ib.id
-        LEFT JOIN wms.uom u1 ON m.uom_pc_id = u1.id
-        LEFT JOIN wms.uom u2 ON m.uom_package_id = u2.id
-        LEFT JOIN wms.uom_conversion uc ON m.uom_pc_id = uc.uom_id_each AND m.uom_package_id = uc.uom_id_case
         LEFT JOIN administration.user u ON m.lub = u.id
         WHERE m.is_active = true
       path:
@@ -140,30 +130,6 @@ sections:
         sortable: true
         filterable: true
         width: 150
-
-      - name: uom_pc_name
-        label: Base UOM
-        visible: true
-        width: 100
-
-      - name: uom_package_name
-        label: Package UOM
-        visible: true
-        width: 120
-
-      - name: mrp
-        label: MRP
-        visible: true
-        sortable: true
-        dataType: currency
-        width: 120
-
-      - name: selling_rate
-        label: Selling Rate
-        visible: true
-        sortable: true
-        dataType: currency
-        width: 120
 
       - name: last_updated_at
         label: Last Updated

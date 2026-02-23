@@ -1,0 +1,230 @@
+version: 1.0
+configName: material-ean-details
+
+# Form-level actions (global)
+applicableActions:
+  ADD:
+    - FINISH
+    - CANCEL
+  EDIT:
+    - FINISH
+    - CANCEL
+  VIEW:
+    - FINISH
+    - CLOSE
+actionConfig:
+  FINISH:
+    visible: false
+    closeAction: REFRESH
+  CANCEL:
+    visible: true
+    variant: danger
+    label:
+      ADD: Discard Changes
+      EDIT: Discard Changes
+  CLOSE:
+    visible: true
+    label:
+      VIEW: Close
+
+sections:
+  - sectionType: FIELDS
+    sectionName: material_ean_details
+    label: EAN Details
+
+    queryInfo:
+      returnType: SINGLE_ROW
+      query: |
+        SELECT
+          e.id,
+          e.material_id,
+          e.ean_code,
+          e.label,
+          e.uom_pc_id,
+          u1.name as uom_pc_name,
+          e.uom_package_id,
+          u2.name as uom_package_name,
+          e.mrp,
+          e.selling_rate
+        FROM wms.material_ean e
+        LEFT JOIN wms.uom u1 ON e.uom_pc_id = u1.id
+        LEFT JOIN wms.uom u2 ON e.uom_package_id = u2.id
+        WHERE e.id = $1
+      payload:
+        - _context.id
+      executionConditions:
+        - indices:
+            - 0
+          operator: IS_NOT_NIL
+      path:
+        - sections
+        - 0
+
+    applicableActions:
+      ADD:
+        - SAVE
+        - CANCEL
+      EDIT:
+        - SAVE
+        - CANCEL
+      VIEW:
+        - EDIT
+
+    actionConfig:
+      SAVE:
+        label:
+          ADD: Add EAN
+          EDIT: Update EAN
+        icon: Save
+        variant: primary
+        actionType: EXECUTE_QUERY
+        queryInfo:
+          returnType: SCALAR
+          query:
+            ADD: |
+              SELECT wms.insert_material_ean($1, $2, $3, $4, $5, $6, $7, $8) as id;
+            EDIT: |
+              SELECT wms.update_material_ean($1, $2, $3, $4, $5, $6, $7, $8, $9) as id;
+          payload:
+            ADD:
+              - _context.id
+              - material_ean_details.ean_code
+              - material_ean_details.label
+              - material_ean_details.uom_pc_id
+              - material_ean_details.uom_package_id
+              - material_ean_details.mrp
+              - material_ean_details.selling_rate
+            EDIT:
+              - _context.id
+              - material_ean_details.material_id
+              - material_ean_details.ean_code
+              - material_ean_details.label
+              - material_ean_details.uom_pc_id
+              - material_ean_details.uom_package_id
+              - material_ean_details.mrp
+              - material_ean_details.selling_rate
+          contextParams:
+            - current_user_id
+          path:
+            - sections
+            - 0
+            - actionConfig
+            - SAVE
+        onSuccess:
+          callback: HANDLE_FORM_ACTION
+          params:
+            action: FINISH
+        onFailure: showErrorSnackbar
+
+      CANCEL:
+        label: Discard Changes
+        icon: ClipboardX
+        variant: danger
+        actionType: NAVIGATE
+        onSuccess: exitAndComplete
+
+      EDIT:
+        label: Edit
+        icon: Edit
+        variant: primary
+        actionType: FUNCTION_EXECUTION
+        functionInfo:
+          name: changeMode
+          params:
+            mode: EDIT
+
+    rows:
+      - columns:
+          - field: ean_code
+            span: 6
+          - field: label
+            span: 6
+      - columns:
+          - field: uom_pc_id
+            span: 6
+          - field: uom_package_id
+            span: 6
+      - columns:
+          - field: mrp
+            span: 6
+          - field: selling_rate
+            span: 6
+
+    fields:
+      - name: ean_code
+        label: EAN Code
+        type: TEXT
+        readonly:
+          - VIEW
+        required: true
+
+      - name: label
+        label: Label
+        type: TEXT
+        readonly:
+          - VIEW
+        required: false
+
+      - name: uom_pc_id
+        label: Base UOM
+        type: SELECT
+        readonly:
+          - VIEW
+        required: true
+        selectConfig:
+          resource: list-uoms
+          displayField: uom_pc_name
+          selectHandler: converter
+          currentSelection:
+            - key: uom_pc_id
+              as: id
+          selectParser: converter
+          fields_to_extract:
+            - key: id
+              as: uom_pc_id
+            - key: uom_name
+              as: uom_pc_name
+
+      - name: uom_package_id
+        label: Package UOM
+        type: SELECT
+        readonly:
+          - VIEW
+        required: false
+        disabled:
+          condition: isEmpty
+          field: uom_pc_id
+        selectConfig:
+          resource: list-uom-conversions
+          displayField: uom_package_name
+          selectHandler: converter
+          currentSelection:
+            - key: uom_package_id
+              as: uom_id_case
+          selectParser: converter
+          fields_to_extract:
+            - key: uom_id_case
+              as: uom_package_id
+            - key: uom_case_name
+              as: uom_package_name
+          dependencies:
+            - target:
+                - uom_pc_id
+              handler: filterByDependency
+              required: true
+              dependencyConfig:
+                targetParam: uom_id_each
+
+      - name: mrp
+        label: MRP
+        type: NUMBER
+        readonly:
+          - VIEW
+        required: false
+
+      - name: selling_rate
+        label: Selling Rate
+        type: NUMBER
+        readonly:
+          - VIEW
+        required: false

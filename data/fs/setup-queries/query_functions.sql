@@ -643,22 +643,16 @@ CREATE OR REPLACE FUNCTION wms.insert_material(
     _descr VARCHAR(255),
     _category_id INTEGER,
     _brand_id INTEGER,
-    _uom_pc_id INTEGER,
-    _uom_package_id INTEGER,
-    _mrp DECIMAL(15,2),
-    _selling_rate DECIMAL(15,2),
     _current_user_id INTEGER
 ) RETURNS INTEGER AS $$
 DECLARE
     _id INTEGER;
 BEGIN
     INSERT INTO wms.material (
-        name, descr, category_id, brand_id, uom_pc_id, uom_package_id,
-        mrp, selling_rate, lub
+        name, descr, category_id, brand_id, lub
     )
     VALUES (
-        _name, _descr, _category_id, _brand_id, _uom_pc_id, _uom_package_id,
-        _mrp, _selling_rate, _current_user_id
+        _name, _descr, _category_id, _brand_id, _current_user_id
     )
     RETURNING id INTO _id;
     RETURN _id;
@@ -672,10 +666,6 @@ CREATE OR REPLACE FUNCTION wms.update_material(
     _descr VARCHAR(255),
     _category_id INTEGER,
     _brand_id INTEGER,
-    _uom_pc_id INTEGER,
-    _uom_package_id INTEGER,
-    _mrp DECIMAL(15,2),
-    _selling_rate DECIMAL(15,2),
     _current_user_id INTEGER
 ) RETURNS INTEGER AS $$
 BEGIN
@@ -684,10 +674,6 @@ BEGIN
         descr = _descr,
         category_id = _category_id,
         brand_id = _brand_id,
-        uom_pc_id = _uom_pc_id,
-        uom_package_id = _uom_package_id,
-        mrp = _mrp,
-        selling_rate = _selling_rate,
         lub = _current_user_id,
         lua = NOW()
     WHERE id = _id;
@@ -705,6 +691,74 @@ BEGIN
     SET is_active = false, lub = _current_user_id, lua = NOW()
     WHERE id = _id;
     RETURN _id;
+END;
+$$ LANGUAGE plpgsql;
+
+---------------------------** Material EAN **---------------------------
+
+-- Function to insert material EAN
+CREATE OR REPLACE FUNCTION wms.insert_material_ean(
+    p_material_id INTEGER,
+    p_ean_code VARCHAR(100),
+    p_label VARCHAR(255),
+    p_uom_pc_id INTEGER,
+    p_uom_package_id INTEGER,
+    p_mrp DECIMAL(15,2),
+    p_selling_rate DECIMAL(15,2),
+    p_current_user_id INTEGER
+) RETURNS INTEGER AS $$
+DECLARE
+    _id INTEGER;
+BEGIN
+    INSERT INTO wms.material_ean (
+        material_id, ean_code, label, uom_pc_id, uom_package_id, mrp, selling_rate, lub
+    )
+    VALUES (
+        p_material_id, p_ean_code, p_label, p_uom_pc_id, p_uom_package_id, p_mrp, p_selling_rate, p_current_user_id
+    )
+    RETURNING id INTO _id;
+    RETURN _id;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Function to update material EAN
+CREATE OR REPLACE FUNCTION wms.update_material_ean(
+    p_id INTEGER,
+    p_material_id INTEGER,
+    p_ean_code VARCHAR(100),
+    p_label VARCHAR(255),
+    p_uom_pc_id INTEGER,
+    p_uom_package_id INTEGER,
+    p_mrp DECIMAL(15,2),
+    p_selling_rate DECIMAL(15,2),
+    p_current_user_id INTEGER
+) RETURNS INTEGER AS $$
+BEGIN
+    UPDATE wms.material_ean
+    SET material_id = p_material_id,
+        ean_code = p_ean_code,
+        label = p_label,
+        uom_pc_id = p_uom_pc_id,
+        uom_package_id = p_uom_package_id,
+        mrp = p_mrp,
+        selling_rate = p_selling_rate,
+        lub = p_current_user_id,
+        lua = NOW()
+    WHERE id = p_id;
+    RETURN p_id;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Function to delete material EAN (soft delete)
+CREATE OR REPLACE FUNCTION wms.delete_material_ean(
+    p_id INTEGER,
+    p_current_user_id INTEGER
+) RETURNS INTEGER AS $$
+BEGIN
+    UPDATE wms.material_ean
+    SET is_active = false, lub = p_current_user_id, lua = NOW()
+    WHERE id = p_id;
+    RETURN p_id;
 END;
 $$ LANGUAGE plpgsql;
 
@@ -1335,7 +1389,7 @@ $$ LANGUAGE plpgsql;
 -- Function to insert in inward_details
 CREATE OR REPLACE FUNCTION wms.insert_inward_details(
     p_header_id INTEGER,
-    p_material_id INTEGER,
+    p_ean_id INTEGER,
     p_po_detail_id INTEGER,
     p_quom INTEGER,
     p_euom INTEGER,
@@ -1374,18 +1428,18 @@ BEGIN
     PERFORM pg_advisory_xact_lock(_lock_key);
 
     -- Compute next row_no safely within the lock
-    SELECT COALESCE(MAX(CAST(row_no AS INTEGER)), 0) INTO _row_no_int 
-    FROM wms.inward_details 
+    SELECT COALESCE(MAX(CAST(row_no AS INTEGER)), 0) INTO _row_no_int
+    FROM wms.inward_details
     WHERE header_id = p_header_id;
-    
+
     _row_no := LPAD((_row_no_int + 1)::TEXT, 5, '0');
 
     INSERT INTO wms.inward_details (
-        header_id, entry_no, row_no, material_id, po_detail_id,
+        header_id, entry_no, row_no, ean_id, po_detail_id,
         quom, euom, puom, eqty, pqty, pur_rate, amount, expiry_dt, batch_no, remarks, lub
     )
     VALUES (
-        p_header_id, _entry_no, _row_no, p_material_id, p_po_detail_id,
+        p_header_id, _entry_no, _row_no, p_ean_id, p_po_detail_id,
         p_quom, p_euom, p_puom, p_eqty, p_pqty, p_pur_rate, p_amount, p_expiry_dt, p_batch_no, p_remarks, p_current_user_id
     )
     RETURNING id INTO _new_id;
@@ -1398,7 +1452,7 @@ $$ LANGUAGE plpgsql;
 CREATE OR REPLACE FUNCTION wms.update_inward_details(
     p_id INTEGER,
     p_header_id INTEGER,
-    p_material_id INTEGER,
+    p_ean_id INTEGER,
     p_po_detail_id INTEGER,
     p_quom INTEGER,
     p_euom INTEGER,
@@ -1424,7 +1478,7 @@ BEGIN
     END IF;
 
     UPDATE wms.inward_details
-    SET material_id = p_material_id,
+    SET ean_id = p_ean_id,
         po_detail_id = p_po_detail_id,
         quom = p_quom,
         euom = p_euom,
@@ -1498,48 +1552,26 @@ BEGIN
     SET status = 'Processed', lub = p_current_user_id, lua = NOW()
     WHERE id = p_header_id;
 
-    -- Loop through active details and upsert stock (expiry-aware)
+    -- Loop through active details and upsert stock
     FOR _detail IN SELECT * FROM wms.inward_details WHERE header_id = p_header_id AND is_active = true LOOP
 
-        -- Try expiry-aware upsert first (requires unique(material_id, rack_id, expiry_dt, batch_no))
-        BEGIN
-            INSERT INTO wms.stock (material_id, rack_id, expiry_dt, batch_no, qty, uom_id, rate, lub)
-            VALUES (
-                _detail.material_id,
-                1,
-                _detail.expiry_dt,
-                _detail.batch_no,
-                COALESCE(_detail.eqty,0),
-                _detail.euom,
-                (SELECT rate_per_pc FROM wms.purchase_order_details WHERE id = _detail.po_detail_id),
-                p_current_user_id
-            )
-            ON CONFLICT (material_id, rack_id, expiry_dt, batch_no) DO UPDATE
-            SET qty = wms.stock.qty + EXCLUDED.qty,
-                uom_id = EXCLUDED.uom_id,
-                rate = COALESCE(EXCLUDED.rate, wms.stock.rate),
-                lub = EXCLUDED.lub,
-                lua = NOW();
-
-        EXCEPTION WHEN undefined_column OR undefined_table THEN
-            -- Fallback to non-expiry upsert if expiry column/index not present
-            RAISE NOTICE 'Expiry-aware stock columns/index missing; falling back to expiry-agnostic upsert for material %', _detail.material_id;
-            INSERT INTO wms.stock (material_id, rack_id, qty, uom_id, rate, lub)
-            VALUES (
-                _detail.material_id,
-                1,
-                COALESCE(_detail.eqty,0),
-                _detail.euom,
-                (SELECT rate_per_pc FROM wms.purchase_order_details WHERE id = _detail.po_detail_id),
-                p_current_user_id
-            )
-            ON CONFLICT (material_id, rack_id) DO UPDATE
-            SET qty = wms.stock.qty + EXCLUDED.qty,
-                uom_id = EXCLUDED.uom_id,
-                rate = COALESCE(EXCLUDED.rate, wms.stock.rate),
-                lub = EXCLUDED.lub,
-                lua = NOW();
-        END;
+        INSERT INTO wms.stock (ean_id, rack_id, expiry_dt, batch_no, qty, uom_id, rate, lub)
+        VALUES (
+            _detail.ean_id,
+            1,
+            _detail.expiry_dt,
+            _detail.batch_no,
+            COALESCE(_detail.eqty,0),
+            _detail.euom,
+            (SELECT rate_per_pc FROM wms.purchase_order_details WHERE id = _detail.po_detail_id),
+            p_current_user_id
+        )
+        ON CONFLICT (batch_no, rack_id) DO UPDATE
+        SET qty = wms.stock.qty + EXCLUDED.qty,
+            uom_id = EXCLUDED.uom_id,
+            rate = COALESCE(EXCLUDED.rate, wms.stock.rate),
+            lub = EXCLUDED.lub,
+            lua = NOW();
 
         -- Update PO detail iqty if linked and collect PO header ids for completion check
         IF _detail.po_detail_id IS NOT NULL THEN
@@ -2094,18 +2126,18 @@ $$ LANGUAGE plpgsql;
 
 -- Function to update  UOM
 CREATE OR REPLACE FUNCTION wms.update_uom(
-    uom_id INT,
-    uomname VARCHAR(255),
-    descr VARCHAR(255),
-    current_user_id INTEGER
+    _uom_id INT,
+    _uom_name VARCHAR(255),
+    _descr VARCHAR(255),
+    _current_user_id INTEGER
 ) RETURNS INT AS $$
 BEGIN
     UPDATE wms.uom
-    SET name = uom_name,
-        descr = descr,
-        lub = current_user_id
-    WHERE id = uom_id;
-    RETURN uom_id;
+    SET name = _uom_name,
+        descr = _descr,
+        lub = _current_user_id
+    WHERE id = _uom_id;
+    RETURN _uom_id;
 END;
 $$ LANGUAGE plpgsql;
 
@@ -3360,24 +3392,24 @@ $$ LANGUAGE plpgsql;
 
 -- Function to reduce stock from a specific rack
 CREATE OR REPLACE FUNCTION wms.reduce_stock(
-    _material_id INTEGER,
+    _ean_id INTEGER,
     _rack_id INTEGER,
     _qty DECIMAL(15,3),
-    _expiry_dt DATE,
+    _batch_no VARCHAR(100),
     _current_user_id INTEGER
 ) RETURNS VOID AS $$
 DECLARE
     _stock_id INTEGER;
     _current_qty DECIMAL(15,3);
 BEGIN
-    SELECT id, qty INTO _stock_id, _current_qty 
-    FROM wms.stock 
-    WHERE material_id = _material_id 
-      AND rack_id = _rack_id 
-      AND (expiry_dt = _expiry_dt OR (expiry_dt IS NULL AND _expiry_dt IS NULL));
+    SELECT id, qty INTO _stock_id, _current_qty
+    FROM wms.stock
+    WHERE ean_id = _ean_id
+      AND rack_id = _rack_id
+      AND (batch_no = _batch_no OR (batch_no IS NULL AND _batch_no IS NULL));
 
     IF _stock_id IS NULL THEN
-        RAISE EXCEPTION 'Stock record not found for Material ID %, Rack ID %, Expiry %', _material_id, _rack_id, _expiry_dt;
+        RAISE EXCEPTION 'Stock record not found for EAN ID %, Rack ID %, Batch %', _ean_id, _rack_id, _batch_no;
     END IF;
 
     IF _current_qty < _qty THEN
@@ -3389,44 +3421,6 @@ BEGIN
     WHERE id = _stock_id;
 END;
 $$ LANGUAGE plpgsql;
-
--- Update inward detail
-CREATE OR REPLACE FUNCTION wms.update_inward_details(
-    p_id INTEGER,
-    p_material_id INTEGER,
-    p_po_detail_id INTEGER,
-    p_quom INTEGER,
-    p_euom INTEGER,
-    p_puom INTEGER,
-    p_eqty DECIMAL(15, 3),
-    p_pqty DECIMAL(15,3),
-    p_pur_rate DECIMAL(15,2),
-    p_amount DECIMAL(15,2),
-    p_expiry_dt DATE,
-    p_is_active BOOLEAN,
-    p_current_user_id INTEGER
-) RETURNS INTEGER AS $$
-BEGIN
-    UPDATE wms.inward_details
-    SET material_id = p_material_id,
-        po_detail_id = p_po_detail_id,
-        quom = p_quom,
-        euom = p_euom,
-        puom = p_puom,
-        eqty = p_eqty,
-        pqty = p_pqty,
-        pur_rate = p_pur_rate,
-        amount = p_amount,
-        expiry_dt = p_expiry_dt,
-        is_active = p_is_active,
-        lub = p_current_user_id,
-        lua = NOW()
-    WHERE id = p_id;
-
-    RETURN p_id;
-END;
-$$ LANGUAGE plpgsql;
-
 
 CREATE OR REPLACE FUNCTION wms.allocate_stock_to_so(
     _header_id INTEGER,

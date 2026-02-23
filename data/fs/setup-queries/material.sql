@@ -9,10 +9,6 @@ CREATE TABLE IF NOT EXISTS wms.material (
     descr VARCHAR(255),
     category_id INTEGER REFERENCES wms.item_category(id),
     brand_id INTEGER REFERENCES wms.item_brand(id),
-    uom_pc_id INTEGER REFERENCES wms.uom(id),
-    uom_package_id INTEGER REFERENCES wms.uom(id),
-    mrp DECIMAL(15,2),
-    selling_rate DECIMAL(15,2),
     is_active BOOLEAN NOT NULL DEFAULT true,
     lub INTEGER REFERENCES administration.user(id),
     lua TIMESTAMP NOT NULL DEFAULT NOW()
@@ -26,10 +22,6 @@ CREATE TABLE IF NOT EXISTS wms.material_history (
     descr VARCHAR(255),
     category_id INTEGER,
     brand_id INTEGER,
-    uom_pc_id INTEGER,
-    uom_package_id INTEGER,
-    mrp DECIMAL(15,2),
-    selling_rate DECIMAL(15,2),
     is_active BOOLEAN NOT NULL,
     operation VARCHAR(10),
     operation_at TIMESTAMP,
@@ -43,33 +35,33 @@ RETURNS TRIGGER AS $$
 BEGIN
     IF TG_OP = 'INSERT' THEN
         INSERT INTO wms.material_history (
-            material_id, name, descr, category_id, brand_id, uom_pc_id, uom_package_id,
-            mrp, selling_rate, is_active, operation, operation_at, operation_by
+            material_id, name, descr, category_id, brand_id,
+            is_active, operation, operation_at, operation_by
         )
         VALUES (
-            NEW.id, NEW.name, NEW.descr, NEW.category_id, NEW.brand_id, NEW.uom_pc_id, NEW.uom_package_id,
-            NEW.mrp, NEW.selling_rate, NEW.is_active, 'INSERT', NEW.lua, NEW.lub
+            NEW.id, NEW.name, NEW.descr, NEW.category_id, NEW.brand_id,
+            NEW.is_active, 'INSERT', NEW.lua, NEW.lub
         );
 
     ELSIF TG_OP = 'UPDATE' THEN
         -- If the record is being deactivated, log it as a 'DELETE' operation for clarity
         IF (OLD.is_active = true AND NEW.is_active = false) THEN
             INSERT INTO wms.material_history (
-                material_id, name, descr, category_id, brand_id, uom_pc_id, uom_package_id,
-                mrp, selling_rate, is_active, operation, operation_at, operation_by
+                material_id, name, descr, category_id, brand_id,
+                is_active, operation, operation_at, operation_by
             )
             VALUES (
-                NEW.id, NEW.name, NEW.descr, NEW.category_id, NEW.brand_id, NEW.uom_pc_id, NEW.uom_package_id,
-                NEW.mrp, NEW.selling_rate, NEW.is_active, 'DELETE', NEW.lua, NEW.lub
+                NEW.id, NEW.name, NEW.descr, NEW.category_id, NEW.brand_id,
+                NEW.is_active, 'DELETE', NEW.lua, NEW.lub
             );
         ELSE
             INSERT INTO wms.material_history (
-                material_id, name, descr, category_id, brand_id, uom_pc_id, uom_package_id,
-                mrp, selling_rate, is_active, operation, operation_at, operation_by
+                material_id, name, descr, category_id, brand_id,
+                is_active, operation, operation_at, operation_by
             )
             VALUES (
-                NEW.id, NEW.name, NEW.descr, NEW.category_id, NEW.brand_id, NEW.uom_pc_id, NEW.uom_package_id,
-                NEW.mrp, NEW.selling_rate, NEW.is_active, 'UPDATE', NEW.lua, NEW.lub
+                NEW.id, NEW.name, NEW.descr, NEW.category_id, NEW.brand_id,
+                NEW.is_active, 'UPDATE', NEW.lua, NEW.lub
             );
         END IF;
     END IF;

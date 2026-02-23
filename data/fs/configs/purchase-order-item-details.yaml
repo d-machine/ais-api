@@ -134,14 +134,6 @@ sections:
               as: item_id
             - key: material_name
               as: item_name
-            - key: selling_rate
-              as: rate_per_pc
-            - key: conversion_factor
-              as: conversion_factor
-            - key: uom_pc_id
-              as: euom
-            - key: uom_package_id
-              as: puom
       - name: quom
         label: Order UOM
         type: SELECT
@@ -149,7 +141,7 @@ sections:
         readonly:
           - VIEW
         selectConfig:
-          resource: list-uoms
+          resource: list-uoms-by-material-ean
           displayField: uom_name
           selectHandler: converter
           currentSelection:
@@ -159,6 +151,19 @@ sections:
           fields_to_extract:
             - key: id
               as: quom
+            - key: uom_pc_id
+              as: euom
+            - key: uom_package_id
+              as: puom
+            - key: conversion_factor
+              as: conversion_factor
+          dependencies:
+            - target:
+                - item_id
+              handler: filterByDependency
+              required: true
+              dependencyConfig:
+                targetParam: material_id
       - name: rate_per_pc
         label: Rate (Each)
         type: NUMBER
