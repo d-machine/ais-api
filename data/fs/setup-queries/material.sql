@@ -9,6 +9,7 @@ CREATE TABLE IF NOT EXISTS wms.material (
     descr VARCHAR(255),
     category_id INTEGER REFERENCES wms.item_category(id),
     brand_id INTEGER REFERENCES wms.item_brand(id),
+    hsn_id INTEGER REFERENCES wms.hsn(id),
     is_active BOOLEAN NOT NULL DEFAULT true,
     lub INTEGER REFERENCES administration.user(id),
     lua TIMESTAMP NOT NULL DEFAULT NOW()
@@ -22,6 +23,7 @@ CREATE TABLE IF NOT EXISTS wms.material_history (
     descr VARCHAR(255),
     category_id INTEGER,
     brand_id INTEGER,
+    hsn_id INTEGER,
     is_active BOOLEAN NOT NULL,
     operation VARCHAR(10),
     operation_at TIMESTAMP,
@@ -35,11 +37,11 @@ RETURNS TRIGGER AS $$
 BEGIN
     IF TG_OP = 'INSERT' THEN
         INSERT INTO wms.material_history (
-            material_id, name, descr, category_id, brand_id,
+            material_id, name, descr, category_id, brand_id, hsn_id,
             is_active, operation, operation_at, operation_by
         )
         VALUES (
-            NEW.id, NEW.name, NEW.descr, NEW.category_id, NEW.brand_id,
+            NEW.id, NEW.name, NEW.descr, NEW.category_id, NEW.brand_id, NEW.hsn_id,
             NEW.is_active, 'INSERT', NEW.lua, NEW.lub
         );
 

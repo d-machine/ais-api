@@ -53,6 +53,7 @@ export default class DBClient {
         // Geographical tables
         "country.sql",
         "state.sql",
+        "client_config.sql",
         "city.sql",
         "district.sql",
         "city_district.sql",
@@ -60,6 +61,7 @@ export default class DBClient {
         // transport
         "transport.sql",
         // material
+        "hsn.sql",
         "item_category.sql",
         "item_brand.sql",
         "uom.sql",
@@ -73,8 +75,10 @@ export default class DBClient {
         // party
         "party_category.sql",
         "party.sql",
+        "party_contact_details.sql",
         "vendor_category.sql",
         "vendor.sql",
+        "vendor_contact_details.sql",
         // purchase_order
         "purchase_order_header.sql",
         "purchase_order_details.sql",

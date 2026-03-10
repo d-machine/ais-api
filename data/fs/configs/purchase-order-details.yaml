@@ -278,15 +278,38 @@ sections:
     queryInfo:
       returnType: MULTIPLE_ROWS
       query: |
-        SELECT d.id, d.row_no, m.name as item_name, u1.name as uom_pc_name,
-               u2.name as uom_package_name, d.rate_per_pc, d.eqty, d.amount,
-               d.iqty, d.status
-        FROM wms.purchase_order_details d
-        LEFT JOIN wms.material m ON d.item_id = m.id
-        LEFT JOIN wms.uom u1 ON d.euom = u1.id
-        LEFT JOIN wms.uom u2 ON d.puom = u2.id
-        WHERE d.header_id = $1 AND d.is_active = true
-        ORDER BY d.row_no
+        WITH gst AS (
+          SELECT d.*,
+            CASE
+              WHEN cp_s.code = client_s.code THEN
+                CASE WHEN client_s.state_type = 'UT' THEN d.cgst + d.utgst
+                     ELSE d.cgst + d.sgst END
+              ELSE d.igst
+            END AS total_gst_pct
+          FROM wms.purchase_order_details d
+          JOIN wms.purchase_order_header ph ON d.header_id = ph.id
+          JOIN wms.vendor v ON ph.vendor_id = v.id
+          JOIN wms.state cp_s ON v.state_id = cp_s.id
+          CROSS JOIN (
+            SELECT s.code, s.state_type
+            FROM wms.client_config cc
+            JOIN wms.state s ON s.id = cc.state_id
+            LIMIT 1
+          ) client_s
+          WHERE d.header_id = $1 AND d.is_active = true
+        )
+        SELECT g.id, g.row_no, m.name as item_name, u1.name as uom_pc_name,
+               u2.name as uom_package_name, g.rate_per_pc, g.eqty, g.amount,
+               g.iqty, g.status, g.remarks, h.hsn_code,
+               g.total_gst_pct,
+               ROUND(g.amount * g.total_gst_pct / 100, 2) AS gst_amount,
+               ROUND(g.amount * (1 + g.total_gst_pct / 100), 2) AS total_amount
+        FROM gst g
+        LEFT JOIN wms.material m ON g.item_id = m.id
+        LEFT JOIN wms.uom u1 ON g.euom = u1.id
+        LEFT JOIN wms.uom u2 ON g.puom = u2.id
+        LEFT JOIN wms.hsn h ON g.hsn_id = h.id
+        ORDER BY g.row_no
       payload:
         - purchase_order_header.id
       path:
@@ -410,3 +433,24 @@ sections:
         label: Remarks
         visible: true
         width: 150
+      - name: hsn_code
+        label: HSN Code
+        visible: true
+        width: 120
+      - name: total_gst_pct
+        label: GST %
+        visible: true
+        width: 80
+        align: right
+      - name: gst_amount
+        label: GST Amt
+        visible: true
+        dataType: currency
+        width: 110
+        align: right
+      - name: total_amount
+        label: Total
+        visible: true
+        dataType: currency
+        width: 130
+        align: right

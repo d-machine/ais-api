@@ -25,7 +25,8 @@ sections:
           COALESCE(d.eqty, 0) as eqty,
           COALESCE(d.pqty, 0) as pqty,
           d.expiry_dt, d.batch_no, d.remarks,
-          COALESCE(uc.no_of_pcs, 1) as conversion_factor
+          COALESCE(uc.no_of_pcs, 1) as conversion_factor,
+          m.hsn_id, h.hsn_code, h.cgst, h.sgst, h.igst, h.utgst
         FROM wms.purchase_order_details pod
         JOIN wms.material m ON pod.item_id = m.id
         LEFT JOIN wms.inward_details d ON d.po_detail_id = pod.id AND d.id = COALESCE($2, 0)
@@ -33,6 +34,7 @@ sections:
         LEFT JOIN wms.uom u_each ON d.euom = u_each.id
         LEFT JOIN wms.uom u_pkg ON d.puom = u_pkg.id
         LEFT JOIN wms.uom_conversion uc ON me.uom_pc_id = uc.uom_id_each AND me.uom_package_id = uc.uom_id_case
+        LEFT JOIN wms.hsn h ON m.hsn_id = h.id
         WHERE pod.id = $3
       payload:
         - header_id
@@ -135,6 +137,17 @@ sections:
       - columns:
           - field: remarks
             span: 12
+      - columns:
+          - field: hsn_code
+            span: 4
+          - field: cgst
+            span: 2
+          - field: sgst
+            span: 2
+          - field: igst
+            span: 2
+          - field: utgst
+            span: 2
 
     fields:
       - name: inward_detail_id
@@ -182,6 +195,18 @@ sections:
               as: euom
             - key: uom_package_id
               as: puom
+            - key: hsn_id
+              as: hsn_id
+            - key: hsn_code
+              as: hsn_code
+            - key: cgst
+              as: cgst
+            - key: sgst
+              as: sgst
+            - key: igst
+              as: igst
+            - key: utgst
+              as: utgst
           dependencies:
             - targets:
                 - - material_id
@@ -314,3 +339,27 @@ sections:
         type: TEXTAREA
         readonly:
           - VIEW
+      - name: hsn_id
+        label: HSN ID
+        type: NUMBER
+        visible: false
+      - name: hsn_code
+        label: HSN Code
+        type: TEXT
+        readonly: true
+      - name: cgst
+        label: CGST %
+        type: NUMBER
+        readonly: true
+      - name: sgst
+        label: SGST %
+        type: NUMBER
+        readonly: true
+      - name: igst
+        label: IGST %
+        type: NUMBER
+        readonly: true
+      - name: utgst
+        label: UTGST %
+        type: NUMBER
+        readonly: true

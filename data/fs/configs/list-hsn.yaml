@@ -1,29 +1,18 @@
 version: 1.0
-configName: list-states
+configName: list-hsn
 
 sections:
   - sectionType: TABLE
-    sectionName: states
-    label: States
+    sectionName: hsn_list
+    label: HSN Codes
 
     queryInfo:
       returnType: MULTIPLE_ROWS
       query: |
-        SELECT
-          s.id,
-          s.country_id,
-          c.name as country_name,
-          s.name as state_name,
-          s.code as state_code,
-          s.state_type,
-          s.descr,
-          s.lua as last_updated_at,
-          TRIM(CONCAT(u.first_name, ' ', u.last_name)) as last_updated_by_name
-        FROM
-          wms.state s
-          LEFT JOIN wms.country c ON s.country_id = c.id
-          LEFT JOIN administration.user u ON s.lub = u.id
-        WHERE s.is_active = true
+        SELECT id, hsn_code, descr, cgst, sgst, igst, utgst
+        FROM wms.hsn
+        WHERE is_active = true
+        ORDER BY hsn_code
       path:
         - sections
         - 0
@@ -32,13 +21,7 @@ sections:
         applySorting: true
         applyPagination: true
         pageSize: 50
-        pageSizeOptions:
-          - 10
-          - 25
-          - 50
-          - 100
 
-    # Section-level actions (header + row)
     applicableActions:
       VIEW:
         - add
@@ -48,15 +31,15 @@ sections:
 
     actionConfig:
       add:
-        label: Add State
+        label: Add HSN
         icon: Plus
         variant: primary
         actionType: DISPLAY_FORM
         level: HEADER
         shortcut: "F2"
-        formConfig: state-details
+        formConfig: hsn-details
         mode: ADD
-        payload: [] # No initial context for standalone add
+        payload: []
         onSuccess: refresh
         accessTypeRequired: 7-ADD
 
@@ -67,11 +50,10 @@ sections:
         actionType: DISPLAY_FORM
         level: ROW
         shortcut: "F3"
-        formConfig: state-details
+        formConfig: hsn-details
         mode: VIEW
         payload:
-          - id # From row: state ID
-          - country_id # From row: country ID
+          - id
         accessTypeRequired: 7-VIEW
 
       edit:
@@ -81,11 +63,10 @@ sections:
         actionType: DISPLAY_FORM
         level: ROW
         shortcut: "F4"
-        formConfig: state-details
+        formConfig: hsn-details
         mode: EDIT
         payload:
-          - id # From row: state ID
-          - country_id # From row: country ID
+          - id
         onSuccess: refresh
         accessTypeRequired: 7-EDIT
 
@@ -97,13 +78,13 @@ sections:
         level: ROW
         shortcut: "F8"
         confirmationRequired: true
-        confirmationMessage: "Are you sure you want to delete '${row.state_name}'?"
+        confirmationMessage: "Are you sure you want to delete HSN '${row.hsn_code}'?"
         accessTypeRequired: 7-DELETE
         queryInfo:
           returnType: SCALAR
-          query: SELECT wms.delete_state($1, $2) as result;
+          query: SELECT wms.delete_hsn($1, $2) as id;
           payload:
-            - id # From row: state ID
+            - id
           contextParams:
             - current_user_id
           path:
@@ -119,47 +100,44 @@ sections:
         label: ID
         visible: false
 
-      - name: country_id
-        label: Country ID
-        visible: false
-
-      - name: country_name
-        label: Country
+      - name: hsn_code
+        label: HSN Code
         visible: true
         sortable: true
         filterable: true
         width: 150
 
-      - name: state_name
-        label: State Name
-        visible: true
-        sortable: true
-        filterable: true
-        width: 200
-
-      - name: state_code
-        label: State Code
-        visible: true
-        sortable: true
-        width: 100
-
-      - name: state_type
-        label: Type
-        visible: true
-        width: 80
-
       - name: descr
         label: Description
         visible: true
-
-      - name: last_updated_at
-        label: Last Updated At
-        visible: true
-        dataType: datetime
-        format: "DD/MM/YYYY HH:mm"
         sortable: true
-        defaultSort: DESC
+        filterable: true
+        width: 250
 
-      - name: last_updated_by_name
-        label: Updated By
+      - name: cgst
+        label: CGST %
         visible: true
+        dataType: number
+        align: right
+        width: 100
+
+      - name: sgst
+        label: SGST %
+        visible: true
+        dataType: number
+        align: right
+        width: 100
+
+      - name: igst
+        label: IGST %
+        visible: true
+        dataType: number
+        align: right
+        width: 100
+
+      - name: utgst
+        label: UTGST %
+        visible: true
+        dataType: number
+        align: right
+        width: 100

@@ -1,0 +1,183 @@
+version: 1.0
+configName: hsn-details
+
+applicableActions:
+  ADD:
+    - FINISH
+    - CANCEL
+  EDIT:
+    - FINISH
+    - CANCEL
+  VIEW:
+    - FINISH
+    - CLOSE
+
+actionConfig:
+  FINISH:
+    visible: false
+    closeAction: REFRESH
+  CANCEL:
+    visible: true
+    variant: danger
+    label:
+      ADD: Discard Changes
+      EDIT: Discard Changes
+  CLOSE:
+    visible: true
+    label:
+      VIEW: Close
+
+sections:
+  - sectionType: FIELDS
+    sectionName: hsn_detail
+    label: HSN Information
+
+    queryInfo:
+      returnType: SINGLE_ROW
+      query: |
+        SELECT id, hsn_code, descr, cgst, sgst, igst, utgst
+        FROM wms.hsn
+        WHERE id = $1
+      payload:
+        - _context.id
+      executionConditions:
+        - indices:
+            - 0
+          operator: IS_NOT_NIL
+      path:
+        - sections
+        - 0
+
+    applicableActions:
+      ADD:
+        - SAVE
+        - CANCEL
+      EDIT:
+        - SAVE
+        - CANCEL
+      VIEW:
+        - EDIT
+
+    actionConfig:
+      SAVE:
+        label:
+          ADD: Create HSN
+          EDIT: Update HSN
+        icon: Save
+        variant: primary
+        actionType: EXECUTE_QUERY
+        queryInfo:
+          returnType: SCALAR
+          query:
+            ADD: |
+              SELECT wms.insert_hsn($1, $2, $3, $4, $5, $6, $7) as id;
+            EDIT: |
+              SELECT wms.update_hsn($1, $2, $3, $4, $5, $6, $7, $8) as id;
+          payload:
+            ADD:
+              - hsn_detail.hsn_code
+              - hsn_detail.descr
+              - hsn_detail.cgst
+              - hsn_detail.sgst
+              - hsn_detail.igst
+              - hsn_detail.utgst
+            EDIT:
+              - _context.id
+              - hsn_detail.hsn_code
+              - hsn_detail.descr
+              - hsn_detail.cgst
+              - hsn_detail.sgst
+              - hsn_detail.igst
+              - hsn_detail.utgst
+          contextParams:
+            - current_user_id
+          path:
+            - sections
+            - 0
+            - actionConfig
+            - SAVE
+        onSuccess:
+          callback: HANDLE_FORM_ACTION
+          params:
+            action: FINISH
+        onFailure: showErrorSnackbar
+
+      CANCEL:
+        label: Discard Changes
+        icon: ClipboardX
+        variant: danger
+        actionType: NAVIGATE
+        onSuccess: exitAndComplete
+
+      EDIT:
+        label: Edit
+        icon: Edit
+        variant: primary
+        actionType: FUNCTION_EXECUTION
+        functionInfo:
+          name: changeMode
+          params:
+            mode: EDIT
+
+    rows:
+      - columns:
+          - field: hsn_code
+            span: 6
+          - field: descr
+            span: 6
+      - columns:
+          - field: cgst
+            span: 3
+          - field: sgst
+            span: 3
+          - field: igst
+            span: 3
+          - field: utgst
+            span: 3
+
+    fields:
+      - name: hsn_code
+        label: HSN Code
+        type: TEXT
+        readonly:
+          - VIEW
+        required: true
+
+      - name: descr
+        label: Description
+        type: TEXT
+        readonly:
+          - VIEW
+        required: false
+
+      - name: cgst
+        label: CGST %
+        type: NUMBER
+        readonly:
+          - VIEW
+        required: false
+        defaultValue: 0
+
+      - name: sgst
+        label: SGST %
+        type: NUMBER
+        readonly:
+          - VIEW
+        required: false
+        defaultValue: 0
+
+      - name: igst
+        label: IGST %
+        type: NUMBER
+        readonly:
+          - VIEW
+        required: false
+        defaultValue: 0
+
+      - name: utgst
+        label: UTGST %
+        type: NUMBER
+        readonly:
+          - VIEW
+        required: false
+        defaultValue: 0

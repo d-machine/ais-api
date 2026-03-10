@@ -5,7 +5,8 @@ CREATE TABLE wms.state (
     id SERIAL PRIMARY KEY,
     name VARCHAR(255) NOT NULL,
     descr VARCHAR(255),
-    code VARCHAR(10) NOT NULL,
+    code INTEGER NOT NULL,
+    state_type VARCHAR(5) NOT NULL DEFAULT 'STATE' CHECK (state_type IN ('STATE', 'UT')),
     country_id INTEGER REFERENCES wms.country(id),
     is_active boolean not null default true,
     lub int REFERENCES administration.user(id),
@@ -18,7 +19,8 @@ CREATE TABLE wms.state_history (
     state_id INT NOT NULL,
     name VARCHAR(255) NOT NULL,
     descr VARCHAR(255),
-    code VARCHAR(10) NOT NULL,
+    code INTEGER NOT NULL,
+    state_type VARCHAR(5),
     country_id INT NOT NULL,
     is_active boolean NOT NULL,
     operation VARCHAR(10),
@@ -31,15 +33,15 @@ CREATE OR REPLACE FUNCTION wms.state_trigger()
 RETURNS TRIGGER AS $$
 BEGIN
     IF TG_OP = 'INSERT' THEN
-        INSERT INTO wms.state_history (state_id, name, descr, code, country_id, is_active, operation, operation_at, operation_by)
-        VALUES (NEW.id, NEW.name, NEW.descr, NEW.code, NEW.country_id, NEW.is_active, 'INSERT', NEW.lua, NEW.lub);
+        INSERT INTO wms.state_history (state_id, name, descr, code, state_type, country_id, is_active, operation, operation_at, operation_by)
+        VALUES (NEW.id, NEW.name, NEW.descr, NEW.code, NEW.state_type, NEW.country_id, NEW.is_active, 'INSERT', NEW.lua, NEW.lub);
     ELSIF TG_OP = 'UPDATE' THEN
         IF (OLD.is_active = true AND NEW.is_active = false) THEN
-            INSERT INTO wms.state_history (state_id, name, country_id, code, descr, is_active, operation, operation_at, operation_by)
-            VALUES (NEW.id, NEW.name, NEW.country_id, NEW.code, NEW.descr, NEW.is_active, 'DELETE', NEW.lua, NEW.lub);
+            INSERT INTO wms.state_history (state_id, name, country_id, code, state_type, descr, is_active, operation, operation_at, operation_by)
+            VALUES (NEW.id, NEW.name, NEW.country_id, NEW.code, NEW.state_type, NEW.descr, NEW.is_active, 'DELETE', NEW.lua, NEW.lub);
         ELSE
-            INSERT INTO wms.state_history (state_id, name, country_id, code, descr, is_active, operation, operation_at, operation_by)
-            VALUES (NEW.id, NEW.name, NEW.country_id, NEW.code, NEW.descr, NEW.is_active, 'UPDATE', NEW.lua, NEW.lub);
+            INSERT INTO wms.state_history (state_id, name, country_id, code, state_type, descr, is_active, operation, operation_at, operation_by)
+            VALUES (NEW.id, NEW.name, NEW.country_id, NEW.code, NEW.state_type, NEW.descr, NEW.is_active, 'UPDATE', NEW.lua, NEW.lub);
         END IF;
     END IF;
     RETURN NEW;

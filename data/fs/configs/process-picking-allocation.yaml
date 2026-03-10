@@ -1,8 +1,24 @@
-configType: FORM
 version: 1.0
+configName: process-picking-allocation
+title: Material Allocation
+
+applicableActions:
+  ADD:
+    - CLOSE
+  VIEW:
+    - CLOSE
+
+actionConfig:
+  CLOSE:
+    visible: true
+    closeAction: REFRESH
+    label: Done
+    variant: primary
+
 sections:
   - sectionType: FIELDS
-    sectionName: Material Allocation
+    sectionName: material_allocation
+    label: Allocation Summary
     queryInfo:
       returnType: SINGLE_ROW
       query: |
@@ -14,25 +30,25 @@ sections:
           $3::numeric as total_pending_qty,
           $4 as so_detail_ids,
           (
-            SELECT COALESCE(SUM(qty), 0) 
-            FROM wms.stock 
+            SELECT COALESCE(SUM(qty), 0)
+            FROM wms.stock
             WHERE material_id = $2 AND is_active = true
           ) - (
-            SELECT COALESCE(SUM(d.qty), 0) 
+            SELECT COALESCE(SUM(d.qty), 0)
             FROM wms.picking_list_details d
             JOIN wms.picking_list_header h ON d.header_id = h.id
-            WHERE d.material_id = $2 
-              AND d.is_active = true 
+            WHERE d.material_id = $2
+              AND d.is_active = true
               AND h.status IN ('Draft', 'Picked')
           ) as quantity_in_stock,
           COALESCE(
-            (SELECT SUM(qty) FROM wms.picking_list_details 
-             WHERE header_id = $1 AND material_id = $2 AND is_active = true), 
+            (SELECT SUM(qty) FROM wms.picking_list_details
+             WHERE header_id = $1 AND material_id = $2 AND is_active = true),
             0
           ) as already_allocated_qty,
           ($3::numeric - COALESCE(
-            (SELECT SUM(qty) FROM wms.picking_list_details 
-             WHERE header_id = $1 AND material_id = $2 AND is_active = true), 
+            (SELECT SUM(qty) FROM wms.picking_list_details
+             WHERE header_id = $1 AND material_id = $2 AND is_active = true),
             0
           )) as qty_to_pick
         FROM wms.material m
@@ -46,19 +62,21 @@ sections:
       path:
         - sections
         - 0
-    
+
     applicableActions:
-      - DUMMY
-      - CANCEL
-    
+      ADD:
+        - CANCEL
+      VIEW:
+        - CANCEL
+
     actionConfig:
-      DUMMY:
-        label: Save & Continue
-        actionType: DUMMY
-        handledByParent: true
       CANCEL:
         label: Close
-    
+        icon: X
+        variant: secondary
+        actionType: NAVIGATE
+        onSuccess: exitAndComplete
+
     rows:
       - columns:
           - field: material_name
@@ -70,10 +88,7 @@ sections:
             span: 4
           - field: quantity_in_stock
             span: 4
-      - columns:
-          - field: qty_to_pick
-            span: 6
-    
+
     fields:
       - name: header_id
         type: NUMBER
@@ -103,16 +118,22 @@ sections:
       - name: qty_to_pick
         label: Quantity to Pick
         type: NUMBER
-        placeholder: "Enter quantity to allocate"
-        required: true
+        visible: false
 
   - sectionType: TABLE
-    sectionName: Available Stock (FIFO/FEFO)
+    sectionName: available_stock
+    label: Available Stock (FIFO/FEFO)
+    applicableActions:
+      ADD:
+        - pick
+        - unpick
+      VIEW:
+        - view_pick
     queryInfo:
       returnType: MULTIPLE_ROWS
       query: |
         WITH stock_data AS (
-            SELECT 
+            SELECT
               MIN(s.id) as stock_id,
               s.rack_id,
               r.code as rack_code,
@@ -120,11 +141,11 @@ sections:
               s.expiry_dt,
               s.batch_no,
               (SUM(s.qty) - COALESCE((
-                  SELECT SUM(d.qty) 
-                  FROM wms.picking_list_details d 
+                  SELECT SUM(d.qty)
+                  FROM wms.picking_list_details d
                   JOIN wms.picking_list_header h ON d.header_id = h.id
-                  WHERE d.material_id = $2 
-                    AND d.rack_id = s.rack_id 
+                  WHERE d.material_id = $2
+                    AND d.rack_id = s.rack_id
                     AND (d.expiry_dt = s.expiry_dt OR (d.expiry_dt IS NULL AND s.expiry_dt IS NULL))
                     AND d.header_id != $1
                     AND h.status IN ('Draft', 'Picked')
@@ -134,7 +155,7 @@ sections:
             JOIN wms.rack r ON s.rack_id = r.id
             WHERE s.material_id = $2
               AND s.is_active = true
-            GROUP BY 
+            GROUP BY
               s.rack_id,
               r.code,
               r.name,
@@ -142,25 +163,25 @@ sections:
               s.batch_no
         ),
         fifo_calc AS (
-            SELECT 
+            SELECT
               *,
               SUM(available_qty) OVER (ORDER BY expiry_dt ASC NULLS LAST, stock_id ASC) as running_total
             FROM stock_data
             WHERE available_qty > 0
         )
-        SELECT 
+        SELECT
           f.*,
-          COALESCE(pld.qty, 
-            CASE 
-              WHEN $3 > 0 THEN 
+          COALESCE(pld.qty,
+            CASE
+              WHEN $3 > 0 THEN
                 LEAST(f.available_qty, GREATEST(0, $3 - (f.running_total - f.available_qty)))
-              ELSE 0 
+              ELSE 0
             END
           ) as allocated_qty,
           CASE WHEN pld.id IS NOT NULL THEN 'Picked' ELSE 'Not Picked' END as pick_status
         FROM fifo_calc f
-        LEFT JOIN wms.picking_list_details pld ON 
-            pld.header_id = $1 
+        LEFT JOIN wms.picking_list_details pld ON
+            pld.header_id = $1
             AND pld.material_id = $2
             AND pld.rack_id = f.rack_id
             AND (pld.expiry_dt = f.expiry_dt OR (pld.expiry_dt IS NULL AND f.expiry_dt IS NULL))
@@ -173,14 +194,11 @@ sections:
       path:
         - sections
         - 1
-      dependencies:
-        - target: [qty_to_pick]
-          handler: refresh
       options:
         applyFiltering: false
         applySorting: false
         applyPagination: false
-    
+
     columns:
       - name: rack_code
         label: Rack
@@ -209,17 +227,16 @@ sections:
         label: Status
         visible: true
 
-    applicableActions:
-      - pick
-      - unpick
-    
     actionConfig:
       pick:
         label: Pick
+        icon: Plus
+        variant: primary
         level: ROW
         condition: row.pick_status === 'Not Picked'
         actionType: DISPLAY_FORM
         formConfig: process-manual-pick
+        mode: ADD
         payload:
           - header_id
           - material_id
@@ -229,9 +246,11 @@ sections:
           - key: allocated_qty
             as: qty
         onSuccess: refresh
-      
+
       unpick:
         label: Unpick
+        icon: Trash2
+        variant: danger
         level: ROW
         condition: row.pick_status === 'Picked'
         actionType: EXECUTE_QUERY
@@ -241,10 +260,10 @@ sections:
           returnType: SCALAR
           query: |
             WITH deleted AS (
-              DELETE FROM wms.picking_list_details 
-              WHERE header_id = $1 
-                AND material_id = $2 
-                AND rack_id = $3 
+              DELETE FROM wms.picking_list_details
+              WHERE header_id = $1
+                AND material_id = $2
+                AND rack_id = $3
                 AND (expiry_dt = $4 OR (expiry_dt IS NULL AND $4 IS NULL))
                 AND is_active = true
             )
@@ -261,4 +280,20 @@ sections:
             - unpick
         onSuccess: refresh
 
-
+      view_pick:
+        label: View
+        icon: Eye
+        variant: secondary
+        level: ROW
+        condition: row.pick_status === 'Picked'
+        actionType: DISPLAY_FORM
+        formConfig: process-manual-pick
+        mode: VIEW
+        payload:
+          - header_id
+          - material_id
+          - rack_id
+          - expiry_dt
+          - batch_no
+          - key: allocated_qty
+            as: qty

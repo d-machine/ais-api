@@ -259,16 +259,34 @@ sections:
     queryInfo:
       returnType: MULTIPLE_ROWS
       query: |
-        SELECT 
+        SELECT
           d.id as picking_detail_id,
           m.name as material_name,
+          h.hsn_code,
           r.code as rack_code,
           d.expiry_dt,
           d.qty as picked_qty,
-          COALESCE((SELECT SUM(qty) FROM wms.dispatch_details dd WHERE dd.header_id = $1 AND dd.picking_detail_id = d.id AND dd.is_active = true), 0) as dispatched_qty
+          COALESCE(dd.qty, 0) as dispatched_qty,
+          CASE
+            WHEN cp_s.code = client_s.code THEN
+              CASE WHEN client_s.state_type = 'UT' THEN COALESCE(dd.cgst, 0) + COALESCE(dd.utgst, 0)
+                   ELSE COALESCE(dd.cgst, 0) + COALESCE(dd.sgst, 0) END
+            ELSE COALESCE(dd.igst, 0)
+          END AS total_gst_pct
         FROM wms.picking_list_details d
         JOIN wms.material m ON d.material_id = m.id
+        LEFT JOIN wms.hsn h ON m.hsn_id = h.id
         LEFT JOIN wms.rack r ON d.rack_id = r.id
+        LEFT JOIN wms.dispatch_details dd ON dd.header_id = $1 AND dd.picking_detail_id = d.id AND dd.is_active = true
+        JOIN wms.dispatch_header dh ON dh.id = $1
+        JOIN wms.party p ON dh.party_id = p.id
+        JOIN wms.state cp_s ON p.state_id = cp_s.id
+        CROSS JOIN (
+          SELECT s.code, s.state_type
+          FROM wms.client_config cc
+          JOIN wms.state s ON s.id = cc.state_id
+          LIMIT 1
+        ) client_s
         WHERE d.header_id = ANY(string_to_array((SELECT pl_ids FROM wms.dispatch_header WHERE id = $1), ',')::int[])
         AND d.status = 'Picked'
         AND d.is_active = true
@@ -282,6 +300,9 @@ sections:
       - name: material_name
         label: Material
         width: 250
+      - name: hsn_code
+        label: HSN Code
+        width: 120
       - name: rack_code
         label: Rack
         width: 120
@@ -296,4 +317,8 @@ sections:
       - name: dispatched_qty
         label: Dispatched
         width: 100
+        align: right
+      - name: total_gst_pct
+        label: GST %
+        width: 80
         align: right

@@ -374,15 +374,16 @@ $$ LANGUAGE plpgsql;
 -- Function to insert in state
 CREATE OR REPLACE FUNCTION wms.insert_state(
     name VARCHAR(255),
-    code VARCHAR(3),
+    code INTEGER,
     descr VARCHAR(255),
     country_id INT,
+    state_type VARCHAR(5),
     current_user_id INTEGER
 ) RETURNS INT AS $$
 DECLARE new_state_id INT;
 BEGIN
-    INSERT INTO wms.state (name, code, descr, country_id, lub)
-    VALUES (name, code, descr, country_id, current_user_id)
+    INSERT INTO wms.state (name, code, descr, country_id, state_type, lub)
+    VALUES (name, code, descr, country_id, state_type, current_user_id)
     RETURNING id into new_state_id;
     RETURN new_state_id;
 END;
@@ -392,14 +393,15 @@ $$ LANGUAGE plpgsql;
 CREATE OR REPLACE FUNCTION wms.update_state(
     _state_id INT,
     _name VARCHAR(255),
-    _code VARCHAR(3),
+    _code INTEGER,
     _descr VARCHAR(255),
     _country_id INT,
+    _state_type VARCHAR(5),
     _current_user_id INTEGER
 ) RETURNS INT AS $$
 BEGIN
     UPDATE wms.state
-    SET name = _name, code = _code, descr = _descr, country_id = _country_id, lub = _current_user_id
+    SET name = _name, code = _code, descr = _descr, country_id = _country_id, state_type = _state_type, lub = _current_user_id
     WHERE id = _state_id;
     RETURN _state_id;
 END;
@@ -643,16 +645,17 @@ CREATE OR REPLACE FUNCTION wms.insert_material(
     _descr VARCHAR(255),
     _category_id INTEGER,
     _brand_id INTEGER,
+    _hsn_id INTEGER,
     _current_user_id INTEGER
 ) RETURNS INTEGER AS $$
 DECLARE
     _id INTEGER;
 BEGIN
     INSERT INTO wms.material (
-        name, descr, category_id, brand_id, lub
+        name, descr, category_id, brand_id, hsn_id, lub
     )
     VALUES (
-        _name, _descr, _category_id, _brand_id, _current_user_id
+        _name, _descr, _category_id, _brand_id, _hsn_id, _current_user_id
     )
     RETURNING id INTO _id;
     RETURN _id;
@@ -666,6 +669,7 @@ CREATE OR REPLACE FUNCTION wms.update_material(
     _descr VARCHAR(255),
     _category_id INTEGER,
     _brand_id INTEGER,
+    _hsn_id INTEGER,
     _current_user_id INTEGER
 ) RETURNS INTEGER AS $$
 BEGIN
@@ -674,6 +678,7 @@ BEGIN
         descr = _descr,
         category_id = _category_id,
         brand_id = _brand_id,
+        hsn_id = _hsn_id,
         lub = _current_user_id,
         lua = NOW()
     WHERE id = _id;
@@ -687,6 +692,10 @@ CREATE OR REPLACE FUNCTION wms.delete_material(
     _current_user_id INTEGER
 ) RETURNS INTEGER AS $$
 BEGIN
+    UPDATE wms.material_ean
+    SET is_active = false, lub = _current_user_id, lua = NOW()
+    WHERE material_id = _id AND is_active = true;
+
     UPDATE wms.material
     SET is_active = false, lub = _current_user_id, lua = NOW()
     WHERE id = _id;
@@ -896,28 +905,45 @@ CREATE OR REPLACE FUNCTION wms.insert_sales_order_details(
     _remarks VARCHAR(255),
     _current_user_id INTEGER
 ) RETURNS INTEGER AS $$
-DECLARE _id INTEGER;
+DECLARE
+    _id INTEGER;
     _entry_no VARCHAR(6);
     _row_no VARCHAR(5);
     max_row_no INTEGER;
+    _hsn_id INTEGER;
+    _cgst DECIMAL(5,2) := 0;
+    _sgst DECIMAL(5,2) := 0;
+    _igst DECIMAL(5,2) := 0;
+    _utgst DECIMAL(5,2) := 0;
 BEGIN
     -- Get entry_no from header
     SELECT sh.entry_no INTO _entry_no FROM wms.sales_order_header sh WHERE sh.id = _header_id;
-    
+
     -- Get next row_no for this entry
-    SELECT COALESCE(MAX(CAST(sd.row_no AS INTEGER)), 0) INTO max_row_no 
-    FROM wms.sales_order_details sd 
+    SELECT COALESCE(MAX(CAST(sd.row_no AS INTEGER)), 0) INTO max_row_no
+    FROM wms.sales_order_details sd
     WHERE sd.header_id = _header_id;
-    
+
     _row_no := LPAD((max_row_no + 1)::TEXT, 5, '0');
-    
+
+    -- Look up HSN rates from material
+    SELECT h.id, h.cgst, h.sgst, h.igst, h.utgst
+    INTO _hsn_id, _cgst, _sgst, _igst, _utgst
+    FROM wms.hsn h
+    JOIN wms.material m ON m.hsn_id = h.id
+    WHERE m.id = _item_id;
+
     INSERT INTO wms.sales_order_details(
         header_id, entry_no, row_no, item_id, euom, puom, quom,
-        rate_per_pc, eqty, pqty, amount, dqty, status, remarks, lub
+        rate_per_pc, eqty, pqty, amount, dqty,
+        hsn_id, cgst, sgst, igst, utgst,
+        status, remarks, lub
     )
     VALUES (
         _header_id, _entry_no, _row_no, _item_id, _euom, _puom, _quom,
-        _rate_per_pc, _eqty, _pqty, _amount, _dqty, _status, _remarks, _current_user_id
+        _rate_per_pc, _eqty, _pqty, _amount, _dqty,
+        _hsn_id, COALESCE(_cgst, 0), COALESCE(_sgst, 0), COALESCE(_igst, 0), COALESCE(_utgst, 0),
+        _status, _remarks, _current_user_id
     )
     RETURNING id INTO _id;
     RETURN _id;
@@ -1166,47 +1192,61 @@ CREATE OR REPLACE FUNCTION wms.insert_purchase_order_details(
     remarks VARCHAR(255),
     current_user_id INTEGER
 )RETURNS INT AS $$
-DECLARE 
+DECLARE
     new_purchase_details_id INT;
     _entry_no VARCHAR(10);
     _row_no VARCHAR(5);
     _max_row INTEGER;
     _lock_key BIGINT;
+    _hsn_id INTEGER;
+    _cgst DECIMAL(5,2) := 0;
+    _sgst DECIMAL(5,2) := 0;
+    _igst DECIMAL(5,2) := 0;
+    _utgst DECIMAL(5,2) := 0;
 BEGIN
     -- Get entry_no from header
-    SELECT entry_no INTO _entry_no 
-    FROM wms.purchase_order_header 
+    SELECT entry_no INTO _entry_no
+    FROM wms.purchase_order_header
     WHERE id = header_id;
-    
+
     IF _entry_no IS NULL THEN
         RAISE EXCEPTION 'Purchase Order Header % not found', header_id;
     END IF;
-    
+
     -- Acquire advisory lock to ensure unique row_no generation
     _lock_key := header_id::BIGINT;
     PERFORM pg_advisory_xact_lock(_lock_key);
-    
+
     -- Generate next row_no for this header
     SELECT COALESCE(MAX(CAST(row_no AS INTEGER)), 0) INTO _max_row
-    FROM wms.purchase_order_details 
+    FROM wms.purchase_order_details
     WHERE wms.purchase_order_details.header_id = insert_purchase_order_details.header_id;
-    
+
     _row_no := LPAD((_max_row + 1)::TEXT, 5, '0');
-    
+
+    -- Look up HSN rates from material
+    SELECT h.id, h.cgst, h.sgst, h.igst, h.utgst
+    INTO _hsn_id, _cgst, _sgst, _igst, _utgst
+    FROM wms.hsn h
+    JOIN wms.material m ON m.hsn_id = h.id
+    WHERE m.id = item_id;
+
     INSERT INTO wms.purchase_order_details(
         header_id, entry_no, row_no,
         item_id, euom, puom, quom,
         rate_per_pc, eqty, pqty, amount, iqty,
+        hsn_id, cgst, sgst, igst, utgst,
         status, remarks, lub
     )
     VALUES (
         header_id, _entry_no, _row_no,
         item_id, euom, puom, quom,
         rate_per_pc, eqty, pqty, amount, iqty,
+        _hsn_id, COALESCE(_cgst, 0), COALESCE(_sgst, 0), COALESCE(_igst, 0), COALESCE(_utgst, 0),
         status, remarks, current_user_id
     )
     RETURNING id INTO new_purchase_details_id;
-    
+
     RETURN new_purchase_details_id;
 END;
 $$ LANGUAGE plpgsql;
@@ -1409,6 +1449,11 @@ DECLARE
     _row_no VARCHAR(5);
     _row_no_int INTEGER;
     _lock_key BIGINT;
+    _hsn_id INTEGER;
+    _cgst DECIMAL(5,2) := 0;
+    _sgst DECIMAL(5,2) := 0;
+    _igst DECIMAL(5,2) := 0;
+    _utgst DECIMAL(5,2) := 0;
 BEGIN
     -- Ensure header exists and is active
     IF NOT EXISTS (SELECT 1 FROM wms.inward_header WHERE id = p_header_id AND is_active = true) THEN
@@ -1434,13 +1479,25 @@ BEGIN
 
     _row_no := LPAD((_row_no_int + 1)::TEXT, 5, '0');
 
+    -- Look up HSN rates via ean -> material_ean -> material -> hsn
+    SELECT h.id, h.cgst, h.sgst, h.igst, h.utgst
+    INTO _hsn_id, _cgst, _sgst, _igst, _utgst
+    FROM wms.hsn h
+    JOIN wms.material m ON m.hsn_id = h.id
+    JOIN wms.material_ean me ON me.material_id = m.id
+    WHERE me.id = p_ean_id;
+
     INSERT INTO wms.inward_details (
         header_id, entry_no, row_no, ean_id, po_detail_id,
-        quom, euom, puom, eqty, pqty, pur_rate, amount, expiry_dt, batch_no, remarks, lub
+        quom, euom, puom, eqty, pqty, pur_rate, amount,
+        hsn_id, cgst, sgst, igst, utgst,
+        expiry_dt, batch_no, remarks, lub
     )
     VALUES (
         p_header_id, _entry_no, _row_no, p_ean_id, p_po_detail_id,
-        p_quom, p_euom, p_puom, p_eqty, p_pqty, p_pur_rate, p_amount, p_expiry_dt, p_batch_no, p_remarks, p_current_user_id
+        p_quom, p_euom, p_puom, p_eqty, p_pqty, p_pur_rate, p_amount,
+        _hsn_id, COALESCE(_cgst, 0), COALESCE(_sgst, 0), COALESCE(_igst, 0), COALESCE(_utgst, 0),
+        p_expiry_dt, p_batch_no, p_remarks, p_current_user_id
     )
     RETURNING id INTO _new_id;
 
@@ -1945,18 +2002,12 @@ CREATE OR REPLACE FUNCTION wms.insert_party(
     _state_id INTEGER,
     _country_id INTEGER,
     _pincode VARCHAR(10),
-    _person_name VARCHAR(100),
-    _telephone VARCHAR(20),
-    _email VARCHAR(100),
     _salesman VARCHAR(100),
     _pan_no VARCHAR(20),
     _cr_limit DECIMAL(15,2),
     _cr_days INTEGER,
     _gstno VARCHAR(20),
     _aadhar_no VARCHAR(20),
-    _sales_head VARCHAR(100),
-    _director VARCHAR(100),
-    _manager VARCHAR(100),
     _current_user_id INTEGER
 ) RETURNS INTEGER AS $$
 DECLARE
@@ -1965,22 +2016,17 @@ BEGIN
     INSERT INTO wms.party (
         category_id, party_type, name, add1, add2, add3,
         city_id, district_id, state_id, country_id, pincode,
-        person_name, telephone, email, salesman, pan_no,
-        cr_limit, cr_days, gstno, aadhar_no,
-        sales_head, director, manager, lub
+        salesman, pan_no, cr_limit, cr_days, gstno, aadhar_no, lub
     ) VALUES (
         _category_id, _party_type, _name, _add1, _add2, _add3,
         _city_id, _district_id, _state_id, _country_id, _pincode,
-        _person_name, _telephone, _email, _salesman, _pan_no,
-        _cr_limit, _cr_days, _gstno, _aadhar_no,
-        _sales_head, _director, _manager, _current_user_id
+        _salesman, _pan_no, _cr_limit, _cr_days, _gstno, _aadhar_no, _current_user_id
     ) RETURNING id INTO _id;
     RETURN _id;
 END;
 $$ LANGUAGE plpgsql;
 
 -- Function to update party
-
 CREATE OR REPLACE FUNCTION wms.update_party(
     _id INTEGER,
     _category_id INTEGER,
@@ -1994,23 +2040,17 @@ CREATE OR REPLACE FUNCTION wms.update_party(
     _state_id INTEGER,
     _country_id INTEGER,
     _pincode VARCHAR(10),
-    _person_name VARCHAR(100),
-    _telephone VARCHAR(20),
-    _email VARCHAR(100),
     _salesman VARCHAR(100),
     _pan_no VARCHAR(20),
     _cr_limit DECIMAL(15,2),
     _cr_days INTEGER,
     _gstno VARCHAR(20),
     _aadhar_no VARCHAR(20),
-    _sales_head VARCHAR(100),
-    _director VARCHAR(100),
-    _manager VARCHAR(100),
     _current_user_id INTEGER
 ) RETURNS INTEGER AS $$
 BEGIN
     UPDATE wms.party
-    SET 
+    SET
         category_id = _category_id,
         party_type = _party_type,
         name = _name,
@@ -2022,20 +2062,72 @@ BEGIN
         state_id = _state_id,
         country_id = _country_id,
         pincode = _pincode,
-        person_name = _person_name,
-        telephone = _telephone,
-        email = _email,
         salesman = _salesman,
         pan_no = _pan_no,
         cr_limit = _cr_limit,
         cr_days = _cr_days,
         gstno = _gstno,
         aadhar_no = _aadhar_no,
-        sales_head = _sales_head,
-        director = _director,
-        manager = _manager,
         lub = _current_user_id,
         lua = NOW()
+    WHERE id = _id;
+    RETURN _id;
+END;
+$$ LANGUAGE plpgsql;
+
+---------------------------** Party Contact Details **---------------------------
+
+CREATE OR REPLACE FUNCTION wms.insert_party_contact(
+    _party_id INTEGER,
+    _name VARCHAR(100),
+    _telephone VARCHAR(20),
+    _email VARCHAR(100),
+    _position VARCHAR(100),
+    _descr VARCHAR(255),
+    _current_user_id INTEGER
+) RETURNS INTEGER AS $$
+DECLARE
+    _id INTEGER;
+BEGIN
+    INSERT INTO wms.party_contact_details (
+        party_id, name, telephone, email, position, descr, lub
+    ) VALUES (
+        _party_id, _name, _telephone, _email, _position, _descr, _current_user_id
+    ) RETURNING id INTO _id;
+    RETURN _id;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE OR REPLACE FUNCTION wms.update_party_contact(
+    _id INTEGER,
+    _name VARCHAR(100),
+    _telephone VARCHAR(20),
+    _email VARCHAR(100),
+    _position VARCHAR(100),
+    _descr VARCHAR(255),
+    _current_user_id INTEGER
+) RETURNS INTEGER AS $$
+BEGIN
+    UPDATE wms.party_contact_details
+    SET name = _name,
+        telephone = _telephone,
+        email = _email,
+        position = _position,
+        descr = _descr,
+        lub = _current_user_id,
+        lua = NOW()
+    WHERE id = _id;
+    RETURN _id;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE OR REPLACE FUNCTION wms.delete_party_contact(
+    _id INTEGER,
+    _current_user_id INTEGER
+) RETURNS INTEGER AS $$
+BEGIN
+    UPDATE wms.party_contact_details
+    SET is_active = false, lub = _current_user_id, lua = NOW()
     WHERE id = _id;
     RETURN _id;
 END;
@@ -2048,6 +2140,10 @@ CREATE OR REPLACE FUNCTION wms.delete_party(
 )
 RETURNS INT  AS $$
 BEGIN
+    -- Delete party contacts
+    UPDATE wms.party_contact_details
+    SET is_active = false, lub = deleted_by_user_id, lua = NOW()
+    WHERE party_id = party_id_to_delete AND is_active = true;
     -- Delete party
     UPDATE wms.party
     SET is_active = false, lub = deleted_by_user_id
@@ -2222,18 +2318,12 @@ CREATE OR REPLACE FUNCTION wms.insert_vendor(
     _state_id INTEGER,
     _country_id INTEGER,
     _pincode VARCHAR(10),
-    _person_name VARCHAR(100),
-    _telephone VARCHAR(20),
-    _email VARCHAR(100),
     _salesman VARCHAR(100),
     _pan_no VARCHAR(20),
     _cr_limit DECIMAL(15,2),
     _cr_days INTEGER,
     _gstno VARCHAR(20),
     _aadhar_no VARCHAR(20),
-    _sales_head VARCHAR(100),
-    _director VARCHAR(100),
-    _manager VARCHAR(100),
     _current_user_id INTEGER
 ) RETURNS INTEGER AS $$
 DECLARE
@@ -2242,15 +2332,11 @@ BEGIN
     INSERT INTO wms.vendor (
         category_id, vendor_type, name, add1, add2, add3,
         city_id, district_id, state_id, country_id, pincode,
-        person_name, telephone, email, salesman, pan_no,
-        cr_limit, cr_days, gstno, aadhar_no,
-        sales_head, director, manager, lub
+        salesman, pan_no, cr_limit, cr_days, gstno, aadhar_no, lub
     ) VALUES (
         _category_id, _vendor_type, _name, _add1, _add2, _add3,
         _city_id, _district_id, _state_id, _country_id, _pincode,
-        _person_name, _telephone, _email, _salesman, _pan_no,
-        _cr_limit, _cr_days, _gstno, _aadhar_no,
-        _sales_head, _director, _manager, _current_user_id
+        _salesman, _pan_no, _cr_limit, _cr_days, _gstno, _aadhar_no, _current_user_id
     ) RETURNING id INTO _id;
     RETURN _id;
 END;
@@ -2270,23 +2356,17 @@ CREATE OR REPLACE FUNCTION wms.update_vendor(
     _state_id INTEGER,
     _country_id INTEGER,
     _pincode VARCHAR(10),
-    _person_name VARCHAR(100),
-    _telephone VARCHAR(20),
-    _email VARCHAR(100),
     _salesman VARCHAR(100),
     _pan_no VARCHAR(20),
     _cr_limit DECIMAL(15,2),
     _cr_days INTEGER,
     _gstno VARCHAR(20),
     _aadhar_no VARCHAR(20),
-    _sales_head VARCHAR(100),
-    _director VARCHAR(100),
-    _manager VARCHAR(100),
     _current_user_id INTEGER
 ) RETURNS INTEGER AS $$
 BEGIN
     UPDATE wms.vendor
-    SET 
+    SET
         category_id = _category_id,
         vendor_type = _vendor_type,
         name = _name,
@@ -2298,20 +2378,72 @@ BEGIN
         state_id = _state_id,
         country_id = _country_id,
         pincode = _pincode,
-        person_name = _person_name,
-        telephone = _telephone,
-        email = _email,
         salesman = _salesman,
         pan_no = _pan_no,
         cr_limit = _cr_limit,
         cr_days = _cr_days,
         gstno = _gstno,
         aadhar_no = _aadhar_no,
-        sales_head = _sales_head,
-        director = _director,
-        manager = _manager,
         lub = _current_user_id,
         lua = NOW()
+    WHERE id = _id;
+    RETURN _id;
+END;
+$$ LANGUAGE plpgsql;
+
+---------------------------** Vendor Contact Details **---------------------------
+
+CREATE OR REPLACE FUNCTION wms.insert_vendor_contact(
+    _vendor_id INTEGER,
+    _name VARCHAR(100),
+    _telephone VARCHAR(20),
+    _email VARCHAR(100),
+    _position VARCHAR(100),
+    _descr VARCHAR(255),
+    _current_user_id INTEGER
+) RETURNS INTEGER AS $$
+DECLARE
+    _id INTEGER;
+BEGIN
+    INSERT INTO wms.vendor_contact_details (
+        vendor_id, name, telephone, email, position, descr, lub
+    ) VALUES (
+        _vendor_id, _name, _telephone, _email, _position, _descr, _current_user_id
+    ) RETURNING id INTO _id;
+    RETURN _id;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE OR REPLACE FUNCTION wms.update_vendor_contact(
+    _id INTEGER,
+    _name VARCHAR(100),
+    _telephone VARCHAR(20),
+    _email VARCHAR(100),
+    _position VARCHAR(100),
+    _descr VARCHAR(255),
+    _current_user_id INTEGER
+) RETURNS INTEGER AS $$
+BEGIN
+    UPDATE wms.vendor_contact_details
+    SET name = _name,
+        telephone = _telephone,
+        email = _email,
+        position = _position,
+        descr = _descr,
+        lub = _current_user_id,
+        lua = NOW()
+    WHERE id = _id;
+    RETURN _id;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE OR REPLACE FUNCTION wms.delete_vendor_contact(
+    _id INTEGER,
+    _current_user_id INTEGER
+) RETURNS INTEGER AS $$
+BEGIN
+    UPDATE wms.vendor_contact_details
+    SET is_active = false, lub = _current_user_id, lua = NOW()
     WHERE id = _id;
     RETURN _id;
 END;
@@ -2323,6 +2455,11 @@ CREATE OR REPLACE FUNCTION wms.delete_vendor(
     _current_user_id INTEGER
 ) RETURNS INTEGER AS $$
 BEGIN
+    -- Delete vendor contacts
+    UPDATE wms.vendor_contact_details
+    SET is_active = false, lub = _current_user_id, lua = NOW()
+    WHERE vendor_id = _id AND is_active = true;
+    -- Delete vendor
     UPDATE wms.vendor
     SET is_active = false, lub = _current_user_id, lua = NOW()
     WHERE id = _id;
@@ -3299,19 +3436,30 @@ CREATE OR REPLACE FUNCTION wms.insert_dispatch_details(
     _picking_detail_id INTEGER,
     _qty DECIMAL(15,3),
     _uom_id INTEGER,
+    _hsn_id INTEGER,
     _current_user_id INTEGER
 ) RETURNS INTEGER AS $$
 DECLARE
     _new_id INTEGER;
+    _cgst DECIMAL(5,2) := 0;
+    _sgst DECIMAL(5,2) := 0;
+    _igst DECIMAL(5,2) := 0;
+    _utgst DECIMAL(5,2) := 0;
 BEGIN
+    SELECT h.cgst, h.sgst, h.igst, h.utgst
+    INTO _cgst, _sgst, _igst, _utgst
+    FROM wms.hsn h WHERE h.id = _hsn_id;
+
     INSERT INTO wms.dispatch_details (
-        header_id, material_id, picking_detail_id, qty, uom_id, lub
+        header_id, material_id, picking_detail_id, qty, uom_id, hsn_id, cgst, sgst, igst, utgst, lub
     )
     VALUES (
-        _header_id, _material_id, _picking_detail_id, _qty, _uom_id, _current_user_id
+        _header_id, _material_id, _picking_detail_id, _qty, _uom_id, _hsn_id,
+        COALESCE(_cgst, 0), COALESCE(_sgst, 0), COALESCE(_igst, 0), COALESCE(_utgst, 0),
+        _current_user_id
     )
     RETURNING id INTO _new_id;
-    
+
     RETURN _new_id;
 END;
 $$ LANGUAGE plpgsql;
@@ -3351,13 +3499,14 @@ BEGIN
 
     -- Auto-populate dispatch_details if empty
     IF NOT EXISTS (SELECT 1 FROM wms.dispatch_details WHERE header_id = _dispatch_id AND is_active = true) THEN
-        INSERT INTO wms.dispatch_details (header_id, material_id, picking_detail_id, qty, uom_id, lub)
-        SELECT 
-            _dispatch_id, 
-            pld.material_id, 
-            pld.id, 
-            pld.qty, 
-            m.uom_pc_id, -- Default to Each
+        INSERT INTO wms.dispatch_details (header_id, material_id, picking_detail_id, qty, uom_id, hsn_id, lub)
+        SELECT
+            _dispatch_id,
+            pld.material_id,
+            pld.id,
+            pld.qty,
+            (SELECT uom_pc_id FROM wms.material_ean WHERE material_id = pld.material_id AND is_active = true LIMIT 1),
+            m.hsn_id,
             _current_user_id
         FROM wms.picking_list_details pld
         JOIN wms.material m ON pld.material_id = m.id
@@ -3528,3 +3677,68 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+
+---------------------------** HSN Master **---------------------------
+
+-- Function to insert HSN
+CREATE OR REPLACE FUNCTION wms.insert_hsn(
+    _hsn_code VARCHAR(20),
+    _descr VARCHAR(255),
+    _cgst DECIMAL(5,2),
+    _sgst DECIMAL(5,2),
+    _igst DECIMAL(5,2),
+    _utgst DECIMAL(5,2),
+    _current_user_id INTEGER
+) RETURNS INTEGER AS $$
+DECLARE
+    _id INTEGER;
+BEGIN
+    INSERT INTO wms.hsn (
+        hsn_code, descr, cgst, sgst, igst, utgst, lub
+    )
+    VALUES (
+        _hsn_code, _descr, COALESCE(_cgst, 0), COALESCE(_sgst, 0), COALESCE(_igst, 0), COALESCE(_utgst, 0), _current_user_id
+    )
+    RETURNING id INTO _id;
+    RETURN _id;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Function to update HSN
+CREATE OR REPLACE FUNCTION wms.update_hsn(
+    _id INTEGER,
+    _hsn_code VARCHAR(20),
+    _descr VARCHAR(255),
+    _cgst DECIMAL(5,2),
+    _sgst DECIMAL(5,2),
+    _igst DECIMAL(5,2),
+    _utgst DECIMAL(5,2),
+    _current_user_id INTEGER
+) RETURNS INTEGER AS $$
+BEGIN
+    UPDATE wms.hsn
+    SET hsn_code = _hsn_code,
+        descr = _descr,
+        cgst = COALESCE(_cgst, 0),
+        sgst = COALESCE(_sgst, 0),
+        igst = COALESCE(_igst, 0),
+        utgst = COALESCE(_utgst, 0),
+        lub = _current_user_id,
+        lua = NOW()
+    WHERE id = _id;
+    RETURN _id;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Function to delete HSN (soft delete)
+CREATE OR REPLACE FUNCTION wms.delete_hsn(
+    _id INTEGER,
+    _current_user_id INTEGER
+) RETURNS INTEGER AS $$
+BEGIN
+    UPDATE wms.hsn
+    SET is_active = false, lub = _current_user_id, lua = NOW()
+    WHERE id = _id;
+    RETURN _id;
+END;
+$$ LANGUAGE plpgsql;

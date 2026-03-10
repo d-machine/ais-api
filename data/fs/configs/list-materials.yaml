@@ -16,11 +16,18 @@ sections:
           ic.name as category_name,
           ib.brand_name,
           m.lua as last_updated_at,
-          TRIM(CONCAT(u.first_name, ' ', u.last_name)) as last_updated_by_name
+          TRIM(CONCAT(u.first_name, ' ', u.last_name)) as last_updated_by_name,
+          m.hsn_id,
+          h.hsn_code,
+          h.cgst,
+          h.sgst,
+          h.igst,
+          h.utgst
         FROM wms.material m
         LEFT JOIN wms.item_category ic ON m.category_id = ic.id
         LEFT JOIN wms.item_brand ib ON m.brand_id = ib.id
         LEFT JOIN administration.user u ON m.lub = u.id
+        LEFT JOIN wms.hsn h ON m.hsn_id = h.id
         WHERE m.is_active = true
       path:
         - sections

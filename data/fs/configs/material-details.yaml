@@ -13,6 +13,9 @@ applicableActions:
     - CLOSE
 actionConfig:
   FINISH:
+    visible: true
+    label: Finish
+    variant: primary
     closeAction: REFRESH
   CANCEL:
     visible: true
@@ -42,10 +45,13 @@ sections:
           m.category_id,
           ic.name as category_name,
           m.brand_id,
-          ib.brand_name
+          ib.brand_name,
+          m.hsn_id,
+          h.hsn_code
         FROM wms.material m
         LEFT JOIN wms.item_category ic ON m.category_id = ic.id
         LEFT JOIN wms.item_brand ib ON m.brand_id = ib.id
+        LEFT JOIN wms.hsn h ON m.hsn_id = h.id
         WHERE m.id = $1
       payload:
         - _context.id # Explicit: from initial context
@@ -77,24 +83,26 @@ sections:
         variant: primary
         actionType: EXECUTE_QUERY
         queryInfo:
-          returnType: SCALAR
+          returnType: SINGLE_ROW
           query:
             ADD: |
-              SELECT wms.insert_material($1, $2, $3, $4, $5) as id;
+              SELECT wms.insert_material($1, $2, $3, $4, $5, $6) as id;
             EDIT: |
-              SELECT wms.update_material($1, $2, $3, $4, $5, $6) as id;
+              SELECT wms.update_material($1, $2, $3, $4, $5, $6, $7) as id;
           payload:
             ADD:
               - material_details.material_name
               - material_details.descr
               - material_details.category_id
               - material_details.brand_id
+              - material_details.hsn_id
             EDIT:
               - _context.id
               - material_details.material_name
               - material_details.descr
               - material_details.category_id
               - material_details.brand_id
+              - material_details.hsn_id
           contextParams:
             - current_user_id
           path:
@@ -132,8 +140,10 @@ sections:
           - field: brand_id
             span: 3
       - columns:
+          - field: hsn_id
+            span: 6
           - field: descr
-            span: 12
+            span: 6
 
     # Field definitions
     fields:
@@ -161,7 +171,7 @@ sections:
           fields_to_extract:
             - key: id
               as: category_id
-            - key: category_name
+            - key: item_category_name
               as: category_name
 
       - name: brand_id
@@ -194,6 +204,26 @@ sections:
               dependencyConfig:
                 targetParam: category_id
 
+      - name: hsn_id
+        label: HSN Code
+        type: SELECT
+        readonly:
+          - VIEW
+        required: false
+        selectConfig:
+          resource: list-hsn
+          displayField: hsn_code
+          selectHandler: converter
+          currentSelection:
+            - key: hsn_id
+              as: id
+          selectParser: converter
+          fields_to_extract:
+            - key: id
+              as: hsn_id
+            - key: hsn_code
+              as: hsn_code
+
       - name: descr
         label: Description
         type: TEXTAREA
@@ -222,7 +252,7 @@ sections:
         LEFT JOIN wms.uom u2 ON e.uom_package_id = u2.id
         WHERE e.material_id = $1 AND e.is_active = true
       payload:
-        - _context.id
+        - material_details.id
       executionConditions:
         - indices:
             - 0
@@ -236,15 +266,21 @@ sections:
         applyPagination: false
 
     applicableActions:
+      ADD:
+        - ADD
+        - EDIT
+        - VIEW
+        - DELETE
       EDIT:
-        - add
-        - edit
-        - delete
+        - ADD
+        - EDIT
+        - VIEW
+        - DELETE
       VIEW:
-        - view
+        - VIEW
 
     actionConfig:
-      add:
+      ADD:
         label: Add EAN
         icon: Plus
         variant: primary
@@ -253,10 +289,11 @@ sections:
         formConfig: material-ean-details
         mode: ADD
         payload:
-          - id
+          - key: id
+            as: id
         onSuccess: refresh
 
-      view:
+      VIEW:
         label: View
         icon: Eye
         variant: secondary
@@ -267,7 +304,7 @@ sections:
         payload:
           - id
 
-      edit:
+      EDIT:
         label: Edit
         icon: Edit
         variant: primary
@@ -279,7 +316,7 @@ sections:
           - id
         onSuccess: refresh
 
-      delete:
+      DELETE:
         label: Delete
         icon: Trash2
         variant: danger
@@ -298,7 +335,7 @@ sections:
             - sections
             - 1
             - actionConfig
-            - delete
+            - DELETE
         onSuccess: refresh
         onFailure: showErrorSnackbar
 

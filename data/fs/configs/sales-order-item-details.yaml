@@ -5,11 +5,14 @@ title: Sales Order Item Details
 applicableActions:
   ADD:
     - SAVE
+    - VIEW_RATE_HISTORY
     - CANCEL
   EDIT:
     - SAVE
+    - VIEW_RATE_HISTORY
     - CANCEL
   VIEW:
+    - VIEW_RATE_HISTORY
     - CLOSE
 
 actionConfig:
@@ -44,9 +47,20 @@ actionConfig:
       contextParams:
         - current_user_id
       path:
+        - sections
+        - 0
         - actionConfig
         - SAVE
     onSuccess: exitAndComplete
+  VIEW_RATE_HISTORY:
+    label: ..
+    variant: secondary
+    actionType: DISPLAY_FORM
+    formConfig: sales-order-item-price-history
+    mode: VIEW
+    payload:
+      - order_item_detail.material_id
+      - order_item_detail.header_id
   CANCEL:
     label: Discard
     icon: X
@@ -74,10 +88,12 @@ sections:
           m.name as material_name,
           d.euom, d.puom, d.quom,
           d.rate_per_pc, d.eqty, d.pqty, d.amount, d.dqty, d.status, d.remarks,
-          COALESCE(uc.no_of_pcs, 1) as conversion_factor
+          COALESCE(uc.no_of_pcs, 1) as conversion_factor,
+          d.hsn_id, h.hsn_code, h.cgst, h.sgst, h.igst, h.utgst
         FROM wms.sales_order_details d
         LEFT JOIN wms.material m ON d.item_id = m.id
         LEFT JOIN wms.uom_conversion uc ON d.euom = uc.uom_id_each AND d.puom = uc.uom_id_case
+        LEFT JOIN wms.hsn h ON d.hsn_id = h.id
         WHERE d.id = $2
       payload:
         - header_id
@@ -97,11 +113,6 @@ sections:
           - field: material_id
             span: 12
       - columns:
-          - field: euom
-            span: 6
-          - field: puom
-            span: 6
-      - columns:
           - field: quom
             span: 4
           - field: eqty
@@ -120,6 +131,17 @@ sections:
             span: 6
           - field: remarks
             span: 6
+      - columns:
+          - field: hsn_code
+            span: 4
+          - field: cgst
+            span: 2
+          - field: sgst
+            span: 2
+          - field: igst
+            span: 2
+          - field: utgst
+            span: 2
 
     fields:
       - name: id
@@ -150,14 +172,18 @@ sections:
               as: material_id
             - key: material_name
               as: material_name
-            - key: selling_rate
-              as: rate_per_pc
-            - key: conversion_factor
-              as: conversion_factor
-            - key: uom_pc_id
-              as: euom
-            - key: uom_package_id
-              as: puom
+            - key: hsn_id
+              as: hsn_id
+            - key: hsn_code
+              as: hsn_code
+            - key: cgst
+              as: cgst
+            - key: sgst
+              as: sgst
+            - key: igst
+              as: igst
+            - key: utgst
+              as: utgst
       - name: conversion_factor
         label: Conv Factor
         type: NUMBER
@@ -177,10 +203,7 @@ sections:
         readonly:
           - VIEW
         selectConfig:
-          resource: list-uoms-by-material
-          filtersData:
-            - field: material_id
-              value: "${material_id}"
+          resource: list-uoms-by-material-ean
           displayField: uom_name
           selectHandler: converter
           currentSelection:
@@ -190,6 +213,25 @@ sections:
           fields_to_extract:
             - key: id
               as: quom
+            - key: uom_pc_id
+              as: euom
+            - key: uom_package_id
+              as: puom
+            - key: conversion_factor
+              as: conversion_factor
+            - key: selling_rate
+              as: rate_per_pc
+          dependencies:
+            - targets:
+                - - material_id
+              handler: filterByDependency
+              filters:
+                - targetParam: material_id
+                  targetIndex: 0
+              conditions:
+                - operator: IS_NOT_NIL
+                  indices:
+                    - 0
       - name: eqty
         label: Qty (Each)
         type: NUMBER
@@ -197,19 +239,30 @@ sections:
         readonly:
           - VIEW
         dependencies:
-          - target:
-              - pqty
-              - conversion_factor
-              - quom
+          - targets:
+              - - quom
+              - - puom
+            handler: handleReadonly
+            handlerConditions:
+              - operator: IS_EQUAL
+                indices:
+                  - 0
+                  - 1
+          - targets:
+              - - pqty
+              - - conversion_factor
+              - - quom
+              - - puom
             handler: calculateValue
-            dependencyConfig:
-              operation: MULTIPLY
-              operands:
-                - pqty
-                - conversion_factor
-              condition:
-                field: quom
-                compareWithField: puom
+            operation: MULTIPLY
+            targetIndices:
+              - 0
+              - 1
+            conditions:
+              - operator: IS_EQUAL
+                indices:
+                  - 2
+                  - 3
       - name: pqty
         label: Qty (Pack)
         type: NUMBER
@@ -217,19 +270,30 @@ sections:
         readonly:
           - VIEW
         dependencies:
-          - target:
-              - eqty
-              - conversion_factor
-              - quom
+          - targets:
+              - - quom
+              - - euom
+            handler: handleReadonly
+            handlerConditions:
+              - operator: IS_EQUAL
+                indices:
+                  - 0
+                  - 1
+          - targets:
+              - - eqty
+              - - conversion_factor
+              - - quom
+              - - euom
             handler: calculateValue
-            dependencyConfig:
-              operation: DIVIDE
-              operands:
-                - eqty
-                - conversion_factor
-              condition:
-                field: quom
-                compareWithField: euom
+            operation: DIVIDE
+            targetIndices:
+              - 0
+              - 1
+            conditions:
+              - operator: IS_EQUAL
+                indices:
+                  - 2
+                  - 3
       - name: rate_per_pc
         label: Rate
         type: NUMBER
@@ -241,15 +305,14 @@ sections:
         type: NUMBER
         readonly: true
         dependencies:
-          - target:
-              - eqty
-              - rate_per_pc
+          - targets:
+              - - eqty
+              - - rate_per_pc
             handler: calculateValue
-            dependencyConfig:
-              operation: MULTIPLY
-              operands:
-                - eqty
-                - rate_per_pc
+            operation: MULTIPLY
+            targetIndices:
+              - 0
+              - 1
       - name: dqty
         label: Dispatched
         type: NUMBER
@@ -266,3 +329,27 @@ sections:
         type: TEXTAREA
         readonly:
           - VIEW
+      - name: hsn_id
+        label: HSN ID
+        type: NUMBER
+        visible: false
+      - name: hsn_code
+        label: HSN Code
+        type: TEXT
+        readonly: true
+      - name: cgst
+        label: CGST %
+        type: NUMBER
+        readonly: true
+      - name: sgst
+        label: SGST %
+        type: NUMBER
+        readonly: true
+      - name: igst
+        label: IGST %
+        type: NUMBER
+        readonly: true
+      - name: utgst
+        label: UTGST %
+        type: NUMBER
+        readonly: true

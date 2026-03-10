@@ -1,67 +1,96 @@
-configType: LIST
 version: 1.0
-queryInfo:
-  returnType: MULTIPLE_ROWS
-  query: |
-    SELECT 
-      h.id,
-      h.entry_no,
-      h.entry_dt,
-      p.name as party_name,
-      h.status,
-      (SELECT COUNT(*) FROM wms.picking_list_details d WHERE d.header_id = h.id) as total_items
-    FROM wms.picking_list_header h
-    JOIN wms.party p ON h.party_id = p.id
-    ORDER BY h.id DESC
-  payload: []
-columns:
-  - name: id
-    label: ID
-    visible: false
-    sortable: false
-  - name: entry_no
-    label: Entry No
-    visible: true
-    width: 120
-    sortable: true
-  - name: entry_dt
-    label: Date
-    dataType: date
-    visible: true
-    width: 120
-    sortable: true
-  - name: party_name
-    label: Customer
-    visible: true
-    width: 200
-    sortable: true
-  - name: total_items
-    label: Items
-    visible: true
-    width: 100
-    align: right
-  - name: status
-    label: Status
-    visible: true
-    width: 120
-    sortable: true
+configName: list-picking-lists
 
-applicableActions:
-  - add
-  - edit
+sections:
+  - sectionType: TABLE
+    sectionName: picking_lists
+    label: Picking Lists
+    queryInfo:
+      returnType: MULTIPLE_ROWS
+      query: |
+        SELECT * FROM (
+          SELECT
+            h.id,
+            h.entry_no,
+            h.entry_dt,
+            p.name as party_name,
+            h.status,
+            (SELECT COUNT(*) FROM wms.picking_list_details d WHERE d.header_id = h.id) as total_items
+          FROM wms.picking_list_header h
+          JOIN wms.party p ON h.party_id = p.id
+        ) sub
+      path:
+        - sections
+        - 0
+      options:
+        applyFiltering: true
+        applySorting: true
+        applyPagination: true
 
-actionConfig:
-  add:
-    label: Create Picking List
-    actionType: DISPLAY_FORM
-    formConfig: add-picking-list
-    onSuccess: refresh
-  
-  edit:
-    label: Edit
-    level: ROW
-    actionType: DISPLAY_FORM
-    formConfig: edit-picking-list
-    payload:
-      - id
-    onSuccess: refresh
+    applicableActions:
+      VIEW:
+        - add
+        - edit
+
+    actionConfig:
+      add:
+        label: Create Picking List
+        icon: Plus
+        variant: primary
+        actionType: DISPLAY_FORM
+        formConfig: picking-list-details
+        mode: ADD
+        onSuccess: refresh
+
+      edit:
+        label: Edit
+        icon: Edit
+        variant: primary
+        level: ROW
+        actionType: DISPLAY_FORM
+        formConfig: picking-list-details
+        mode: EDIT
+        payload:
+          - id
+        onSuccess: refresh
+
+    columns:
+      - name: id
+        label: ID
+        visible: false
+
+      - name: entry_no
+        label: Entry No
+        visible: true
+        width: 120
+        sortable: true
+        filterable: true
+
+      - name: entry_dt
+        label: Date
+        visible: true
+        dataType: date
+        format: "DD/MM/YYYY"
+        width: 120
+        sortable: true
+        defaultSort: DESC
+
+      - name: party_name
+        label: Customer
+        visible: true
+        width: 200
+        sortable: true
+        filterable: true
+
+      - name: total_items
+        label: Items
+        visible: true
+        width: 100
+        align: right
+
+      - name: status
+        label: Status
+        visible: true
+        width: 120
+        sortable: true
+        filterable: true

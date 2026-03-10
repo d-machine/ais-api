@@ -291,11 +291,40 @@ sections:
           pod.eqty as po_eqty,
           (pod.eqty - COALESCE(pod.iqty, 0)) as balance_qty,
           COALESCE(id.eqty, 0) as inward_qty,
-          CASE WHEN id.id IS NOT NULL THEN 'EXISTING' ELSE 'PENDING' END as row_type
+          CASE WHEN id.id IS NOT NULL THEN 'EXISTING' ELSE 'PENDING' END as row_type,
+          COALESCE(id.pur_rate, 0) as rate,
+          COALESCE(id.amount, 0) as amount,
+          CASE
+            WHEN cp_s.code = client_s.code THEN
+              CASE WHEN client_s.state_type = 'UT' THEN COALESCE(id.cgst, 0) + COALESCE(id.utgst, 0)
+                   ELSE COALESCE(id.cgst, 0) + COALESCE(id.sgst, 0) END
+            ELSE COALESCE(id.igst, 0)
+          END AS total_gst_pct,
+          ROUND(COALESCE(id.amount, 0) * CASE
+            WHEN cp_s.code = client_s.code THEN
+              CASE WHEN client_s.state_type = 'UT' THEN COALESCE(id.cgst, 0) + COALESCE(id.utgst, 0)
+                   ELSE COALESCE(id.cgst, 0) + COALESCE(id.sgst, 0) END
+            ELSE COALESCE(id.igst, 0)
+          END / 100, 2) AS gst_amount,
+          ROUND(COALESCE(id.amount, 0) * (1 + CASE
+            WHEN cp_s.code = client_s.code THEN
+              CASE WHEN client_s.state_type = 'UT' THEN COALESCE(id.cgst, 0) + COALESCE(id.utgst, 0)
+                   ELSE COALESCE(id.cgst, 0) + COALESCE(id.sgst, 0) END
+            ELSE COALESCE(id.igst, 0)
+          END / 100), 2) AS total_amount
         FROM wms.purchase_order_details pod
         JOIN wms.purchase_order_header poh ON pod.header_id = poh.id
         JOIN wms.material m ON pod.item_id = m.id
         LEFT JOIN wms.inward_details id ON id.po_detail_id = pod.id AND id.header_id = $1 AND id.is_active = true
+        JOIN wms.inward_header ih ON ih.id = $1
+        JOIN wms.vendor v ON ih.vendor_id = v.id
+        JOIN wms.state cp_s ON v.state_id = cp_s.id
+        CROSS JOIN (
+          SELECT s.code, s.state_type
+          FROM wms.client_config cc
+          JOIN wms.state s ON s.id = cc.state_id
+          LIMIT 1
+        ) client_s
         WHERE poh.id = ANY(string_to_array((SELECT po_ids FROM wms.inward_header WHERE id = $1), ',')::int[])
         AND pod.is_active = true
         ORDER BY poh.entry_no, pod.row_no
@@ -394,4 +423,33 @@ sections:
         label: Inwarded
         visible: true
         width: 100
+        align: right
+      - name: rate
+        label: Rate
+        visible: true
+        dataType: currency
+        width: 100
+        align: right
+      - name: amount
+        label: Amount
+        visible: true
+        dataType: currency
+        width: 120
+        align: right
+      - name: total_gst_pct
+        label: GST %
+        visible: true
+        width: 80
+        align: right
+      - name: gst_amount
+        label: GST Amt
+        visible: true
+        dataType: currency
+        width: 110
+        align: right
+      - name: total_amount
+        label: Total
+        visible: true
+        dataType: currency
+        width: 130
         align: right

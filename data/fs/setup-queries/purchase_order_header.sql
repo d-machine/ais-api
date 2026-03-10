@@ -11,7 +11,7 @@ CREATE TABLE IF NOT EXISTS wms.purchase_order_header(
     vendor_id INTEGER NOT NULL REFERENCES wms.vendor(id),
     broker_id INTEGER REFERENCES wms.broker(id),
     delivery_at_id INTEGER NOT NULL REFERENCES wms.address(id),
-    trsp_id INTEGER NOT NULL REFERENCES wms.transport(id),
+    trsp_id INTEGER REFERENCES wms.transport(id),
     year_code VARCHAR(4) NOT NULL,
     delivery_dt TIMESTAMP,
     lub INTEGER REFERENCES administration.user(id),

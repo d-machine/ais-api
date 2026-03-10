@@ -22,18 +22,12 @@ sections:
           s.name as state_name,
           co.name as country_name,
           v.pincode,
-          v.person_name,
-          v.telephone,
-          v.email,
           v.salesman,
           v.pan_no,
           v.cr_limit,
           v.cr_days,
           v.gstno,
           v.aadhar_no,
-          v.sales_head,
-          v.director,
-          v.manager,
           v.is_active,
           v.lua as last_updated_at,
           TRIM(CONCAT(u.first_name, ' ', u.last_name)) as last_updated_by_name
@@ -120,11 +114,7 @@ sections:
         accessTypeRequired: 7-DELETE
         queryInfo:
           returnType: SCALAR
-          query: |
-            UPDATE wms.vendor 
-            SET is_active = false, lub = $2, lua = NOW()
-            WHERE id = $1
-            RETURNING id;
+          query: SELECT wms.delete_vendor($1, $2) as id;
           payload:
             - id
           contextParams:
@@ -200,21 +190,6 @@ sections:
         label: Pincode
         visible: true
         width: 80
-
-      - name: person_name
-        label: Contact Person
-        visible: true
-        width: 150
-
-      - name: telephone
-        label: Telephone
-        visible: true
-        width: 120
-
-      - name: email
-        label: Email
-        visible: true
-        width: 180
 
       - name: pan_no
         label: PAN No

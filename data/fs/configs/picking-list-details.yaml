@@ -1,0 +1,399 @@
+version: 1.0
+configName: picking-list-details
+title: Picking List Details
+
+applicableActions:
+  ADD:
+    - FINISH
+    - CANCEL
+  EDIT:
+    - FINISH
+    - CANCEL
+  VIEW:
+    - FINISH
+    - CLOSE
+
+actionConfig:
+  FINISH:
+    visible: true
+    closeAction: REFRESH
+    label: Finish
+    variant: primary
+  CANCEL:
+    visible: true
+    variant: danger
+    label:
+      ADD: Discard
+      EDIT: Discard
+    icon: X
+  CLOSE:
+    visible: true
+    variant: secondary
+    label:
+      VIEW: Close
+    icon: X
+
+sections:
+  - sectionType: FIELDS
+    sectionName: picking_list_header
+    label: Picking List Information
+    queryInfo:
+      returnType: SINGLE_ROW
+      query: |
+        SELECT
+          h.id, h.entry_no, h.entry_dt, h.party_id, p.name as party_name,
+          h.so_ids,
+          (SELECT string_agg(soh.entry_no, ',' ORDER BY soh.id)
+           FROM wms.sales_order_header soh
+           WHERE soh.id = ANY(string_to_array(h.so_ids, ',')::int[])) as so_entries,
+          h.status, h.remarks
+        FROM wms.picking_list_header h
+        LEFT JOIN wms.party p ON h.party_id = p.id
+        WHERE h.id = $1
+      payload:
+        - _context.id
+      executionConditions:
+        - indices:
+            - 0
+          operator: IS_NOT_NIL
+      path:
+        - sections
+        - 0
+
+    applicableActions:
+      ADD:
+        - SAVE
+        - CANCEL
+      EDIT:
+        - SAVE
+        - PROCESS
+        - CANCEL
+      VIEW:
+        - EDIT
+
+    actionConfig:
+      SAVE:
+        label:
+          ADD: Save & Continue
+          EDIT: Save Changes
+        icon: Save
+        variant: primary
+        actionType: EXECUTE_QUERY
+        queryInfo:
+          returnType: SINGLE_ROW
+          query:
+            ADD: SELECT * FROM wms.insert_picking_list_header($1, $2, $3, $4, $5)
+            EDIT: SELECT wms.update_picking_list_header($1, $2, $3, $4, $5, $6) as id
+          payload:
+            ADD:
+              - picking_list_header.entry_dt
+              - picking_list_header.party_id
+              - picking_list_header.so_ids
+              - picking_list_header.remarks
+            EDIT:
+              - id
+              - picking_list_header.entry_dt
+              - picking_list_header.party_id
+              - picking_list_header.so_ids
+              - picking_list_header.remarks
+          contextParams:
+            - current_user_id
+          path:
+            - sections
+            - 0
+            - actionConfig
+            - SAVE
+        onSuccess:
+          ADD:
+            callback: SAVE_AND_GO_TO_NEXT
+          EDIT:
+            callback: HANDLE_FORM_ACTION
+            params:
+              action: FINISH
+        onFailure: showErrorSnackbar
+      PROCESS:
+        label: Confirm Pick
+        icon: CheckCircle
+        variant: primary
+        actionType: EXECUTE_QUERY
+        condition: status === 'Draft'
+        confirmationRequired: true
+        confirmationMessage: "This will confirm the picking list. Continue?"
+        queryInfo:
+          returnType: SINGLE_ROW
+          query: SELECT wms.confirm_picking_list($1, $2) as id
+          payload:
+            - id
+          contextParams:
+            - current_user_id
+          path:
+            - sections
+            - 0
+            - actionConfig
+            - PROCESS
+        onSuccess:
+          callback: HANDLE_FORM_ACTION
+          params:
+            action: FINISH
+      CANCEL:
+        label: Discard
+        icon: X
+        variant: danger
+        actionType: NAVIGATE
+        onSuccess: exitAndComplete
+      EDIT:
+        label: Edit
+        icon: Edit
+        variant: primary
+        actionType: FUNCTION_EXECUTION
+        functionInfo:
+          name: changeMode
+          params:
+            mode: EDIT
+
+    rows:
+      - columns:
+          - field: entry_no
+            span: 6
+          - field: entry_dt
+            span: 6
+      - columns:
+          - field: party_id
+            span: 6
+          - field: so_ids
+            span: 6
+      - columns:
+          - field: from_dt
+            span: 6
+          - field: to_dt
+            span: 6
+      - columns:
+          - field: remarks
+            span: 12
+
+    fields:
+      - name: id
+        label: ID
+        type: NUMBER
+        visible: false
+      - name: entry_no
+        label: Entry No
+        type: TEXT
+        readonly: true
+        placeholder: "Auto-generated"
+      - name: entry_dt
+        label: Entry Date
+        type: DATE
+        required: true
+        readonly:
+          - VIEW
+        defaultValue: "TODAY"
+      - name: party_id
+        label: Customer
+        type: SELECT
+        required: true
+        readonly:
+          - VIEW
+          - EDIT
+        selectConfig:
+          resource: list-parties
+          displayField: party_name
+          selectHandler: converter
+          currentSelection:
+            - key: party_id
+              as: id
+          selectParser: converter
+          fields_to_extract:
+            - key: id
+              as: party_id
+            - key: party_name
+              as: party_name
+      - name: from_dt
+        label: From Date
+        type: DATE
+        readonly:
+          - VIEW
+          - EDIT
+      - name: to_dt
+        label: To Date
+        type: DATE
+        readonly:
+          - VIEW
+          - EDIT
+      - name: so_ids
+        label: Sales Orders
+        type: SELECT
+        required: true
+        multi: true
+        readonly:
+          - VIEW
+          - EDIT
+        selectConfig:
+          resource: list-pending-sales-orders
+          selectionMode: multiple
+          displayField: so_entries
+          currentSelection:
+            - key: so_ids
+              as: id
+          selectHandler: concatinator
+          selectParser: splitter
+          fields_to_extract:
+            - key: id
+              as: so_ids
+            - key: entry_no
+              as: so_entries
+        dependencies:
+          - targets:
+              - - party_id
+            handler: filterByDependency
+            filters:
+              - targetParam: party_id
+                targetIndex: 0
+            conditions:
+              - operator: IS_NOT_NIL
+                indices:
+                  - 0
+          - targets:
+              - - from_dt
+            handler: filterByDependency
+            filters:
+              - targetParam: entry_dt
+                targetIndex: 0
+                operator: GREATER_THAN_OR_EQUAL
+            conditions:
+              - operator: IS_NOT_NIL
+                indices:
+                  - 0
+          - targets:
+              - - to_dt
+            handler: filterByDependency
+            filters:
+              - targetParam: entry_dt
+                targetIndex: 0
+                operator: LESS_THAN_OR_EQUAL
+            conditions:
+              - operator: IS_NOT_NIL
+                indices:
+                  - 0
+      - name: remarks
+        label: Remarks
+        type: TEXTAREA
+        readonly:
+          - VIEW
+      - name: status
+        label: Status
+        type: TEXT
+        visible: false
+
+  - sectionType: TABLE
+    sectionName: picking_list_items
+    label: Line Items
+    disabled:
+      condition: isEmpty
+      field: id
+    queryInfo:
+      returnType: MULTIPLE_ROWS
+      query: |
+        SELECT
+          $1::integer as header_id,
+          sod.id as so_detail_id,
+          sod.item_id as material_id,
+          m.name as material_name,
+          soh.entry_no as so_entry_no,
+          sod.eqty as ordered_qty,
+          COALESCE(sod.dqty, 0) as dispatched_qty,
+          COALESCE(pld.allocated_qty, 0) as allocated_qty,
+          (sod.eqty - COALESCE(sod.dqty, 0)) as pending_qty,
+          CASE WHEN COALESCE(pld.allocated_qty, 0) > 0 THEN 'ALLOCATED' ELSE 'PENDING' END as row_type
+        FROM wms.sales_order_details sod
+        JOIN wms.sales_order_header soh ON sod.header_id = soh.id
+        JOIN wms.material m ON sod.item_id = m.id
+        LEFT JOIN (
+          SELECT psa.so_detail_id, COALESCE(SUM(psa.qty), 0) as allocated_qty
+          FROM wms.picking_list_so_allocation psa
+          WHERE psa.header_id = $1 AND psa.is_active = true
+          GROUP BY psa.so_detail_id
+        ) pld ON pld.so_detail_id = sod.id
+        WHERE soh.id = ANY(string_to_array((SELECT so_ids FROM wms.picking_list_header WHERE id = $1), ',')::int[])
+          AND sod.is_active = true
+        ORDER BY soh.entry_no, m.name
+      payload:
+        - id
+      path:
+        - sections
+        - 1
+
+    applicableActions:
+      ADD:
+        - allocate
+        - view_allocation
+      EDIT:
+        - allocate
+        - view_allocation
+      VIEW:
+        - view_allocation
+
+    actionConfig:
+      view_allocation:
+        label: View
+        icon: Eye
+        variant: secondary
+        actionType: DISPLAY_FORM
+        level: ROW
+        condition: row.row_type === 'ALLOCATED'
+        formConfig: process-picking-allocation
+        mode: VIEW
+        payload:
+          - header_id
+          - material_id
+          - key: pending_qty
+            as: total_pending_qty
+          - key: so_detail_id
+            as: so_detail_ids
+      allocate:
+        label: Allocate
+        icon: Plus
+        variant: primary
+        actionType: DISPLAY_FORM
+        level: ROW
+        condition: row.row_type === 'PENDING'
+        formConfig: process-picking-allocation
+        mode: ADD
+        payload:
+          - header_id
+          - material_id
+          - key: pending_qty
+            as: total_pending_qty
+          - key: so_detail_id
+            as: so_detail_ids
+        onSuccess: refresh
+
+    columns:
+      - name: so_entry_no
+        label: SO No
+        visible: true
+        width: 120
+      - name: material_name
+        label: Material
+        visible: true
+        width: 250
+      - name: ordered_qty
+        label: Ordered
+        visible: true
+        width: 100
+        align: right
+      - name: dispatched_qty
+        label: Dispatched
+        visible: true
+        width: 100
+        align: right
+      - name: pending_qty
+        label: Pending
+        visible: true
+        width: 100
+        align: right
+      - name: allocated_qty
+        label: Allocated
+        visible: true
+        width: 100
+        align: right

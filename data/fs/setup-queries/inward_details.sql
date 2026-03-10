@@ -17,6 +17,11 @@ CREATE TABLE IF NOT EXISTS wms.inward_details (
     pqty DECIMAL(15,3),
     pur_rate DECIMAL(15,2),
     amount DECIMAL(15,2),
+    hsn_id INTEGER REFERENCES wms.hsn(id),
+    cgst DECIMAL(5,2) NOT NULL DEFAULT 0,
+    sgst DECIMAL(5,2) NOT NULL DEFAULT 0,
+    igst DECIMAL(5,2) NOT NULL DEFAULT 0,
+    utgst DECIMAL(5,2) NOT NULL DEFAULT 0,
     is_active BOOLEAN NOT NULL DEFAULT true,
     lub INTEGER REFERENCES administration.user(id),
     lua TIMESTAMP NOT NULL DEFAULT NOW(),
@@ -42,6 +47,11 @@ CREATE TABLE IF NOT EXISTS wms.inward_details_history (
     pqty DECIMAL(15,3),
     pur_rate DECIMAL(15,2),
     amount DECIMAL(15,2),
+    hsn_id INTEGER,
+    cgst DECIMAL(5,2),
+    sgst DECIMAL(5,2),
+    igst DECIMAL(5,2),
+    utgst DECIMAL(5,2),
     expiry_dt DATE,
     batch_no VARCHAR(100),
     is_active BOOLEAN NOT NULL,
@@ -57,48 +67,56 @@ BEGIN
     IF (TG_OP = 'INSERT') THEN
         INSERT INTO wms.inward_details_history(
             inward_details_id, header_id, entry_no, row_no, ean_id, po_detail_id,
-            quom, euom, puom, eqty, pqty, pur_rate, amount, expiry_dt, batch_no, is_active,
-            operation, operation_at, operation_by
+            quom, euom, puom, eqty, pqty, pur_rate, amount,
+            hsn_id, cgst, sgst, igst, utgst,
+            expiry_dt, batch_no, is_active, operation, operation_at, operation_by
         )
         VALUES (
             NEW.id, NEW.header_id, NEW.entry_no, NEW.row_no, NEW.ean_id, NEW.po_detail_id,
-            NEW.quom, NEW.euom, NEW.puom, NEW.eqty, NEW.pqty, NEW.pur_rate, NEW.amount, NEW.expiry_dt, NEW.batch_no, NEW.is_active,
-            'INSERT', NEW.lua, NEW.lub
+            NEW.quom, NEW.euom, NEW.puom, NEW.eqty, NEW.pqty, NEW.pur_rate, NEW.amount,
+            NEW.hsn_id, NEW.cgst, NEW.sgst, NEW.igst, NEW.utgst,
+            NEW.expiry_dt, NEW.batch_no, NEW.is_active, 'INSERT', NEW.lua, NEW.lub
         );
     ELSIF (TG_OP = 'UPDATE') THEN
         IF (OLD.is_active = true AND NEW.is_active = false) THEN
             INSERT INTO wms.inward_details_history(
                 inward_details_id, header_id, entry_no, row_no, ean_id, po_detail_id,
-                quom, euom, puom, eqty, pqty, pur_rate, amount, expiry_dt, batch_no, is_active,
-                operation, operation_at, operation_by
+                quom, euom, puom, eqty, pqty, pur_rate, amount,
+                hsn_id, cgst, sgst, igst, utgst,
+                expiry_dt, batch_no, is_active, operation, operation_at, operation_by
             )
             VALUES (
                 NEW.id, NEW.header_id, NEW.entry_no, NEW.row_no, NEW.ean_id, NEW.po_detail_id,
-                NEW.quom, NEW.euom, NEW.puom, NEW.eqty, NEW.pqty, NEW.pur_rate, NEW.amount, NEW.expiry_dt, NEW.batch_no, NEW.is_active,
-                'DELETE', NEW.lua, NEW.lub
+                NEW.quom, NEW.euom, NEW.puom, NEW.eqty, NEW.pqty, NEW.pur_rate, NEW.amount,
+                NEW.hsn_id, NEW.cgst, NEW.sgst, NEW.igst, NEW.utgst,
+                NEW.expiry_dt, NEW.batch_no, NEW.is_active, 'DELETE', NEW.lua, NEW.lub
             );
         ELSE
             INSERT INTO wms.inward_details_history(
                 inward_details_id, header_id, entry_no, row_no, ean_id, po_detail_id,
-                quom, euom, puom, eqty, pqty, pur_rate, amount, expiry_dt, batch_no, is_active,
-                operation, operation_at, operation_by
+                quom, euom, puom, eqty, pqty, pur_rate, amount,
+                hsn_id, cgst, sgst, igst, utgst,
+                expiry_dt, batch_no, is_active, operation, operation_at, operation_by
             )
             VALUES (
                 NEW.id, NEW.header_id, NEW.entry_no, NEW.row_no, NEW.ean_id, NEW.po_detail_id,
-                NEW.quom, NEW.euom, NEW.puom, NEW.eqty, NEW.pqty, NEW.pur_rate, NEW.amount, NEW.expiry_dt, NEW.batch_no, NEW.is_active,
-                'UPDATE', NEW.lua, NEW.lub
+                NEW.quom, NEW.euom, NEW.puom, NEW.eqty, NEW.pqty, NEW.pur_rate, NEW.amount,
+                NEW.hsn_id, NEW.cgst, NEW.sgst, NEW.igst, NEW.utgst,
+                NEW.expiry_dt, NEW.batch_no, NEW.is_active, 'UPDATE', NEW.lua, NEW.lub
             );
         END IF;
     ELSIF (TG_OP = 'DELETE') THEN
         INSERT INTO wms.inward_details_history(
             inward_details_id, header_id, entry_no, row_no, ean_id, po_detail_id,
-            quom, euom, puom, eqty, pqty, pur_rate, amount, expiry_dt, is_active,
-            operation, operation_at, operation_by
+            quom, euom, puom, eqty, pqty, pur_rate, amount,
+            hsn_id, cgst, sgst, igst, utgst,
+            expiry_dt, is_active, operation, operation_at, operation_by
         )
         VALUES (
             OLD.id, OLD.header_id, OLD.entry_no, OLD.row_no, OLD.ean_id, OLD.po_detail_id,
-            OLD.quom, OLD.euom, OLD.puom, OLD.eqty, OLD.pqty, OLD.pur_rate, OLD.amount, OLD.expiry_dt, false,
-            'DELETE', NOW(), OLD.lub
+            OLD.quom, OLD.euom, OLD.puom, OLD.eqty, OLD.pqty, OLD.pur_rate, OLD.amount,
+            OLD.hsn_id, OLD.cgst, OLD.sgst, OLD.igst, OLD.utgst,
+            OLD.expiry_dt, false, 'DELETE', NOW(), OLD.lub
         );
     END IF;
     RETURN NULL;

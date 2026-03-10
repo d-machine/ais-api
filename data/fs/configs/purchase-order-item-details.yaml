@@ -8,10 +8,12 @@ sections:
     queryInfo:
       returnType: SINGLE_ROW
       query: |
-        SELECT d.*, m.name as item_name, COALESCE(uc.no_of_pcs, 1) as conversion_factor
+        SELECT d.*, m.name as item_name, COALESCE(uc.no_of_pcs, 1) as conversion_factor,
+               m.hsn_id, h.hsn_code, h.cgst, h.sgst, h.igst, h.utgst
         FROM wms.purchase_order_details d
         LEFT JOIN wms.material m ON d.item_id = m.id
         LEFT JOIN wms.uom_conversion uc ON d.euom = uc.uom_id_each AND d.puom = uc.uom_id_case
+        LEFT JOIN wms.hsn h ON m.hsn_id = h.id
         WHERE d.id = $1
       payload:
         - _context.id
@@ -113,6 +115,17 @@ sections:
       - columns:
           - field: remarks
             span: 12
+      - columns:
+          - field: hsn_code
+            span: 4
+          - field: cgst
+            span: 2
+          - field: sgst
+            span: 2
+          - field: igst
+            span: 2
+          - field: utgst
+            span: 2
 
     fields:
       - name: item_id
@@ -134,6 +147,18 @@ sections:
               as: item_id
             - key: material_name
               as: item_name
+            - key: hsn_id
+              as: hsn_id
+            - key: hsn_code
+              as: hsn_code
+            - key: cgst
+              as: cgst
+            - key: sgst
+              as: sgst
+            - key: igst
+              as: igst
+            - key: utgst
+              as: utgst
       - name: quom
         label: Order UOM
         type: SELECT
@@ -264,3 +289,27 @@ sections:
         type: NUMBER
         readonly: true
         visible: false
+      - name: hsn_id
+        label: HSN ID
+        type: NUMBER
+        visible: false
+      - name: hsn_code
+        label: HSN Code
+        type: TEXT
+        readonly: true
+      - name: cgst
+        label: CGST %
+        type: NUMBER
+        readonly: true
+      - name: sgst
+        label: SGST %
+        type: NUMBER
+        readonly: true
+      - name: igst
+        label: IGST %
+        type: NUMBER
+        readonly: true
+      - name: utgst
+        label: UTGST %
+        type: NUMBER
+        readonly: true
