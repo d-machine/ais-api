@@ -79,7 +79,7 @@ sections:
           returnType: SINGLE_ROW
           query:
             ADD: SELECT * FROM wms.insert_purchase_order_header($1, $2, $3, $4, $5, $6, $7, $8, $9)
-            EDIT: SELECT wms.update_purchase_order_header($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) as id
+            EDIT: SELECT wms.update_purchase_order_header($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) as id
           payload:
             ADD:
               - purchase_order_header.entry_dt
@@ -92,7 +92,6 @@ sections:
               - purchase_order_header.remarks
             EDIT:
               - _context.id
-              - purchase_order_header.entry_no
               - purchase_order_header.entry_dt
               - purchase_order_header.vendor_id
               - purchase_order_header.broker_id
@@ -112,9 +111,9 @@ sections:
           ADD:
             callback: SAVE_AND_GO_TO_NEXT
           EDIT:
-            callback: HANDLE_FORM_ACTION
+            callback: CHANGE_MODE
             params:
-              action: FINISH
+              mode: VIEW
         onFailure: showErrorSnackbar
       CANCEL:
         label: Discard Changes
@@ -175,6 +174,7 @@ sections:
         required: true
         readonly:
           - VIEW
+          - EDIT
         selectConfig:
           resource: list-vendors
           displayField: vendor_name
@@ -254,10 +254,26 @@ sections:
           - VIEW
       - name: status
         label: Status
-        type: TEXT
-        defaultValue: Draft
+        type: SELECT
+        defaultValue: 0
+        required: true
         readonly:
           - VIEW
+        selectConfig:
+          resource: list-status-codes
+          displayField: label
+          selectHandler: converter
+          selectParser: converter
+          currentSelection:
+            - key: status
+              as: id
+          fields_to_extract:
+            - key: id
+              as: status
+          staticFilters:
+            - field: entity
+              value: PO
+              operator: EQUAL
       - name: remarks
         label: Remarks
         type: TEXTAREA
@@ -300,7 +316,7 @@ sections:
         )
         SELECT g.id, g.row_no, m.name as item_name, u1.name as uom_pc_name,
                u2.name as uom_package_name, g.rate_per_pc, g.eqty, g.amount,
-               g.iqty, g.status, g.remarks, h.hsn_code,
+               g.iqty, g.remarks, h.hsn_code,
                g.total_gst_pct,
                ROUND(g.amount * g.total_gst_pct / 100, 2) AS gst_amount,
                ROUND(g.amount * (1 + g.total_gst_pct / 100), 2) AS total_amount
@@ -334,6 +350,7 @@ sections:
       ADD:
         label: Add Item
         icon: Plus
+        variant: primary
         actionType: DISPLAY_FORM
         level: HEADER
         formConfig: purchase-order-item-details
@@ -351,7 +368,8 @@ sections:
         mode: VIEW
         variant: secondary
         payload:
-          - id
+          - key: id
+            as: item_detail_id
       EDIT:
         label: Edit
         icon: Edit
@@ -361,7 +379,8 @@ sections:
         mode: EDIT
         variant: primary
         payload:
-          - id
+          - key: id
+            as: item_detail_id
         onSuccess: refresh
       DELETE:
         label: Delete
@@ -425,10 +444,6 @@ sections:
         visible: true
         width: 100
         align: right
-      - name: status
-        label: Status
-        visible: true
-        width: 100
       - name: remarks
         label: Remarks
         visible: true

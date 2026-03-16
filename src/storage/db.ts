@@ -43,6 +43,7 @@ export default class DBClient {
       // Order of SQL files to execute
       const sqlFiles = [
         "schema.sql",
+        "status_code.sql",
         "user.sql",
         "role.sql",
         "resource.sql",

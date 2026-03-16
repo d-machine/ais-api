@@ -1,0 +1,32 @@
+version: 1.0
+configName: list-status-codes
+
+sections:
+  - sectionType: TABLE
+    sectionName: status_codes
+    queryInfo:
+      returnType: MULTIPLE_ROWS
+      query: |
+        SELECT * FROM (
+          SELECT entity, code as id, label
+          FROM wms.status_code
+          ORDER BY entity, code
+        ) sub
+      path:
+        - sections
+        - 0
+      options:
+        applyFiltering: true
+
+    columns:
+      - name: id
+        label: Code
+        visible: false
+
+      - name: entity
+        label: Entity
+        visible: false
+
+      - name: label
+        label: Status
+        visible: true

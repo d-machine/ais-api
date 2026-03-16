@@ -2,78 +2,6 @@ version: 1.0
 configName: sales-order-item-details
 title: Sales Order Item Details
 
-applicableActions:
-  ADD:
-    - SAVE
-    - VIEW_RATE_HISTORY
-    - CANCEL
-  EDIT:
-    - SAVE
-    - VIEW_RATE_HISTORY
-    - CANCEL
-  VIEW:
-    - VIEW_RATE_HISTORY
-    - CLOSE
-
-actionConfig:
-  SAVE:
-    label:
-      ADD: Add Item
-      EDIT: Update Item
-    icon: Save
-    variant: primary
-    actionType: EXECUTE_QUERY
-    queryInfo:
-      returnType: SINGLE_ROW
-      query: |
-        SELECT CASE
-          WHEN $1 > 0 THEN wms.update_sales_order_details($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
-          ELSE wms.insert_sales_order_details($2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
-        END as id;
-      payload:
-        - id
-        - order_item_detail.header_id
-        - order_item_detail.material_id
-        - order_item_detail.euom
-        - order_item_detail.puom
-        - order_item_detail.quom
-        - order_item_detail.rate_per_pc
-        - order_item_detail.eqty
-        - order_item_detail.pqty
-        - order_item_detail.amount
-        - order_item_detail.dqty
-        - order_item_detail.status
-        - order_item_detail.remarks
-      contextParams:
-        - current_user_id
-      path:
-        - sections
-        - 0
-        - actionConfig
-        - SAVE
-    onSuccess: exitAndComplete
-  VIEW_RATE_HISTORY:
-    label: ..
-    variant: secondary
-    actionType: DISPLAY_FORM
-    formConfig: sales-order-item-price-history
-    mode: VIEW
-    payload:
-      - order_item_detail.material_id
-      - order_item_detail.header_id
-  CANCEL:
-    label: Discard
-    icon: X
-    variant: danger
-    actionType: NAVIGATE
-    onSuccess: exitAndComplete
-  CLOSE:
-    label: Close
-    icon: X
-    variant: secondary
-    actionType: NAVIGATE
-    onSuccess: exitAndComplete
-
 sections:
   - sectionType: FIELDS
     sectionName: order_item_detail
@@ -81,32 +9,105 @@ sections:
     queryInfo:
       returnType: SINGLE_ROW
       query: |
-        SELECT
-          COALESCE($2, 0) as id,
-          $1 as header_id,
-          CASE WHEN $2 > 0 THEN d.item_id ELSE NULL END as material_id,
-          m.name as material_name,
-          d.euom, d.puom, d.quom,
-          d.rate_per_pc, d.eqty, d.pqty, d.amount, d.dqty, d.status, d.remarks,
-          COALESCE(uc.no_of_pcs, 1) as conversion_factor,
-          d.hsn_id, h.hsn_code, h.cgst, h.sgst, h.igst, h.utgst
+        SELECT d.id, d.header_id, d.item_id as material_id, d.euom, d.puom, d.quom,
+               d.rate_per_pc, d.eqty, d.pqty, d.amount, d.dqty, d.remarks,
+               m.name as material_name, COALESCE(uc.no_of_pcs, 1) as conversion_factor,
+               d.hsn_id, h.hsn_code, h.cgst, h.sgst, h.igst, h.utgst
         FROM wms.sales_order_details d
         LEFT JOIN wms.material m ON d.item_id = m.id
         LEFT JOIN wms.uom_conversion uc ON d.euom = uc.uom_id_each AND d.puom = uc.uom_id_case
         LEFT JOIN wms.hsn h ON d.hsn_id = h.id
-        WHERE d.id = $2
+        WHERE d.id = $1
       payload:
-        - header_id
-        - id
+        - _context.item_detail_id
       executionConditions:
         - indices:
-            - 1
+            - 0
           operator: IS_NOT_NIL
-          source: context
-          key: id
       path:
         - sections
         - 0
+
+    applicableActions:
+      ADD:
+        - SAVE
+        - VIEW_RATE_HISTORY
+        - CANCEL
+      EDIT:
+        - SAVE
+        - VIEW_RATE_HISTORY
+        - CANCEL
+      VIEW:
+        - VIEW_RATE_HISTORY
+        - CLOSE
+
+    actionConfig:
+      SAVE:
+        label:
+          ADD: Add Item
+          EDIT: Update Item
+        icon: Save
+        variant: primary
+        actionType: EXECUTE_QUERY
+        queryInfo:
+          returnType: SINGLE_ROW
+          query:
+            ADD: SELECT wms.insert_sales_order_details($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12) as id
+            EDIT: SELECT wms.update_sales_order_details($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12) as id
+          payload:
+            ADD:
+              - _context.header_id
+              - order_item_detail.material_id
+              - order_item_detail.euom
+              - order_item_detail.puom
+              - order_item_detail.quom
+              - order_item_detail.rate_per_pc
+              - order_item_detail.eqty
+              - order_item_detail.pqty
+              - order_item_detail.amount
+              - order_item_detail.dqty
+              - order_item_detail.remarks
+            EDIT:
+              - _context.item_detail_id
+              - order_item_detail.header_id
+              - order_item_detail.material_id
+              - order_item_detail.euom
+              - order_item_detail.puom
+              - order_item_detail.quom
+              - order_item_detail.rate_per_pc
+              - order_item_detail.eqty
+              - order_item_detail.pqty
+              - order_item_detail.amount
+              - order_item_detail.remarks
+          contextParams:
+            - current_user_id
+          path:
+            - sections
+            - 0
+            - actionConfig
+            - SAVE
+        onSuccess: exitAndComplete
+      VIEW_RATE_HISTORY:
+        label: Rate History
+        variant: secondary
+        actionType: DISPLAY_FORM
+        formConfig: sales-order-item-price-history
+        mode: VIEW
+        payload:
+          - order_item_detail.material_id
+          - _context.header_id
+      CANCEL:
+        label: Discard
+        icon: X
+        variant: danger
+        actionType: NAVIGATE
+        onSuccess: exitAndComplete
+      CLOSE:
+        label: Close
+        icon: X
+        variant: secondary
+        actionType: NAVIGATE
+        onSuccess: exitAndComplete
 
     rows:
       - columns:
@@ -127,10 +128,8 @@ sections:
           - field: dqty
             span: 4
       - columns:
-          - field: status
-            span: 6
           - field: remarks
-            span: 6
+            span: 12
       - columns:
           - field: hsn_code
             span: 4
@@ -318,12 +317,6 @@ sections:
         type: NUMBER
         readonly: true
         defaultValue: 0
-      - name: status
-        label: Status
-        type: TEXT
-        readonly:
-          - VIEW
-        defaultValue: "Pending"
       - name: remarks
         label: Remarks
         type: TEXTAREA

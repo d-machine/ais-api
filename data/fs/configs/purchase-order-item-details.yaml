@@ -16,7 +16,7 @@ sections:
         LEFT JOIN wms.hsn h ON m.hsn_id = h.id
         WHERE d.id = $1
       payload:
-        - _context.id
+        - _context.item_detail_id
       executionConditions:
         - indices:
             - 0
@@ -46,8 +46,8 @@ sections:
         queryInfo:
           returnType: SINGLE_ROW
           query:
-            ADD: SELECT wms.insert_purchase_order_details($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
-            EDIT: SELECT wms.update_purchase_order_details($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
+            ADD: SELECT wms.insert_purchase_order_details($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+            EDIT: SELECT wms.update_purchase_order_details($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
           payload:
             ADD:
               - _context.header_id
@@ -59,11 +59,9 @@ sections:
               - purchase_order_item_details.eqty
               - purchase_order_item_details.pqty
               - purchase_order_item_details.amount
-              - purchase_order_item_details.iqty
-              - purchase_order_item_details.status
               - purchase_order_item_details.remarks
             EDIT:
-              - _context.id
+              - _context.item_detail_id
               - purchase_order_item_details.header_id
               - purchase_order_item_details.item_id
               - purchase_order_item_details.euom
@@ -73,8 +71,6 @@ sections:
               - purchase_order_item_details.eqty
               - purchase_order_item_details.pqty
               - purchase_order_item_details.amount
-              - purchase_order_item_details.iqty
-              - purchase_order_item_details.status
               - purchase_order_item_details.remarks
           contextParams:
             - current_user_id
@@ -134,6 +130,7 @@ sections:
         required: true
         readonly:
           - VIEW
+          - EDIT
         selectConfig:
           resource: list-materials
           displayField: item_name

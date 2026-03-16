@@ -7,7 +7,7 @@
 CREATE TABLE IF NOT EXISTS wms.sales_order_details(
     id SERIAL PRIMARY KEY,
     header_id INTEGER NOT NULL REFERENCES wms.sales_order_header(id),
-    entry_no VARCHAR(6) NOT NULL,
+    entry_no VARCHAR(10) NOT NULL,
     row_no VARCHAR(5) NOT NULL,
     item_id INTEGER NOT NULL REFERENCES wms.material(id),
     euom INTEGER NOT NULL REFERENCES wms.uom(id),
@@ -26,7 +26,6 @@ CREATE TABLE IF NOT EXISTS wms.sales_order_details(
     lub INTEGER REFERENCES administration.user(id),
     lua TIMESTAMP NOT NULL DEFAULT NOW(),
     is_active boolean NOT NULL DEFAULT true,
-    status VARCHAR(255),
     remarks VARCHAR(255),
     UNIQUE(entry_no, row_no)
 );
@@ -36,7 +35,7 @@ CREATE TABLE IF NOT EXISTS wms.sales_order_details_history(
     history_id SERIAL PRIMARY KEY,
     sales_order_details_id INTEGER,
     header_id INTEGER,
-    entry_no VARCHAR(6),
+    entry_no VARCHAR(10),
     row_no VARCHAR(5),
     item_id INTEGER,
     euom INTEGER,
@@ -52,7 +51,6 @@ CREATE TABLE IF NOT EXISTS wms.sales_order_details_history(
     sgst DECIMAL(5,2),
     igst DECIMAL(5,2),
     utgst DECIMAL(5,2),
-    status VARCHAR(255),
     remarks VARCHAR(255),
     is_active boolean NOT NULL,
     operation VARCHAR(10),
@@ -69,13 +67,13 @@ BEGIN
             sales_order_details_id, header_id, entry_no, row_no, item_id,
             euom, puom, quom, rate_per_pc, eqty, pqty, amount, dqty,
             hsn_id, cgst, sgst, igst, utgst,
-            status, remarks, is_active, operation, operation_at, operation_by
+            remarks, is_active, operation, operation_at, operation_by
         )
         VALUES (
             NEW.id, NEW.header_id, NEW.entry_no, NEW.row_no, NEW.item_id,
             NEW.euom, NEW.puom, NEW.quom, NEW.rate_per_pc, NEW.eqty, NEW.pqty, NEW.amount, NEW.dqty,
             NEW.hsn_id, NEW.cgst, NEW.sgst, NEW.igst, NEW.utgst,
-            NEW.status, NEW.remarks, NEW.is_active, 'INSERT', NEW.lua, NEW.lub
+            NEW.remarks, NEW.is_active, 'INSERT', NEW.lua, NEW.lub
         );
     ELSIF (TG_OP = 'UPDATE') THEN
         IF (OLD.is_active = true AND NEW.is_active = false) THEN
@@ -83,26 +81,26 @@ BEGIN
                 sales_order_details_id, header_id, entry_no, row_no, item_id,
                 euom, puom, quom, rate_per_pc, eqty, pqty, amount, dqty,
                 hsn_id, cgst, sgst, igst, utgst,
-                status, remarks, is_active, operation, operation_at, operation_by
+                remarks, is_active, operation, operation_at, operation_by
             )
             VALUES (
                 NEW.id, NEW.header_id, NEW.entry_no, NEW.row_no, NEW.item_id,
                 NEW.euom, NEW.puom, NEW.quom, NEW.rate_per_pc, NEW.eqty, NEW.pqty, NEW.amount, NEW.dqty,
                 NEW.hsn_id, NEW.cgst, NEW.sgst, NEW.igst, NEW.utgst,
-                NEW.status, NEW.remarks, NEW.is_active, 'DELETE', NEW.lua, NEW.lub
+                NEW.remarks, NEW.is_active, 'DELETE', NEW.lua, NEW.lub
             );
         ELSE
             INSERT INTO wms.sales_order_details_history(
                 sales_order_details_id, header_id, entry_no, row_no, item_id,
                 euom, puom, quom, rate_per_pc, eqty, pqty, amount, dqty,
                 hsn_id, cgst, sgst, igst, utgst,
-                status, remarks, is_active, operation, operation_at, operation_by
+                remarks, is_active, operation, operation_at, operation_by
             )
             VALUES (
                 NEW.id, NEW.header_id, NEW.entry_no, NEW.row_no, NEW.item_id,
                 NEW.euom, NEW.puom, NEW.quom, NEW.rate_per_pc, NEW.eqty, NEW.pqty, NEW.amount, NEW.dqty,
                 NEW.hsn_id, NEW.cgst, NEW.sgst, NEW.igst, NEW.utgst,
-                NEW.status, NEW.remarks, NEW.is_active, 'UPDATE', NEW.lua, NEW.lub
+                NEW.remarks, NEW.is_active, 'UPDATE', NEW.lua, NEW.lub
             );
         END IF;
     ELSIF (TG_OP = 'DELETE') THEN
@@ -110,31 +108,31 @@ BEGIN
             sales_order_details_id, header_id, entry_no, row_no, item_id,
             euom, puom, quom, rate_per_pc, eqty, pqty, amount, dqty,
             hsn_id, cgst, sgst, igst, utgst,
-            status, remarks, is_active, operation, operation_at, operation_by
+            remarks, is_active, operation, operation_at, operation_by
         )
         VALUES (
             OLD.id, OLD.header_id, OLD.entry_no, OLD.row_no, OLD.item_id,
             OLD.euom, OLD.puom, OLD.quom, OLD.rate_per_pc, OLD.eqty, OLD.pqty, OLD.amount, OLD.dqty,
             OLD.hsn_id, OLD.cgst, OLD.sgst, OLD.igst, OLD.utgst,
-            OLD.status, OLD.remarks, OLD.is_active, 'DELETE', NOW(), OLD.lub
+            OLD.remarks, OLD.is_active, 'DELETE', NOW(), OLD.lub
         );
     END IF;
     RETURN NEW;
 END;
 $$ LANGUAGE plpgsql;
 
--- Create triggers for sales_order-details
+-- Create triggers for sales_order_details
 DROP TRIGGER IF EXISTS sales_order_details_insert_trigger ON wms.sales_order_details;
 CREATE TRIGGER sales_order_details_insert_trigger
     AFTER INSERT ON wms.sales_order_details
     FOR EACH ROW
     EXECUTE FUNCTION wms.sales_order_details_trigger();
-            
+
 DROP TRIGGER IF EXISTS sales_order_details_update_trigger ON wms.sales_order_details;
 CREATE TRIGGER sales_order_details_update_trigger
     AFTER UPDATE ON wms.sales_order_details
     FOR EACH ROW
-    EXECUTE FUNCTION wms.sales_order_details_trigger();       
+    EXECUTE FUNCTION wms.sales_order_details_trigger();
 
 DROP TRIGGER IF EXISTS sales_order_details_delete_trigger ON wms.sales_order_details;
 CREATE TRIGGER sales_order_details_delete_trigger

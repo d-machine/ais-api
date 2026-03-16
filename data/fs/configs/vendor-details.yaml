@@ -482,6 +482,7 @@ sections:
       ADD:
         label: Add Contact
         icon: Plus
+        variant: primary
         actionType: DISPLAY_FORM
         level: HEADER
         formConfig: vendor-contact-details

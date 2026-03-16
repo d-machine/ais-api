@@ -207,17 +207,17 @@ sections:
               as: igst
             - key: utgst
               as: utgst
-          dependencies:
-            - targets:
-                - - material_id
-              handler: filterByDependency
-              filters:
-                - targetParam: material_id
-                  targetIndex: 0
-              conditions:
-                - operator: IS_NOT_NIL
-                  indices:
-                    - 0
+        dependencies:
+          - targets:
+              - - material_id
+            handler: filterByDependency
+            filters:
+              - targetParam: material_id
+                targetIndex: 0
+            conditions:
+              - operator: IS_NOT_NIL
+                indices:
+                  - 0
       - name: euom
         label: Base UOM ID
         type: NUMBER
@@ -251,17 +251,17 @@ sections:
               as: quom_name
             - key: conversion_factor
               as: conversion_factor
-          dependencies:
-            - targets:
-                - - ean_id
-              handler: filterByDependency
-              filters:
-                - targetParam: ean_id
-                  targetIndex: 0
-              conditions:
-                - operator: IS_NOT_NIL
-                  indices:
-                    - 0
+        dependencies:
+          - targets:
+              - - ean_id
+            handler: filterByDependency
+            filters:
+              - targetParam: ean_id
+                targetIndex: 0
+            conditions:
+              - operator: IS_NOT_NIL
+                indices:
+                  - 0
       - name: eqty
         label: Qty (Each)
         type: NUMBER

@@ -10,7 +10,7 @@ sections:
       query: |
         SELECT * FROM (
           SELECT ph.id, ph.entry_no, ph.entry_dt, ph.vendor_id, v.name as vendor_name,
-                ph.broker_id, b.name as broker_name, ph.status,
+                ph.broker_id, b.name as broker_name, ph.status, sc.label as status_label,
                 COALESCE(SUM(pd.eqty), 0) as total_qty,
                 COALESCE(SUM(pd.amount), 0) as total_amount,
                 ph.lua as last_updated_at,
@@ -20,8 +20,9 @@ sections:
           LEFT JOIN wms.broker b ON ph.broker_id = b.id
           LEFT JOIN wms.purchase_order_details pd ON ph.id = pd.header_id AND pd.is_active = true
           LEFT JOIN administration.user u ON ph.lub = u.id
+          LEFT JOIN wms.status_code sc ON sc.entity = 'PO' AND sc.code = ph.status
           WHERE ph.is_active = true
-          GROUP BY ph.id, ph.entry_no, ph.entry_dt, v.name, b.name, ph.status, ph.lua, u.first_name, u.last_name
+          GROUP BY ph.id, ph.entry_no, ph.entry_dt, v.name, b.name, ph.status, sc.label, ph.lua, u.first_name, u.last_name
         ) sub
       path:
         - sections
@@ -140,7 +141,7 @@ sections:
         dataType: currency
         width: 120
 
-      - name: status
+      - name: status_label
         label: Status
         visible: true
         sortable: true

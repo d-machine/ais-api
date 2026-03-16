@@ -9,29 +9,31 @@ sections:
     queryInfo:
       returnType: MULTIPLE_ROWS
       query: |
-        SELECT
-          e.id,
-          e.material_id,
-          e.ean_code,
-          e.label,
-          e.uom_pc_id,
-          u1.name AS uom_pc_name,
-          e.uom_package_id,
-          u2.name AS uom_package_name,
-          e.mrp,
-          e.selling_rate,
-          mat.hsn_id,
-          h.hsn_code,
-          h.cgst,
-          h.sgst,
-          h.igst,
-          h.utgst
-        FROM wms.material_ean e
-        LEFT JOIN wms.uom u1 ON e.uom_pc_id = u1.id
-        LEFT JOIN wms.uom u2 ON e.uom_package_id = u2.id
-        JOIN wms.material mat ON e.material_id = mat.id
-        LEFT JOIN wms.hsn h ON mat.hsn_id = h.id
-        WHERE e.is_active = true
+        SELECT * FROM (
+          SELECT
+            e.id,
+            e.material_id,
+            e.ean_code,
+            e.label,
+            e.uom_pc_id,
+            u1.name AS uom_pc_name,
+            e.uom_package_id,
+            u2.name AS uom_package_name,
+            e.mrp,
+            e.selling_rate,
+            mat.hsn_id,
+            h.hsn_code,
+            h.cgst,
+            h.sgst,
+            h.igst,
+            h.utgst
+          FROM wms.material_ean e
+          LEFT JOIN wms.uom u1 ON e.uom_pc_id = u1.id
+          LEFT JOIN wms.uom u2 ON e.uom_package_id = u2.id
+          JOIN wms.material mat ON e.material_id = mat.id
+          LEFT JOIN wms.hsn h ON mat.hsn_id = h.id
+          WHERE e.is_active = true
+        ) sub
       path:
         - sections
         - 0

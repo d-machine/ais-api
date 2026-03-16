@@ -1,0 +1,25 @@
+version: 1.0
+configName: list-inward-statuses
+
+sections:
+  - sectionType: TABLE
+    sectionName: inward_statuses
+    queryInfo:
+      returnType: MULTIPLE_ROWS
+      query: |
+        SELECT code as id, label
+        FROM wms.status_code
+        WHERE entity = 'INWARD'
+        ORDER BY code
+      path:
+        - sections
+        - 0
+
+    columns:
+      - name: id
+        label: Code
+        visible: false
+
+      - name: label
+        label: Status
+        visible: true

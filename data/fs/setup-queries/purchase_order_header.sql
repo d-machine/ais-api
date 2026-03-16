@@ -17,14 +17,14 @@ CREATE TABLE IF NOT EXISTS wms.purchase_order_header(
     lub INTEGER REFERENCES administration.user(id),
     lua TIMESTAMP NOT NULL DEFAULT NOW(),
     is_active boolean NOT NULL DEFAULT true,
-    status VARCHAR(255),
+    status INTEGER NOT NULL DEFAULT 0,
     remarks VARCHAR(255)
 );
 
 -- Create temporal table for purchase_order_header
 CREATE TABLE IF NOT EXISTS wms.purchase_order_header_history(
     history_id SERIAL PRIMARY KEY,
-    pruchase_header_id INTEGER,
+    purchase_header_id INTEGER,
     entry_no VARCHAR(10),
     entry_dt TIMESTAMP,
     vendor_id INTEGER,
@@ -33,7 +33,7 @@ CREATE TABLE IF NOT EXISTS wms.purchase_order_header_history(
     trsp_id INTEGER,
     year_code VARCHAR(4),
     delivery_dt TIMESTAMP,
-    status VARCHAR(255),
+    status INTEGER,
     remarks VARCHAR(255),
     is_active boolean NOT NULL,
     operation VARCHAR(10),
@@ -47,7 +47,7 @@ RETURNS TRIGGER AS $$
 BEGIN 
     IF (TG_OP = 'INSERT') THEN
         INSERT INTO wms.purchase_order_header_history(
-            pruchase_header_id,
+            purchase_header_id,
             entry_no,
             entry_dt,
             vendor_id,
@@ -78,7 +78,7 @@ BEGIN
     ELSIF (TG_OP = 'UPDATE') THEN
         IF (OLD.is_active = true AND NEW.is_active = false) THEN
             INSERT INTO wms.purchase_order_header_history(
-                pruchase_header_id,
+                purchase_header_id,
                 entry_no,
                 entry_dt,
                 vendor_id,
@@ -108,7 +108,7 @@ BEGIN
             );
         ELSE
             INSERT INTO wms.purchase_order_header_history(
-                pruchase_header_id,
+                purchase_header_id,
                 entry_no,
                 entry_dt,
                 vendor_id,

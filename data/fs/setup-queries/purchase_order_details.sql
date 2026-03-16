@@ -26,7 +26,6 @@ CREATE TABLE IF NOT EXISTS wms.purchase_order_details(
     lub INTEGER REFERENCES administration.user(id),
     lua TIMESTAMP NOT NULL DEFAULT NOW(),
     is_active boolean NOT NULL DEFAULT true,
-    status VARCHAR(255),
     remarks VARCHAR(255),
     UNIQUE(entry_no, row_no)
 );
@@ -52,7 +51,6 @@ CREATE TABLE IF NOT EXISTS wms.purchase_order_details_history(
     sgst DECIMAL(5,2),
     igst DECIMAL(5,2),
     utgst DECIMAL(5,2),
-    status VARCHAR(255),
     remarks VARCHAR(255),
     is_active boolean NOT NULL,
     operation VARCHAR(10),
@@ -69,13 +67,13 @@ BEGIN
             purchase_details_id, header_id, entry_no, row_no, item_id,
             euom, puom, quom, rate_per_pc, eqty, pqty, amount, iqty,
             hsn_id, cgst, sgst, igst, utgst,
-            status, remarks, is_active, operation, operation_at, operation_by
+            remarks, is_active, operation, operation_at, operation_by
         )
         VALUES (
             NEW.id, NEW.header_id, NEW.entry_no, NEW.row_no, NEW.item_id,
             NEW.euom, NEW.puom, NEW.quom, NEW.rate_per_pc, NEW.eqty, NEW.pqty, NEW.amount, NEW.iqty,
             NEW.hsn_id, NEW.cgst, NEW.sgst, NEW.igst, NEW.utgst,
-            NEW.status, NEW.remarks, NEW.is_active, 'INSERT', NEW.lua, NEW.lub
+            NEW.remarks, NEW.is_active, 'INSERT', NEW.lua, NEW.lub
         );
     ELSIF (TG_OP = 'UPDATE') THEN
         IF (OLD.is_active = true AND NEW.is_active = false) THEN
@@ -83,26 +81,26 @@ BEGIN
                 purchase_details_id, header_id, entry_no, row_no, item_id,
                 euom, puom, quom, rate_per_pc, eqty, pqty, amount, iqty,
                 hsn_id, cgst, sgst, igst, utgst,
-                status, remarks, is_active, operation, operation_at, operation_by
+                remarks, is_active, operation, operation_at, operation_by
             )
             VALUES (
                 NEW.id, NEW.header_id, NEW.entry_no, NEW.row_no, NEW.item_id,
                 NEW.euom, NEW.puom, NEW.quom, NEW.rate_per_pc, NEW.eqty, NEW.pqty, NEW.amount, NEW.iqty,
                 NEW.hsn_id, NEW.cgst, NEW.sgst, NEW.igst, NEW.utgst,
-                NEW.status, NEW.remarks, NEW.is_active, 'DELETE', NEW.lua, NEW.lub
+                NEW.remarks, NEW.is_active, 'DELETE', NEW.lua, NEW.lub
             );
         ELSE
             INSERT INTO wms.purchase_order_details_history(
                 purchase_details_id, header_id, entry_no, row_no, item_id,
                 euom, puom, quom, rate_per_pc, eqty, pqty, amount, iqty,
                 hsn_id, cgst, sgst, igst, utgst,
-                status, remarks, is_active, operation, operation_at, operation_by
+                remarks, is_active, operation, operation_at, operation_by
             )
             VALUES (
                 NEW.id, NEW.header_id, NEW.entry_no, NEW.row_no, NEW.item_id,
                 NEW.euom, NEW.puom, NEW.quom, NEW.rate_per_pc, NEW.eqty, NEW.pqty, NEW.amount, NEW.iqty,
                 NEW.hsn_id, NEW.cgst, NEW.sgst, NEW.igst, NEW.utgst,
-                NEW.status, NEW.remarks, NEW.is_active, 'UPDATE', NEW.lua, NEW.lub
+                NEW.remarks, NEW.is_active, 'UPDATE', NEW.lua, NEW.lub
             );
         END IF;
     END IF;

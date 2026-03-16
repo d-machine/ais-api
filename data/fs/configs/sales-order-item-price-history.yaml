@@ -2,6 +2,18 @@ version: 1.0
 configName: sales-order-item-price-history
 title: Recent Rates
 
+applicableActions:
+  VIEW:
+    - CLOSE
+
+actionConfig:
+  CLOSE:
+    visible: true
+    variant: secondary
+    label:
+      VIEW: Close
+    icon: X
+
 sections:
   - sectionType: TABLE
     sectionName: price_history

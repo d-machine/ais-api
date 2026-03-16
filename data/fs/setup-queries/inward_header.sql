@@ -14,7 +14,7 @@ CREATE TABLE IF NOT EXISTS wms.inward_header (
     is_active BOOLEAN NOT NULL DEFAULT true,
     lub INTEGER REFERENCES administration.user(id),
     lua TIMESTAMP NOT NULL DEFAULT NOW(),
-    status VARCHAR(20) NOT NULL DEFAULT 'Draft',
+    status INTEGER NOT NULL DEFAULT 0,
     remarks VARCHAR(255)
 );
 
@@ -29,7 +29,7 @@ CREATE TABLE IF NOT EXISTS wms.inward_header_history (
     invoice_no VARCHAR(100),
     invoice_dt DATE,
     is_active BOOLEAN NOT NULL,
-    status VARCHAR(20),
+    status INTEGER,
     operation VARCHAR(10),
     operation_at TIMESTAMP,
     operation_by INTEGER REFERENCES administration.user(id)
@@ -38,7 +38,7 @@ CREATE TABLE IF NOT EXISTS wms.inward_header_history (
 -- Create trigger function for inward_header
 CREATE OR REPLACE FUNCTION wms.inward_header_trigger()
 RETURNS TRIGGER AS $$
-BEGIN 
+BEGIN
     IF (TG_OP = 'INSERT') THEN
         INSERT INTO wms.inward_header_history(
             inward_header_id, entry_no, entry_dt, vendor_id, po_ids,
@@ -84,7 +84,7 @@ CREATE TRIGGER inward_header_insert_trigger
 
 DROP TRIGGER IF EXISTS inward_header_update_trigger ON wms.inward_header;
 CREATE TRIGGER inward_header_update_trigger
-    AFTER UPDATE ON wms.inward_header     
+    AFTER UPDATE ON wms.inward_header
     FOR EACH ROW
     EXECUTE FUNCTION wms.inward_header_trigger();
 

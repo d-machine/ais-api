@@ -7,7 +7,7 @@
 -- Create sales_order_header table
 CREATE TABLE IF NOT EXISTS wms.sales_order_header(
     id SERIAL PRIMARY KEY,
-    entry_no VARCHAR(6) NOT NULL UNIQUE,
+    entry_no VARCHAR(10) NOT NULL UNIQUE,
     entry_dt TIMESTAMP NOT NULL,
     party_id  INTEGER NOT NULL REFERENCES wms.party(id),
     broker_id INTEGER REFERENCES wms.broker(id),
@@ -18,7 +18,7 @@ CREATE TABLE IF NOT EXISTS wms.sales_order_header(
     lub INTEGER REFERENCES administration.user(id),
     lua TIMESTAMP NOT NULL DEFAULT NOW(),
     is_active boolean NOT NULL DEFAULT true,
-    status VARCHAR(255),
+    status INTEGER NOT NULL DEFAULT 0,
     remarks VARCHAR(255)
 );
 
@@ -26,7 +26,7 @@ CREATE TABLE IF NOT EXISTS wms.sales_order_header(
 CREATE TABLE IF NOT EXISTS wms.sales_order_header_history(
     history_id SERIAL PRIMARY KEY,
     sales_order_id INTEGER,
-    entry_no VARCHAR(6),
+    entry_no VARCHAR(10),
     entry_dt TIMESTAMP,
     party_id INTEGER,
     broker_id INTEGER,
@@ -34,7 +34,7 @@ CREATE TABLE IF NOT EXISTS wms.sales_order_header_history(
     trsp_id INTEGER,
     year_code VARCHAR(4),
     delivery_dt TIMESTAMP,
-    status VARCHAR(255),
+    status INTEGER,
     remarks VARCHAR(255),
     is_active boolean NOT NULL,
     operation VARCHAR(10),
@@ -146,18 +146,18 @@ $$ LANGUAGE plpgsql;
 -- Create triggers for sales_order_header
 DROP TRIGGER IF EXISTS sales_order_insert_trigger ON wms.sales_order_header;
 CREATE TRIGGER sales_order_insert_trigger
-    BEFORE INSERT ON wms.sales_order_header
+    AFTER INSERT ON wms.sales_order_header
     FOR EACH ROW
     EXECUTE FUNCTION wms.sales_order_header_trigger();
 
 DROP TRIGGER IF EXISTS sales_order_update_trigger ON wms.sales_order_header;
 CREATE TRIGGER sales_order_update_trigger
-    BEFORE UPDATE ON wms.sales_order_header
+    AFTER UPDATE ON wms.sales_order_header
     FOR EACH ROW
     EXECUTE FUNCTION wms.sales_order_header_trigger();
 
 DROP TRIGGER IF EXISTS sales_order_delete_trigger ON wms.sales_order_header;
 CREATE TRIGGER sales_order_delete_trigger
-    BEFORE DELETE ON wms.sales_order_header
+    AFTER DELETE ON wms.sales_order_header
     FOR EACH ROW
     EXECUTE FUNCTION wms.sales_order_header_trigger();

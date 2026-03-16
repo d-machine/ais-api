@@ -10,12 +10,13 @@ sections:
       query: |
         SELECT 
           h.id, h.entry_no, h.entry_dt, v.name as vendor_name,
-          h.invoice_no, h.invoice_dt, h.status,
+          h.invoice_no, h.invoice_dt, h.status, sc.label as status_label,
           h.lua as last_updated_at,
           TRIM(CONCAT(u.first_name, ' ', u.last_name)) as last_updated_by_name
         FROM wms.inward_header h
         LEFT JOIN wms.vendor v ON h.vendor_id = v.id
         LEFT JOIN administration.user u ON h.lub = u.id
+        LEFT JOIN wms.status_code sc ON sc.entity = 'INWARD' AND sc.code = h.status
         WHERE h.is_active = true
       path:
         - sections
@@ -63,6 +64,7 @@ sections:
         actionType: DISPLAY_FORM
         level: ROW
         shortcut: "F4"
+        condition: row.status !== 20
         formConfig: inward-details
         mode: EDIT
         payload:
@@ -74,7 +76,7 @@ sections:
         variant: primary
         actionType: EXECUTE_QUERY
         level: ROW
-        condition: row.status === 'Draft'
+        condition: row.status === 0
         confirmationRequired: true
         confirmationMessage: "Are you sure you want to process Inward Entry '${row.entry_no}'? This will lock the entry and update stock."
         queryInfo:
@@ -96,7 +98,7 @@ sections:
         actionType: EXECUTE_QUERY
         level: ROW
         shortcut: "F8"
-        condition: row.status === 'Draft'
+        condition: row.status === 0
         confirmationRequired: true
         queryInfo:
           query: UPDATE wms.inward_header SET is_active = false, lub = $2, lua = NOW() WHERE id = $1 RETURNING id
@@ -141,7 +143,7 @@ sections:
         visible: true
         width: 150
 
-      - name: status
+      - name: status_label
         label: Status
         visible: true
         width: 100

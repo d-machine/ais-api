@@ -68,8 +68,7 @@ sections:
         - SAVE
         - PROCESS
         - CANCEL
-      VIEW:
-        - EDIT
+      VIEW: []
 
     actionConfig:
       SAVE:
@@ -82,8 +81,8 @@ sections:
         queryInfo:
           returnType: SINGLE_ROW
           query:
-            ADD: SELECT * from wms.insert_inward_header($1, $2, $3, $4, $5, $6, $7)
-            EDIT: SELECT wms.update_inward_header($1, $2, $3, $4, $5, $6, $7, $8) as id
+            ADD: SELECT * from wms.insert_inward_header($1, $2, $3, $4, $5, $6, $7, $8)
+            EDIT: SELECT wms.update_inward_header($1, $2, $3, $4, $5, $6, $7, $8, $9) as id
           payload:
             ADD:
               - inward_header.entry_dt
@@ -91,15 +90,16 @@ sections:
               - inward_header.po_ids
               - inward_header.invoice_no
               - inward_header.invoice_dt
+              - inward_header.status
               - inward_header.remarks
             EDIT:
               - id
-              - inward_header.entry_no
               - inward_header.entry_dt
               - inward_header.vendor_id
               - inward_header.po_ids
               - inward_header.invoice_no
               - inward_header.invoice_dt
+              - inward_header.status
               - inward_header.remarks
           contextParams:
             - current_user_id
@@ -112,16 +112,16 @@ sections:
           ADD:
             callback: SAVE_AND_GO_TO_NEXT
           EDIT:
-            callback: HANDLE_FORM_ACTION
+            callback: CHANGE_MODE
             params:
-              action: FINISH
+              mode: VIEW
         onFailure: showErrorSnackbar
       PROCESS:
         label: Process Inward
         icon: CheckCircle
         variant: primary
         actionType: EXECUTE_QUERY
-        condition: status === 'Draft'
+        condition: status === 0
         confirmationRequired: true
         confirmationMessage: "This will lock the Inward Entry and update stock. Continue?"
         queryInfo:
@@ -149,6 +149,8 @@ sections:
         label: Edit
         icon: Edit
         variant: primary
+        visible: true
+        condition: status !== 20
         actionType: FUNCTION_EXECUTION
         functionInfo:
           name: changeMode
@@ -172,8 +174,10 @@ sections:
           - field: invoice_dt
             span: 6
       - columns:
+          - field: status
+            span: 6
           - field: remarks
-            span: 12
+            span: 6
 
     fields:
       - name: id
@@ -236,7 +240,7 @@ sections:
               as: po_entry_nos
           staticFilters:
             - field: status
-              value: Completed
+              value: 20
               operator: NOT_EQUAL
         dependencies:
           - targets:
@@ -249,6 +253,10 @@ sections:
           - targets:
               - - vendor_id
             handler: filterByDependency
+            conditions:
+              - operator: IS_NOT_NIL
+                indices:
+                  - 0
             filters:
               - targetParam: vendor_id
                 targetIndex: 0
@@ -269,8 +277,26 @@ sections:
           - VIEW
       - name: status
         label: Status
-        type: TEXT
-        visible: false
+        type: SELECT
+        defaultValue: 0
+        required: true
+        readonly:
+          - VIEW
+        selectConfig:
+          resource: list-status-codes
+          displayField: label
+          selectHandler: converter
+          selectParser: converter
+          currentSelection:
+            - key: status
+              as: id
+          fields_to_extract:
+            - key: id
+              as: status
+          staticFilters:
+            - field: entity
+              value: INWARD
+              operator: EQUAL
 
   - sectionType: TABLE
     sectionName: Inward Details

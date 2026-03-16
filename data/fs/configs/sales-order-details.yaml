@@ -10,7 +10,6 @@ applicableActions:
     - FINISH
     - CANCEL
   VIEW:
-    - FINISH
     - CLOSE
 
 actionConfig:
@@ -35,7 +34,7 @@ actionConfig:
 
 sections:
   - sectionType: FIELDS
-    sectionName: order_header
+    sectionName: sales_order_header
     label: Order Information
     queryInfo:
       returnType: SINGLE_ROW
@@ -88,24 +87,24 @@ sections:
             EDIT: SELECT wms.update_sales_order_header($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) as id
           payload:
             ADD:
-              - order_header.entry_dt
-              - order_header.party_id
-              - order_header.broker_id
-              - order_header.delivery_at_id
-              - order_header.trsp_id
-              - order_header.delivery_dt
-              - order_header.status
-              - order_header.remarks
+              - sales_order_header.entry_dt
+              - sales_order_header.party_id
+              - sales_order_header.broker_id
+              - sales_order_header.delivery_at_id
+              - sales_order_header.trsp_id
+              - sales_order_header.delivery_dt
+              - sales_order_header.status
+              - sales_order_header.remarks
             EDIT:
-              - id
-              - order_header.entry_dt
-              - order_header.party_id
-              - order_header.broker_id
-              - order_header.delivery_at_id
-              - order_header.trsp_id
-              - order_header.delivery_dt
-              - order_header.status
-              - order_header.remarks
+              - _context.id
+              - sales_order_header.entry_dt
+              - sales_order_header.party_id
+              - sales_order_header.broker_id
+              - sales_order_header.delivery_at_id
+              - sales_order_header.trsp_id
+              - sales_order_header.delivery_dt
+              - sales_order_header.status
+              - sales_order_header.remarks
           contextParams:
             - current_user_id
           path:
@@ -117,9 +116,9 @@ sections:
           ADD:
             callback: SAVE_AND_GO_TO_NEXT
           EDIT:
-            callback: HANDLE_FORM_ACTION
+            callback: CHANGE_MODE
             params:
-              action: FINISH
+              mode: VIEW
         onFailure: showErrorSnackbar
       CANCEL:
         label: Discard
@@ -268,11 +267,26 @@ sections:
           - VIEW
       - name: status
         label: Status
-        type: TEXT
+        type: SELECT
+        defaultValue: 0
+        required: true
         readonly:
           - VIEW
-          - EDIT
-        defaultValue: "Draft"
+        selectConfig:
+          resource: list-status-codes
+          displayField: label
+          selectHandler: converter
+          selectParser: converter
+          currentSelection:
+            - key: status
+              as: id
+          fields_to_extract:
+            - key: id
+              as: status
+          staticFilters:
+            - field: entity
+              value: SO
+              operator: EQUAL
       - name: remarks
         label: Remarks
         type: TEXTAREA
@@ -283,8 +297,13 @@ sections:
     sectionName: Order Details
     label: Line Items
     disabled:
-      condition: isEmpty
-      field: id
+      targets:
+        - - sales_order_header
+          - id
+      conditions:
+        - operator: IS_NIL
+          indices:
+            - 0
     queryInfo:
       returnType: MULTIPLE_ROWS
       query: |
@@ -310,7 +329,7 @@ sections:
         )
         SELECT g.id, g.header_id, g.row_no, m.name as item_name,
                u1.name as uom_pc_name, u2.name as uom_package_name,
-               g.rate_per_pc, g.eqty, g.amount, g.dqty, g.status, g.remarks,
+               g.rate_per_pc, g.eqty, g.amount, g.dqty, g.remarks,
                h.hsn_code, g.total_gst_pct,
                ROUND(g.amount * g.total_gst_pct / 100, 2) AS gst_amount,
                ROUND(g.amount * (1 + g.total_gst_pct / 100), 2) AS total_amount
@@ -321,27 +340,27 @@ sections:
         LEFT JOIN wms.hsn h ON g.hsn_id = h.id
         ORDER BY g.row_no
       payload:
-        - id
+        - sales_order_header.id
       path:
         - sections
         - 1
 
     applicableActions:
       ADD:
-        - view_item
-        - add_item
-        - edit_item
-        - delete_item
+        - VIEW
+        - ADD
+        - EDIT
+        - DELETE
       EDIT:
-        - view_item
-        - add_item
-        - edit_item
-        - delete_item
+        - VIEW
+        - ADD
+        - EDIT
+        - DELETE
       VIEW:
-        - view_item
+        - VIEW
 
     actionConfig:
-      view_item:
+      VIEW:
         label: View
         icon: Eye
         variant: secondary
@@ -350,11 +369,11 @@ sections:
         formConfig: sales-order-item-details
         mode: VIEW
         payload:
-          - key: id
+          - key: header_id
             as: header_id
           - key: id
-            as: id
-      add_item:
+            as: item_detail_id
+      ADD:
         label: Add Item
         icon: Plus
         variant: primary
@@ -366,7 +385,7 @@ sections:
           - key: id
             as: header_id
         onSuccess: refresh
-      edit_item:
+      EDIT:
         label: Edit
         icon: Edit
         variant: primary
@@ -375,12 +394,12 @@ sections:
         formConfig: sales-order-item-details
         mode: EDIT
         payload:
-          - key: id
+          - key: header_id
             as: header_id
           - key: id
-            as: id
+            as: item_detail_id
         onSuccess: refresh
-      delete_item:
+      DELETE:
         label: Delete
         icon: Trash2
         variant: danger
@@ -397,51 +416,70 @@ sections:
             - sections
             - 1
             - actionConfig
-            - delete_item
+            - DELETE
         onSuccess: refresh
 
     columns:
       - name: row_no
         label: Row#
+        visible: true
         width: 80
         align: center
       - name: item_name
         label: Item
-        width: 250
+        visible: true
+        width: 200
+      - name: uom_pc_name
+        label: Base UOM
+        visible: true
+        width: 100
+      - name: uom_package_name
+        label: Pkg UOM
+        visible: true
+        width: 100
       - name: rate_per_pc
         label: Rate
+        visible: true
         width: 100
         align: right
         dataType: currency
       - name: eqty
         label: Qty
+        visible: true
         width: 100
         align: right
       - name: amount
         label: Amount
+        visible: true
         width: 120
         align: right
         dataType: currency
+      - name: dqty
+        label: Dispatched Qty
+        visible: true
+        width: 120
+        align: right
       - name: last_updated_at
         label: Updated At
         visible: false
-      - name: status
-        label: Status
-        width: 100
       - name: hsn_code
         label: HSN Code
+        visible: true
         width: 120
       - name: total_gst_pct
         label: GST %
+        visible: true
         width: 80
         align: right
       - name: gst_amount
         label: GST Amt
+        visible: true
         dataType: currency
         width: 110
         align: right
       - name: total_amount
         label: Total
+        visible: true
         dataType: currency
         width: 130
         align: right

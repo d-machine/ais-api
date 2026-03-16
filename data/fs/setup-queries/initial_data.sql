@@ -62,6 +62,27 @@ INSERT INTO administration.resource (id, name, list_config_file, parent_id, lub)
 (111, 'Transport', 'list-transports', 3, 1)
 ;
 
+INSERT INTO wms.status_code (entity, code, label) VALUES
+-- Purchase Order
+('PO',     0,  'Draft'),
+('PO',     10, 'Inwarded Partial'),
+('PO',     20, 'Inward Completed'),
+('PO',     50, 'Issue Raised'),
+-- Inward
+('INWARD', 0,  'Draft'),
+('INWARD', 20, 'Processed'),
+('INWARD', 50, 'Issue Raised'),
+-- Sales Order
+('SO',     0,  'Draft'),
+('SO',     10, 'Dispatched Partial'),
+('SO',     20, 'Dispatched Fully'),
+('SO',     50, 'Issue Raised'),
+-- Picking List
+('PL',     0,  'Draft'),
+('PL',     10, 'Assigned'),
+('PL',     20, 'Dispatched'),
+('PL',     50, 'Issue Raised');
+
 INSERT INTO wms.country (name, code, lub) VALUES
 ('India', 'IN', 1);
 
@@ -122,30 +143,6 @@ INSERT INTO wms.uom_conversion (uom_id_each, uom_id_case, no_of_pcs, lub) VALUES
   (SELECT id FROM wms.uom WHERE name = 'BOX24'),
   24,
   1
-);
-
-INSERT INTO wms.vendor (
-  category_id, name,
-  add1, add2, add3,
-  city_id, district_id, state_id, country_id, pincode,
-  gstno, pan_no, lub
-) VALUES (
-  (SELECT id FROM wms.vendor_category WHERE name = 'VC1'),
-  'V1',
-  '12 Industrial Area', 'Sector 18', 'Phase II',
-  (SELECT id FROM wms.city     WHERE code = 'GGN'),
-  (SELECT id FROM wms.district WHERE code = 'GGN'),
-  (SELECT id FROM wms.state    WHERE name = 'Haryana'),
-  (SELECT id FROM wms.country  WHERE code = 'IN'),
-  '122015',
-  'GST06ABCDE1234F1Z5', 'ABCDE1234F',
-  1
-);
-
-INSERT INTO wms.vendor_contact_details (vendor_id, name, telephone, email, position, descr, lub) VALUES
-(
-  (SELECT id FROM wms.vendor WHERE name = 'V1'),
-  'P1', '9876543210', 'p1@v1vendor.com', 'Manager', 'Primary contact', 1
 );
 
 INSERT INTO wms.material (name, descr, category_id, brand_id, hsn_id, lub) VALUES
@@ -222,26 +219,198 @@ INSERT INTO wms.material_ean (material_id, ean_code, label, uom_pc_id, uom_packa
 ((SELECT id FROM wms.material WHERE name = 'MAT-010'), 'M10-E04', 'MAT-010 Variant D', (SELECT id FROM wms.uom WHERE name = 'PCS'), (SELECT id FROM wms.uom WHERE name = 'BOX24'), 935.00, 865.00, 1),
 ((SELECT id FROM wms.material WHERE name = 'MAT-010'), 'M10-E05', 'MAT-010 Variant E', (SELECT id FROM wms.uom WHERE name = 'PCS'), (SELECT id FROM wms.uom WHERE name = 'BOX24'), 950.00, 880.00, 1);
 
-INSERT INTO wms.party (
-  category_id, name,
-  add1, add2, add3,
-  city_id, district_id, state_id, country_id, pincode,
-  gstno, pan_no, lub
-) VALUES (
-  (SELECT id FROM wms.party_category WHERE name = 'PC1'),
-  'P1',
-  '45 Commerce Park', 'Sector 32', 'Block A',
-  (SELECT id FROM wms.city     WHERE code = 'GGN'),
-  (SELECT id FROM wms.district WHERE code = 'GGN'),
-  (SELECT id FROM wms.state    WHERE name = 'Haryana'),
-  (SELECT id FROM wms.country  WHERE code = 'IN'),
-  '122001',
-  'GST06XYZAB5678G1Z3', 'XYZAB5678G',
-  1
-);
+-- Addresses, Vendors, Parties, and Purchase Orders via insert functions
+DO $$
+DECLARE
+    v_city_id     INTEGER;
+    v_district_id INTEGER;
+    v_state_id    INTEGER;
+    v_country_id  INTEGER;
+    v_uom_pcs_id  INTEGER;
+    v_uom_box_id  INTEGER;
+    v_vc1_id      INTEGER;
+    v_pc1_id      INTEGER;
 
-INSERT INTO wms.party_contact_details (party_id, name, telephone, email, position, descr, lub) VALUES
-(
-  (SELECT id FROM wms.party WHERE name = 'P1'),
-  'P1', '9812345670', 'p1@p1party.com', 'Manager', 'Primary contact', 1
-);
+    v_add1_id INTEGER;
+    v_add2_id INTEGER;
+    v_add3_id INTEGER;
+    v_add4_id INTEGER;
+
+    v_v1_id INTEGER;
+    v_v2_id INTEGER;
+    v_p1_id INTEGER;
+    v_p2_id INTEGER;
+
+    v_po1_id INTEGER;
+    v_po2_id INTEGER;
+    v_po3_id INTEGER;
+    v_po4_id INTEGER;
+
+    -- material IDs
+    v_mat001_id INTEGER; v_mat002_id INTEGER; v_mat003_id INTEGER;
+    v_mat004_id INTEGER; v_mat005_id INTEGER;
+    v_mat006_id INTEGER; v_mat007_id INTEGER; v_mat008_id INTEGER;
+    v_mat009_id INTEGER; v_mat010_id INTEGER;
+BEGIN
+    -- Resolve shared lookup IDs
+    SELECT id INTO v_city_id     FROM wms.city     WHERE code = 'GGN';
+    SELECT id INTO v_district_id FROM wms.district WHERE code = 'GGN';
+    SELECT id INTO v_state_id    FROM wms.state    WHERE name = 'Haryana';
+    SELECT id INTO v_country_id  FROM wms.country  WHERE code = 'IN';
+    SELECT id INTO v_uom_pcs_id  FROM wms.uom      WHERE name = 'PCS';
+    SELECT id INTO v_uom_box_id  FROM wms.uom      WHERE name = 'BOX24';
+    SELECT id INTO v_vc1_id      FROM wms.vendor_category WHERE name = 'VC1';
+    SELECT id INTO v_pc1_id      FROM wms.party_category  WHERE name = 'PC1';
+
+    -- Resolve material IDs
+    SELECT id INTO v_mat001_id FROM wms.material WHERE name = 'MAT-001';
+    SELECT id INTO v_mat002_id FROM wms.material WHERE name = 'MAT-002';
+    SELECT id INTO v_mat003_id FROM wms.material WHERE name = 'MAT-003';
+    SELECT id INTO v_mat004_id FROM wms.material WHERE name = 'MAT-004';
+    SELECT id INTO v_mat005_id FROM wms.material WHERE name = 'MAT-005';
+    SELECT id INTO v_mat006_id FROM wms.material WHERE name = 'MAT-006';
+    SELECT id INTO v_mat007_id FROM wms.material WHERE name = 'MAT-007';
+    SELECT id INTO v_mat008_id FROM wms.material WHERE name = 'MAT-008';
+    SELECT id INTO v_mat009_id FROM wms.material WHERE name = 'MAT-009';
+    SELECT id INTO v_mat010_id FROM wms.material WHERE name = 'MAT-010';
+
+    -- Create 4 addresses
+    v_add1_id := wms.insert_address('Plot 1, Sector 18', 'Industrial Area, Phase I',  NULL, v_city_id, v_district_id, v_state_id, v_country_id, 1);
+    v_add2_id := wms.insert_address('Plot 2, Sector 29', 'Industrial Area, Phase II', NULL, v_city_id, v_district_id, v_state_id, v_country_id, 1);
+    v_add3_id := wms.insert_address('Plot 3, Sector 44', 'Industrial Area, Phase III', NULL, v_city_id, v_district_id, v_state_id, v_country_id, 1);
+    v_add4_id := wms.insert_address('Plot 4, Sector 56', 'Industrial Area, Phase IV',  NULL, v_city_id, v_district_id, v_state_id, v_country_id, 1);
+
+    -- Create 2 vendors (V1 → delivery add1, V2 → delivery add2)
+    v_v1_id := wms.insert_vendor(
+        v_vc1_id, 'TRADER', 'V1',
+        'Plot 1, Sector 18', 'Industrial Area, Phase I', NULL,
+        v_city_id, v_district_id, v_state_id, v_country_id,
+        '122015', NULL, 'ABCDE1234F', 0, 0, 'GST06ABCDE1234F1Z5', NULL, 1
+    );
+    v_v2_id := wms.insert_vendor(
+        v_vc1_id, 'TRADER', 'V2',
+        'Plot 2, Sector 29', 'Industrial Area, Phase II', NULL,
+        v_city_id, v_district_id, v_state_id, v_country_id,
+        '122017', NULL, 'FGHIJ5678K', 0, 0, 'GST06FGHIJ5678K2Z8', NULL, 1
+    );
+
+    -- Create 2 parties (P1 → delivery add1, P2 → delivery add2)
+    v_p1_id := wms.insert_party(
+        v_pc1_id, 'RETAILER', 'P1',
+        'Plot 1, Sector 18', 'Industrial Area, Phase I', NULL,
+        v_city_id, v_district_id, v_state_id, v_country_id,
+        '122001', NULL, 'XYZAB5678G', 0, 0, 'GST06XYZAB5678G1Z3', NULL, 1
+    );
+    v_p2_id := wms.insert_party(
+        v_pc1_id, 'RETAILER', 'P2',
+        'Plot 2, Sector 29', 'Industrial Area, Phase II', NULL,
+        v_city_id, v_district_id, v_state_id, v_country_id,
+        '122003', NULL, 'PQRST9012H', 0, 0, 'GST06PQRST9012H3Z1', NULL, 1
+    );
+
+    -- PO1: V1, delivery at add1, MAT-001..005
+    SELECT id INTO v_po1_id FROM wms.insert_purchase_order_header(
+        NOW()::TIMESTAMP, v_v1_id, NULL::INTEGER, v_add1_id, NULL::INTEGER, (NOW() + INTERVAL '15 days')::TIMESTAMP, 0, 'Initial PO - V1 batch 1'::VARCHAR, 1
+    );
+    PERFORM wms.insert_purchase_order_details(v_po1_id, v_mat001_id, v_uom_pcs_id, v_uom_box_id, v_uom_box_id, 180.00, 1200, 50, 216000.00, NULL::VARCHAR, 1);
+    PERFORM wms.insert_purchase_order_details(v_po1_id, v_mat002_id, v_uom_pcs_id, v_uom_box_id, v_uom_box_id, 310.00, 1200, 50, 372000.00, NULL::VARCHAR, 1);
+    PERFORM wms.insert_purchase_order_details(v_po1_id, v_mat003_id, v_uom_pcs_id, v_uom_box_id, v_uom_box_id, 450.00, 1200, 50, 540000.00, NULL::VARCHAR, 1);
+    PERFORM wms.insert_purchase_order_details(v_po1_id, v_mat004_id, v_uom_pcs_id, v_uom_box_id, v_uom_box_id, 130.00, 1200, 50, 156000.00, NULL::VARCHAR, 1);
+    PERFORM wms.insert_purchase_order_details(v_po1_id, v_mat005_id, v_uom_pcs_id, v_uom_box_id, v_uom_box_id, 545.00, 1200, 50, 654000.00, NULL::VARCHAR, 1);
+
+    -- PO2: V1, delivery at add1, MAT-006..010
+    SELECT id INTO v_po2_id FROM wms.insert_purchase_order_header(
+        NOW()::TIMESTAMP, v_v1_id, NULL::INTEGER, v_add1_id, NULL::INTEGER, (NOW() + INTERVAL '20 days')::TIMESTAMP, 0, 'Initial PO - V1 batch 2'::VARCHAR, 1
+    );
+    PERFORM wms.insert_purchase_order_details(v_po2_id, v_mat006_id, v_uom_pcs_id, v_uom_box_id, v_uom_box_id, 250.00, 1200, 50, 300000.00, NULL::VARCHAR, 1);
+    PERFORM wms.insert_purchase_order_details(v_po2_id, v_mat007_id, v_uom_pcs_id, v_uom_box_id, v_uom_box_id, 380.00, 1200, 50, 456000.00, NULL::VARCHAR, 1);
+    PERFORM wms.insert_purchase_order_details(v_po2_id, v_mat008_id, v_uom_pcs_id, v_uom_box_id, v_uom_box_id, 680.00, 1200, 50, 816000.00, NULL::VARCHAR, 1);
+    PERFORM wms.insert_purchase_order_details(v_po2_id, v_mat009_id, v_uom_pcs_id, v_uom_box_id, v_uom_box_id, 105.00, 1200, 50, 126000.00, NULL::VARCHAR, 1);
+    PERFORM wms.insert_purchase_order_details(v_po2_id, v_mat010_id, v_uom_pcs_id, v_uom_box_id, v_uom_box_id, 820.00, 1200, 50, 984000.00, NULL::VARCHAR, 1);
+
+    -- PO3: V2, delivery at add2, MAT-001..005
+    SELECT id INTO v_po3_id FROM wms.insert_purchase_order_header(
+        NOW()::TIMESTAMP, v_v2_id, NULL::INTEGER, v_add2_id, NULL::INTEGER, (NOW() + INTERVAL '15 days')::TIMESTAMP, 0, 'Initial PO - V2 batch 1'::VARCHAR, 1
+    );
+    PERFORM wms.insert_purchase_order_details(v_po3_id, v_mat001_id, v_uom_pcs_id, v_uom_box_id, v_uom_box_id, 180.00, 1200, 50, 216000.00, NULL::VARCHAR, 1);
+    PERFORM wms.insert_purchase_order_details(v_po3_id, v_mat002_id, v_uom_pcs_id, v_uom_box_id, v_uom_box_id, 310.00, 1200, 50, 372000.00, NULL::VARCHAR, 1);
+    PERFORM wms.insert_purchase_order_details(v_po3_id, v_mat003_id, v_uom_pcs_id, v_uom_box_id, v_uom_box_id, 450.00, 1200, 50, 540000.00, NULL::VARCHAR, 1);
+    PERFORM wms.insert_purchase_order_details(v_po3_id, v_mat004_id, v_uom_pcs_id, v_uom_box_id, v_uom_box_id, 130.00, 1200, 50, 156000.00, NULL::VARCHAR, 1);
+    PERFORM wms.insert_purchase_order_details(v_po3_id, v_mat005_id, v_uom_pcs_id, v_uom_box_id, v_uom_box_id, 545.00, 1200, 50, 654000.00, NULL::VARCHAR, 1);
+
+    -- PO4: V2, delivery at add2, MAT-006..010
+    SELECT id INTO v_po4_id FROM wms.insert_purchase_order_header(
+        NOW()::TIMESTAMP, v_v2_id, NULL::INTEGER, v_add2_id, NULL::INTEGER, (NOW() + INTERVAL '20 days')::TIMESTAMP, 0, 'Initial PO - V2 batch 2'::VARCHAR, 1
+    );
+    PERFORM wms.insert_purchase_order_details(v_po4_id, v_mat006_id, v_uom_pcs_id, v_uom_box_id, v_uom_box_id, 250.00, 1200, 50, 300000.00, NULL::VARCHAR, 1);
+    PERFORM wms.insert_purchase_order_details(v_po4_id, v_mat007_id, v_uom_pcs_id, v_uom_box_id, v_uom_box_id, 380.00, 1200, 50, 456000.00, NULL::VARCHAR, 1);
+    PERFORM wms.insert_purchase_order_details(v_po4_id, v_mat008_id, v_uom_pcs_id, v_uom_box_id, v_uom_box_id, 680.00, 1200, 50, 816000.00, NULL::VARCHAR, 1);
+    PERFORM wms.insert_purchase_order_details(v_po4_id, v_mat009_id, v_uom_pcs_id, v_uom_box_id, v_uom_box_id, 105.00, 1200, 50, 126000.00, NULL::VARCHAR, 1);
+    PERFORM wms.insert_purchase_order_details(v_po4_id, v_mat010_id, v_uom_pcs_id, v_uom_box_id, v_uom_box_id, 820.00, 1200, 50, 984000.00, NULL::VARCHAR, 1);
+
+END $$;
+
+-- Transport
+INSERT INTO wms.transport (name, descr, lub) VALUES
+('TRN-001', 'Default Transport', 1);
+
+-- Draft inward for PO1 (V1, MAT-001..005) — process manually from the dashboard to stock up
+DO $$
+DECLARE
+    v_v1_id       INTEGER;
+    v_po1_id      INTEGER;
+    v_inward_id   INTEGER;
+    v_uom_pcs_id  INTEGER;
+    v_uom_box_id  INTEGER;
+    v_ean_m01     INTEGER;
+    v_ean_m02     INTEGER;
+    v_ean_m03     INTEGER;
+    v_ean_m04     INTEGER;
+    v_ean_m05     INTEGER;
+    v_pod1_id     INTEGER;
+    v_pod2_id     INTEGER;
+    v_pod3_id     INTEGER;
+    v_pod4_id     INTEGER;
+    v_pod5_id     INTEGER;
+BEGIN
+    SELECT id INTO v_v1_id      FROM wms.vendor WHERE name = 'V1';
+    SELECT id INTO v_uom_pcs_id FROM wms.uom    WHERE name = 'PCS';
+    SELECT id INTO v_uom_box_id FROM wms.uom    WHERE name = 'BOX24';
+
+    -- First PO for V1
+    SELECT id INTO v_po1_id FROM wms.purchase_order_header
+    WHERE vendor_id = v_v1_id ORDER BY id LIMIT 1;
+
+    -- First EAN per material
+    SELECT me.id INTO v_ean_m01 FROM wms.material_ean me JOIN wms.material m ON m.id = me.material_id WHERE m.name = 'MAT-001' ORDER BY me.id LIMIT 1;
+    SELECT me.id INTO v_ean_m02 FROM wms.material_ean me JOIN wms.material m ON m.id = me.material_id WHERE m.name = 'MAT-002' ORDER BY me.id LIMIT 1;
+    SELECT me.id INTO v_ean_m03 FROM wms.material_ean me JOIN wms.material m ON m.id = me.material_id WHERE m.name = 'MAT-003' ORDER BY me.id LIMIT 1;
+    SELECT me.id INTO v_ean_m04 FROM wms.material_ean me JOIN wms.material m ON m.id = me.material_id WHERE m.name = 'MAT-004' ORDER BY me.id LIMIT 1;
+    SELECT me.id INTO v_ean_m05 FROM wms.material_ean me JOIN wms.material m ON m.id = me.material_id WHERE m.name = 'MAT-005' ORDER BY me.id LIMIT 1;
+
+    -- PO detail rows (ordered by insertion = row_no order)
+    SELECT id INTO v_pod1_id FROM wms.purchase_order_details WHERE header_id = v_po1_id ORDER BY id LIMIT 1 OFFSET 0;
+    SELECT id INTO v_pod2_id FROM wms.purchase_order_details WHERE header_id = v_po1_id ORDER BY id LIMIT 1 OFFSET 1;
+    SELECT id INTO v_pod3_id FROM wms.purchase_order_details WHERE header_id = v_po1_id ORDER BY id LIMIT 1 OFFSET 2;
+    SELECT id INTO v_pod4_id FROM wms.purchase_order_details WHERE header_id = v_po1_id ORDER BY id LIMIT 1 OFFSET 3;
+    SELECT id INTO v_pod5_id FROM wms.purchase_order_details WHERE header_id = v_po1_id ORDER BY id LIMIT 1 OFFSET 4;
+
+    -- Create Draft inward header
+    SELECT id INTO v_inward_id FROM wms.insert_inward_header(
+        CURRENT_DATE,
+        v_v1_id,
+        v_po1_id::TEXT,
+        NULL,   -- invoice_no
+        NULL,   -- invoice_dt
+        0,      -- Draft
+        'Initial seed inward for PO1 — process to load stock',
+        1
+    );
+
+    -- Inward details: full ordered qty for each item
+    PERFORM wms.insert_inward_details(v_inward_id, v_ean_m01, v_pod1_id, v_uom_box_id, v_uom_pcs_id, v_uom_box_id, 1200, 50, 180.00, 216000.00, NULL, NULL, NULL, 1);
+    PERFORM wms.insert_inward_details(v_inward_id, v_ean_m02, v_pod2_id, v_uom_box_id, v_uom_pcs_id, v_uom_box_id, 1200, 50, 310.00, 372000.00, NULL, NULL, NULL, 1);
+    PERFORM wms.insert_inward_details(v_inward_id, v_ean_m03, v_pod3_id, v_uom_box_id, v_uom_pcs_id, v_uom_box_id, 1200, 50, 450.00, 540000.00, NULL, NULL, NULL, 1);
+    PERFORM wms.insert_inward_details(v_inward_id, v_ean_m04, v_pod4_id, v_uom_box_id, v_uom_pcs_id, v_uom_box_id, 1200, 50, 130.00, 156000.00, NULL, NULL, NULL, 1);
+    PERFORM wms.insert_inward_details(v_inward_id, v_ean_m05, v_pod5_id, v_uom_box_id, v_uom_pcs_id, v_uom_box_id, 1200, 50, 545.00, 654000.00, NULL, NULL, NULL, 1);
+END $$;

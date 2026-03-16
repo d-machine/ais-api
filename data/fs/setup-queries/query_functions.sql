@@ -775,6 +775,8 @@ $$ LANGUAGE plpgsql;
 
 
 -- Function to insert in sales_order_header
+DROP FUNCTION IF EXISTS wms.insert_sales_order_header(TIMESTAMP, INTEGER, INTEGER, INTEGER, INTEGER, TIMESTAMP, VARCHAR, VARCHAR, INTEGER);
+DROP FUNCTION IF EXISTS wms.insert_sales_order_header(TIMESTAMP, INTEGER, INTEGER, INTEGER, INTEGER, TIMESTAMP, INTEGER, VARCHAR, INTEGER);
 CREATE OR REPLACE FUNCTION wms.insert_sales_order_header(
     entry_dt TIMESTAMP,
     party_id INTEGER,
@@ -782,13 +784,13 @@ CREATE OR REPLACE FUNCTION wms.insert_sales_order_header(
     delivery_at_id INTEGER,
     trsp_id INTEGER,
     delivery_dt TIMESTAMP,
-    status VARCHAR(255),
+    status INTEGER,
     remarks VARCHAR(255),
     current_user_id INTEGER
-) RETURNS TABLE (id INTEGER, entry_no VARCHAR) AS $$
+) RETURNS TABLE (id INTEGER, entry_no VARCHAR, year_code VARCHAR) AS $$
 DECLARE
     new_sales_header_id INT;
-    new_entry_no VARCHAR(6);
+    new_entry_no VARCHAR(10);
     max_entry_no INT;
     _year_code VARCHAR(4);
 BEGIN
@@ -799,11 +801,12 @@ BEGIN
         ELSE TO_CHAR(CURRENT_DATE - INTERVAL '1 year', 'YYYY')
     END;
 
-    -- Auto-generate entry_no
-    SELECT COALESCE(MAX(CAST(sh.entry_no AS INTEGER)), 0) INTO max_entry_no
-    FROM wms.sales_order_header sh;
+    -- Auto-generate entry_no with SO prefix
+    SELECT COALESCE(MAX(REGEXP_REPLACE(sh.entry_no, '[^0-9]', '', 'g')::INT), 0) INTO max_entry_no
+    FROM wms.sales_order_header sh
+    WHERE sh.entry_no LIKE 'SO%';
 
-    new_entry_no := LPAD((max_entry_no + 1)::TEXT, 6, '0');
+    new_entry_no := 'SO' || LPAD((max_entry_no + 1)::TEXT, 6, '0');
 
     INSERT INTO wms.sales_order_header(
         entry_no,
@@ -833,11 +836,12 @@ BEGIN
     )
     RETURNING wms.sales_order_header.id INTO new_sales_header_id;
 
-    RETURN QUERY SELECT new_sales_header_id, new_entry_no;
+    RETURN QUERY SELECT new_sales_header_id, new_entry_no, _year_code;
 END;
 $$ LANGUAGE plpgsql;
 
 -- Function to update sales_order_header
+DROP FUNCTION IF EXISTS wms.update_sales_order_header(INTEGER, TIMESTAMP, INTEGER, INTEGER, INTEGER, INTEGER, TIMESTAMP, VARCHAR, VARCHAR, INTEGER);
 CREATE OR REPLACE FUNCTION wms.update_sales_order_header(
     _id INTEGER,
     _entry_dt TIMESTAMP,
@@ -846,7 +850,7 @@ CREATE OR REPLACE FUNCTION wms.update_sales_order_header(
     _delivery_at_id INTEGER,
     _trsp_id INTEGER,
     _delivery_dt TIMESTAMP,
-    _status VARCHAR(255),
+    _status INTEGER,
     _remarks VARCHAR(255),
     _current_user_id INTEGER
 ) RETURNS INTEGER AS $$
@@ -890,6 +894,7 @@ $$ LANGUAGE plpgsql;
 ---------------------------** Sales Order Details **---------------------------
 
 -- Function to insert sales_order_details
+DROP FUNCTION IF EXISTS wms.insert_sales_order_details(INTEGER, INTEGER, INTEGER, INTEGER, INTEGER, DECIMAL, DECIMAL, DECIMAL, DECIMAL, DECIMAL, VARCHAR, VARCHAR, INTEGER);
 CREATE OR REPLACE FUNCTION wms.insert_sales_order_details(
     _header_id INTEGER,
     _item_id INTEGER,
@@ -901,13 +906,12 @@ CREATE OR REPLACE FUNCTION wms.insert_sales_order_details(
     _pqty DECIMAL(15,3),
     _amount DECIMAL(15,2),
     _dqty DECIMAL(15,3),
-    _status VARCHAR(255),
     _remarks VARCHAR(255),
     _current_user_id INTEGER
 ) RETURNS INTEGER AS $$
 DECLARE
     _id INTEGER;
-    _entry_no VARCHAR(6);
+    _entry_no VARCHAR(10);
     _row_no VARCHAR(5);
     max_row_no INTEGER;
     _hsn_id INTEGER;
@@ -937,13 +941,13 @@ BEGIN
         header_id, entry_no, row_no, item_id, euom, puom, quom,
         rate_per_pc, eqty, pqty, amount, dqty,
         hsn_id, cgst, sgst, igst, utgst,
-        status, remarks, lub
+        remarks, lub
     )
     VALUES (
         _header_id, _entry_no, _row_no, _item_id, _euom, _puom, _quom,
         _rate_per_pc, _eqty, _pqty, _amount, _dqty,
         _hsn_id, COALESCE(_cgst, 0), COALESCE(_sgst, 0), COALESCE(_igst, 0), COALESCE(_utgst, 0),
-        _status, _remarks, _current_user_id
+        _remarks, _current_user_id
     )
     RETURNING id INTO _id;
     RETURN _id;
@@ -951,6 +955,8 @@ END;
 $$ LANGUAGE plpgsql;
 
 -- Function to update sales_order_details
+DROP FUNCTION IF EXISTS wms.update_sales_order_details(INTEGER, INTEGER, INTEGER, INTEGER, INTEGER, INTEGER, DECIMAL, DECIMAL, DECIMAL, DECIMAL, DECIMAL, VARCHAR, VARCHAR, INTEGER);
+DROP FUNCTION IF EXISTS wms.update_sales_order_details(INTEGER, INTEGER, INTEGER, INTEGER, INTEGER, INTEGER, DECIMAL, DECIMAL, DECIMAL, DECIMAL, DECIMAL, VARCHAR, INTEGER);
 CREATE OR REPLACE FUNCTION wms.update_sales_order_details(
     _sales_order_details_id INTEGER,
     _header_id INTEGER,
@@ -962,8 +968,6 @@ CREATE OR REPLACE FUNCTION wms.update_sales_order_details(
     _eqty DECIMAL(15,3),
     _pqty DECIMAL(15,3),
     _amount DECIMAL(15,2),
-    _dqty DECIMAL(15,3),
-    _status VARCHAR(255),
     _remarks VARCHAR(255),
     _current_user_id INTEGER
 ) RETURNS INTEGER AS $$
@@ -978,8 +982,6 @@ BEGIN
         eqty = _eqty,
         pqty = _pqty,
         amount = _amount,
-        dqty = _dqty,
-        status = _status,
         remarks = _remarks,
         lub = _current_user_id,
         lua = NOW()
@@ -1083,10 +1085,10 @@ CREATE OR REPLACE FUNCTION wms.insert_purchase_order_header(
     _delivery_at_id INTEGER,
     _trsp_id INTEGER,
     _delivery_dt TIMESTAMP,
-    _status VARCHAR(255),
+    _status INTEGER,
     _remarks VARCHAR(255),
     _current_user_id INTEGER
-) RETURNS TABLE (id INTEGER, entry_no VARCHAR(10)) AS $$
+) RETURNS TABLE (id INTEGER, entry_no VARCHAR(10), year_code VARCHAR(4)) AS $$
 DECLARE
     _new_id INTEGER;
     _new_entry_no VARCHAR(10);
@@ -1118,35 +1120,35 @@ BEGIN
         _new_entry_no, _entry_dt, _vendor_id, _broker_id, _delivery_at_id,
         _trsp_id, _year_code, _delivery_dt, _status, _remarks, _current_user_id
     )
-    RETURNING purchase_order_header.id, purchase_order_header.entry_no INTO _new_id, _new_entry_no;
-    
-    RETURN QUERY SELECT _new_id, _new_entry_no;
+    RETURNING purchase_order_header.id, purchase_order_header.entry_no, purchase_order_header.year_code
+    INTO _new_id, _new_entry_no, _year_code;
+
+    RETURN QUERY SELECT _new_id, _new_entry_no, _year_code;
 END;
 $$ LANGUAGE plpgsql;
 
 --Function to update purchase_order_header
-CREATE OR  REPLACE FUNCTION wms.update_purchase_order_header(
+DROP FUNCTION IF EXISTS wms.update_purchase_order_header(INT, VARCHAR, TIMESTAMP, INTEGER, INTEGER, INTEGER, INTEGER, TIMESTAMP, INTEGER, VARCHAR, INTEGER);
+CREATE OR REPLACE FUNCTION wms.update_purchase_order_header(
     purchase_list_header_id INT,
-    entry_no VARCHAR(6),
     entry_dt TIMESTAMP,
     vendor_id INTEGER,
     broker_id INTEGER,
     delivery_at_id INTEGER,
     trsp_id INTEGER,
     delivery_dt TIMESTAMP,
-    status VARCHAR(255),
+    status INTEGER,
     remarks VARCHAR(255),
     current_user_id INTEGER
 )RETURNS INT AS $$
 BEGIN
-    UPDATE  wms.purchase_order_header
-    SET entry_no = entry_no,
-        entry_dt = entry_dt,
+    UPDATE wms.purchase_order_header
+    SET entry_dt = entry_dt,
         vendor_id = vendor_id,
         delivery_at_id = delivery_at_id,
         trsp_id = trsp_id,
         delivery_dt = delivery_dt,
-        status =status,
+        status = status,
         remarks = remarks,
         lub = current_user_id
     WHERE id = purchase_list_header_id;
@@ -1177,6 +1179,10 @@ $$ LANGUAGE plpgsql;
 
 
 --Function to insert in purchase_order_details
+DROP FUNCTION IF EXISTS wms.insert_purchase_order_details(INTEGER, INTEGER, INTEGER, INTEGER, INTEGER, DECIMAL, DECIMAL, DECIMAL, DECIMAL, DECIMAL, VARCHAR, VARCHAR, INTEGER);
+DROP FUNCTION IF EXISTS wms.insert_purchase_order_details(INTEGER, INTEGER, INTEGER, INTEGER, INTEGER, DECIMAL, DECIMAL, DECIMAL, DECIMAL, DECIMAL, VARCHAR, INTEGER);
+DROP FUNCTION IF EXISTS wms.update_purchase_order_details(INTEGER, INTEGER, INTEGER, INTEGER, INTEGER, INTEGER, DECIMAL, DECIMAL, DECIMAL, DECIMAL, DECIMAL, VARCHAR, VARCHAR, INTEGER);
+DROP FUNCTION IF EXISTS wms.update_purchase_order_details(INTEGER, INTEGER, INTEGER, INTEGER, INTEGER, INTEGER, DECIMAL, DECIMAL, DECIMAL, DECIMAL, VARCHAR, INTEGER);
 CREATE OR REPLACE FUNCTION wms.insert_purchase_order_details(
     header_id INTEGER,
     item_id INTEGER,
@@ -1187,8 +1193,6 @@ CREATE OR REPLACE FUNCTION wms.insert_purchase_order_details(
     eqty DECIMAL(15,3),
     pqty DECIMAL(15,3),
     amount DECIMAL(15,2),
-    iqty DECIMAL(15,3),
-    status VARCHAR(255),
     remarks VARCHAR(255),
     current_user_id INTEGER
 )RETURNS INT AS $$
@@ -1234,16 +1238,16 @@ BEGIN
     INSERT INTO wms.purchase_order_details(
         header_id, entry_no, row_no,
         item_id, euom, puom, quom,
-        rate_per_pc, eqty, pqty, amount, iqty,
+        rate_per_pc, eqty, pqty, amount,
         hsn_id, cgst, sgst, igst, utgst,
-        status, remarks, lub
+        remarks, lub
     )
     VALUES (
         header_id, _entry_no, _row_no,
         item_id, euom, puom, quom,
-        rate_per_pc, eqty, pqty, amount, iqty,
+        rate_per_pc, eqty, pqty, amount,
         _hsn_id, COALESCE(_cgst, 0), COALESCE(_sgst, 0), COALESCE(_igst, 0), COALESCE(_utgst, 0),
-        status, remarks, current_user_id
+        remarks, current_user_id
     )
     RETURNING id INTO new_purchase_details_id;
 
@@ -1263,8 +1267,6 @@ CREATE OR REPLACE FUNCTION wms.update_purchase_order_details(
     eqty DECIMAL(15,3),
     pqty DECIMAL(15,3),
     amount DECIMAL(15,2),
-    iqty DECIMAL(15,3),
-    status VARCHAR(255),
     remarks VARCHAR(255),
     current_user_id INTEGER
 )RETURNS INT AS $$
@@ -1279,8 +1281,6 @@ BEGIN
         eqty = eqty,
         pqty = pqty,
         amount = amount,
-        iqty = iqty,
-        status = status,
         remarks = remarks,
         lub = current_user_id,
         lua = NOW()
@@ -1320,12 +1320,14 @@ $$ LANGUAGE plpgsql;
 ---------------------------** Inward Header **---------------------------
 
 -- Function to insert in inward_header
+DROP FUNCTION IF EXISTS wms.insert_inward_header(DATE, INTEGER, TEXT, VARCHAR, DATE, VARCHAR, INTEGER);
 CREATE OR REPLACE FUNCTION wms.insert_inward_header(
     p_entry_dt DATE,
     p_vendor_id INTEGER,
     p_po_ids TEXT,
     p_invoice_no VARCHAR(100),
     p_invoice_dt DATE,
+    p_status INTEGER,
     p_remarks VARCHAR(255),
     p_current_user_id INTEGER
 ) RETURNS TABLE (id INTEGER, entry_no VARCHAR) AS $$
@@ -1352,8 +1354,8 @@ BEGIN
     v_new_no := v_max + 1;
     v_entry_no := 'INW' || LPAD(v_new_no::TEXT, 6, '0');
 
-    INSERT INTO wms.inward_header(entry_no, entry_dt, vendor_id, po_ids, invoice_no, invoice_dt, remarks, lub, status)
-    VALUES (v_entry_no, p_entry_dt, p_vendor_id, p_po_ids, p_invoice_no, p_invoice_dt, p_remarks, p_current_user_id, 'Draft')
+    INSERT INTO wms.inward_header(entry_no, entry_dt, vendor_id, po_ids, invoice_no, invoice_dt, status, remarks, lub)
+    VALUES (v_entry_no, p_entry_dt, p_vendor_id, p_po_ids, p_invoice_no, p_invoice_dt, p_status, p_remarks, p_current_user_id)
     RETURNING wms.inward_header.id, wms.inward_header.entry_no INTO v_new_id, v_entry_no;
 
     RETURN QUERY SELECT v_new_id, v_entry_no;
@@ -1368,12 +1370,11 @@ CREATE OR REPLACE FUNCTION wms.update_inward_header(
     p_po_ids TEXT,
     p_invoice_no VARCHAR(100),
     p_invoice_dt DATE,
-    p_status VARCHAR(50),
+    p_status INTEGER,
     p_remarks VARCHAR(255),
     p_current_user_id INTEGER
 ) RETURNS INTEGER AS $$
 BEGIN
-    -- Update header fields. entry_no is immutable and is NOT changed here.
     UPDATE wms.inward_header
     SET entry_dt = p_entry_dt,
         vendor_id = p_vendor_id,
@@ -1402,7 +1403,7 @@ BEGIN
     END IF;
 
     -- Do not allow deletion of processed inwards
-    IF EXISTS (SELECT 1 FROM wms.inward_header WHERE id = p_id AND status = 'Processed') THEN
+    IF EXISTS (SELECT 1 FROM wms.inward_header WHERE id = p_id AND status = 20) THEN
         RAISE EXCEPTION 'Cannot delete Inward %: already Processed', p_id;
     END IF;
 
@@ -1461,7 +1462,7 @@ BEGIN
     END IF;
 
     -- Do not allow inserting details into a processed inward
-    IF EXISTS (SELECT 1 FROM wms.inward_header WHERE id = p_header_id AND status = 'Processed') THEN
+    IF EXISTS (SELECT 1 FROM wms.inward_header WHERE id = p_header_id AND status = 20) THEN
         RAISE EXCEPTION 'Cannot add details to Processed Inward %', p_header_id;
     END IF;
 
@@ -1530,7 +1531,7 @@ BEGIN
     END IF;
 
     -- Do not allow updates to details of a processed inward
-    IF EXISTS (SELECT 1 FROM wms.inward_header WHERE id = p_header_id AND status = 'Processed') THEN
+    IF EXISTS (SELECT 1 FROM wms.inward_header WHERE id = p_header_id AND status = 20) THEN
         RAISE EXCEPTION 'Cannot update details for Processed Inward %', p_header_id;
     END IF;
 
@@ -1600,13 +1601,13 @@ BEGIN
     PERFORM pg_advisory_xact_lock(_lock_key);
 
     -- Validate header exists and is Draft
-    IF NOT EXISTS (SELECT 1 FROM wms.inward_header WHERE id = p_header_id AND status = 'Draft' AND is_active = true) THEN
+    IF NOT EXISTS (SELECT 1 FROM wms.inward_header WHERE id = p_header_id AND status = 0 AND is_active = true) THEN
         RAISE EXCEPTION 'Inward % not found or not in Draft status', p_header_id;
     END IF;
 
     -- Mark header as Processed (idempotency guard)
     UPDATE wms.inward_header
-    SET status = 'Processed', lub = p_current_user_id, lua = NOW()
+    SET status = 20, lub = p_current_user_id, lua = NOW()
     WHERE id = p_header_id;
 
     -- Loop through active details and upsert stock
@@ -1633,7 +1634,15 @@ BEGIN
         -- Update PO detail iqty if linked and collect PO header ids for completion check
         IF _detail.po_detail_id IS NOT NULL THEN
             UPDATE wms.purchase_order_details
-            SET iqty = COALESCE(iqty,0) + COALESCE(_detail.eqty,0),
+            SET iqty = (
+                SELECT COALESCE(SUM(id2.eqty), 0)
+                FROM wms.inward_details id2
+                JOIN wms.inward_header ih ON ih.id = id2.header_id
+                WHERE id2.po_detail_id = _detail.po_detail_id
+                AND id2.is_active = true
+                AND ih.status = 20
+                AND ih.is_active = true
+            ),
                 lub = p_current_user_id,
                 lua = NOW()
             WHERE id = _detail.po_detail_id
@@ -1658,8 +1667,12 @@ BEGIN
 
             IF _all_completed THEN
                 UPDATE wms.purchase_order_header
-                SET status = 'Completed', lub = p_current_user_id, lua = NOW()
+                SET status = 20, lub = p_current_user_id, lua = NOW()
                 WHERE id = _po_header_id;
+            ELSIF NOT _all_completed THEN
+                UPDATE wms.purchase_order_header
+                SET status = GREATEST(status, 10), lub = p_current_user_id, lua = NOW()
+                WHERE id = _po_header_id AND status < 20;
             END IF;
         END LOOP;
     END IF;
