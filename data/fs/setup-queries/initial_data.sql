@@ -1,11 +1,29 @@
 INSERT INTO administration.user (username, email, first_name, last_name, password, reports_to, lub) VALUES
-('admin', 'LQrGq@example.com', 'Admin', 'Admin', 'admin', 0, 1);
+('admin',       'admin@example.com',       'Admin',   'User',   'admin',   0, 1),
+('picker1',     'picker1@example.com',     'Ravi',    'Kumar',  'picker1', 0, 1),
+('picker2',     'picker2@example.com',     'Suresh',  'Mehta',  'picker2', 0, 1),
+('picker3',     'picker3@example.com',     'Arjun',   'Singh',  'picker3', 0, 1),
+('picker4',     'picker4@example.com',     'Deepak',  'Verma',  'picker4', 0, 1),
+('delivery1',   'delivery1@example.com',   'Ramesh',  'Yadav',  'delivery1', 0, 1),
+('delivery2',   'delivery2@example.com',   'Mohan',   'Gupta',  'delivery2', 0, 1),
+('delivery3',   'delivery3@example.com',   'Vikram',  'Sharma', 'delivery3', 0, 1),
+('delivery4',   'delivery4@example.com',   'Sanjay',  'Patil',  'delivery4', 0, 1);
 
 INSERT INTO administration.role (name, descr, lub) VALUES
-('super_admin', 'desc', 1);
+('super_admin',         'Full system access',                   1),
+('picker',              'Warehouse picker — mobile app access', 1),
+('delivery_personnel',  'Delivery driver — mobile app access',  1);
 
 INSERT INTO administration.user_role (user_id, role_id, lub) VALUES
-(1, 1, 1);
+(1, 1, 1),  -- admin → super_admin
+(2, 2, 1),  -- picker1 → picker
+(3, 2, 1),  -- picker2 → picker
+(4, 2, 1),  -- picker3 → picker
+(5, 2, 1),  -- picker4 → picker
+(6, 3, 1),  -- delivery1 → delivery_personnel
+(7, 3, 1),  -- delivery2 → delivery_personnel
+(8, 3, 1),  -- delivery3 → delivery_personnel
+(9, 3, 1);  -- delivery4 → delivery_personnel
 
 INSERT INTO administration.resource (id, name, list_config_file, parent_id, lub) VALUES
 (1, 'Main Menu', NULL, 0, 1),
@@ -59,8 +77,17 @@ INSERT INTO administration.resource (id, name, list_config_file, parent_id, lub)
 (103, 'Putaway', 'list-putaways', 5, 1),
 (104, 'Purchase Return', 'list-purchase-returns', 5, 1),
 -- 101 - 110 are for Purchase.
-(111, 'Transport', 'list-transports', 3, 1)
+(111, 'Transport', 'list-transports', 3, 1),
+-- Mobile app resources
+(7, 'Mobile', NULL, 1, 1),
+(120, 'Mobile Picker',   'mobile-dispatch-list',          7, 1),
+(121, 'Mobile Delivery', 'mobile-dispatch-delivery-list', 7, 1)
 ;
+
+-- Claims: picker role → mobile_picker resource; delivery_personnel → mobile_delivery resource
+INSERT INTO administration.claim (role_id, resource_id, access_type_ids, access_level_id, lub) VALUES
+(2, 120, 'ADD,EDIT,READ', 'GLOBAL', 1),  -- picker → mobile-dispatch-list
+(3, 121, 'ADD,EDIT,READ', 'GLOBAL', 1);  -- delivery_personnel → mobile-dispatch-delivery-list
 
 INSERT INTO wms.status_code (entity, code, label) VALUES
 -- Purchase Order
@@ -80,7 +107,7 @@ INSERT INTO wms.status_code (entity, code, label) VALUES
 -- Picking List
 ('PL',     0,  'Draft'),
 ('PL',     10, 'Assigned'),
-('PL',     20, 'Dispatched'),
+('PL',     20, 'Picked'),
 ('PL',     50, 'Issue Raised');
 
 INSERT INTO wms.country (name, code, lub) VALUES

@@ -46,9 +46,12 @@ sections:
           (SELECT string_agg(soh.entry_no, ',' ORDER BY soh.id)
            FROM wms.sales_order_header soh
            WHERE soh.id = ANY(string_to_array(h.so_ids, ',')::int[])) as so_entries,
-          h.status, h.remarks
+          h.picker_id, TRIM(CONCAT(u.first_name, ' ', u.last_name)) as picker_name,
+          h.pick_dt, h.status, sc.label as status_label, h.remarks
         FROM wms.picking_list_header h
         LEFT JOIN wms.party p ON h.party_id = p.id
+        LEFT JOIN administration.user u ON h.picker_id = u.id
+        LEFT JOIN wms.status_code sc ON sc.entity = 'PL' AND sc.code = h.status
         WHERE h.id = $1
       payload:
         - _context.id
@@ -82,20 +85,24 @@ sections:
         queryInfo:
           returnType: SINGLE_ROW
           query:
-            ADD: SELECT * FROM wms.insert_picking_list_header($1, $2, $3, $4, $5)
-            EDIT: SELECT wms.update_picking_list_header($1, $2, $3, $4, $5, $6) as id
+            ADD: SELECT * FROM wms.insert_picking_list_header($1, $2, $3, $4, $5, $6, $7)
+            EDIT: SELECT wms.update_picking_list_header($1, $2, $3, $4, $5, $6, $7, $8) as id
           payload:
             ADD:
               - picking_list_header.entry_dt
               - picking_list_header.party_id
               - picking_list_header.so_ids
               - picking_list_header.remarks
+              - picking_list_header.picker_id
+              - picking_list_header.pick_dt
             EDIT:
               - id
               - picking_list_header.entry_dt
               - picking_list_header.party_id
               - picking_list_header.so_ids
               - picking_list_header.remarks
+              - picking_list_header.picker_id
+              - picking_list_header.pick_dt
           contextParams:
             - current_user_id
           path:
@@ -116,7 +123,7 @@ sections:
         icon: CheckCircle
         variant: primary
         actionType: EXECUTE_QUERY
-        condition: status === 'Draft'
+        condition: status === 0 || status === 10
         confirmationRequired: true
         confirmationMessage: "This will confirm the picking list. Continue?"
         queryInfo:
@@ -160,8 +167,16 @@ sections:
       - columns:
           - field: party_id
             span: 6
-          - field: so_ids
+          - field: status_label
             span: 6
+      - columns:
+          - field: picker_id
+            span: 6
+          - field: pick_dt
+            span: 6
+      - columns:
+          - field: so_ids
+            span: 12
       - columns:
           - field: from_dt
             span: 6
@@ -211,20 +226,17 @@ sections:
       - name: from_dt
         label: From Date
         type: DATE
-        readonly:
-          - VIEW
-          - EDIT
+        visible:
+          - ADD
       - name: to_dt
         label: To Date
         type: DATE
-        readonly:
-          - VIEW
-          - EDIT
+        visible:
+          - ADD
       - name: so_ids
         label: Sales Orders
         type: SELECT
         required: true
-        multi: true
         readonly:
           - VIEW
           - EDIT
@@ -257,7 +269,7 @@ sections:
               - - from_dt
             handler: filterByDependency
             filters:
-              - targetParam: entry_dt
+              - targetParam: from_dt
                 targetIndex: 0
                 operator: GREATER_THAN_OR_EQUAL
             conditions:
@@ -268,13 +280,36 @@ sections:
               - - to_dt
             handler: filterByDependency
             filters:
-              - targetParam: entry_dt
+              - targetParam: to_dt
                 targetIndex: 0
                 operator: LESS_THAN_OR_EQUAL
             conditions:
               - operator: IS_NOT_NIL
                 indices:
                   - 0
+      - name: picker_id
+        label: Picker
+        type: SELECT
+        readonly:
+          - VIEW
+        selectConfig:
+          resource: list-pickers
+          displayField: picker_name
+          selectHandler: converter
+          currentSelection:
+            - key: picker_id
+              as: id
+          selectParser: converter
+          fields_to_extract:
+            - key: id
+              as: picker_id
+            - key: full_name
+              as: picker_name
+      - name: pick_dt
+        label: Pick Date
+        type: DATE
+        readonly:
+          - VIEW
       - name: remarks
         label: Remarks
         type: TEXTAREA
@@ -282,15 +317,24 @@ sections:
           - VIEW
       - name: status
         label: Status
-        type: TEXT
+        type: NUMBER
         visible: false
+      - name: status_label
+        label: Status
+        type: TEXT
+        readonly: true
 
   - sectionType: TABLE
     sectionName: picking_list_items
     label: Line Items
     disabled:
-      condition: isEmpty
-      field: id
+      targets:
+        - - picking_list_header
+          - id
+      conditions:
+        - operator: IS_NIL
+          indices:
+            - 0
     queryInfo:
       returnType: MULTIPLE_ROWS
       query: |

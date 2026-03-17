@@ -3167,6 +3167,8 @@ CREATE OR REPLACE FUNCTION wms.insert_picking_list_header(
     _party_id INTEGER,
     _so_ids TEXT,
     _remarks VARCHAR(255),
+    _picker_id INTEGER,
+    _pick_dt DATE,
     _current_user_id INTEGER
 ) RETURNS TABLE (id INTEGER, entry_no VARCHAR) AS $$
 DECLARE
@@ -3174,8 +3176,11 @@ DECLARE
     v_new_no INTEGER;
     v_new_id INTEGER;
     v_entry_no VARCHAR(50);
+    v_status INTEGER;
 BEGIN
     PERFORM pg_advisory_xact_lock('wms.picking_list_header');
+
+    v_status := CASE WHEN _picker_id IS NOT NULL AND _pick_dt IS NOT NULL THEN 10 ELSE 0 END;
 
     -- Compute numeric part robustly by stripping non-digits and taking max
     SELECT COALESCE(
@@ -3190,10 +3195,10 @@ BEGIN
     v_entry_no := 'PL' || LPAD(v_new_no::TEXT, 6, '0');
 
     INSERT INTO wms.picking_list_header (
-        entry_no, entry_dt, party_id, so_ids, remarks, status, lub
+        entry_no, entry_dt, party_id, so_ids, remarks, picker_id, pick_dt, status, lub
     )
     VALUES (
-        v_entry_no, _entry_dt, _party_id, _so_ids, _remarks, 'Draft', _current_user_id
+        v_entry_no, _entry_dt, _party_id, _so_ids, _remarks, _picker_id, _pick_dt, v_status, _current_user_id
     )
     RETURNING wms.picking_list_header.id, wms.picking_list_header.entry_no INTO v_new_id, v_entry_no;
 
@@ -3208,19 +3213,28 @@ CREATE OR REPLACE FUNCTION wms.update_picking_list_header(
     _party_id INTEGER,
     _so_ids TEXT,
     _remarks VARCHAR(255),
+    _picker_id INTEGER,
+    _pick_dt DATE,
     _current_user_id INTEGER
 ) RETURNS INTEGER AS $$
 BEGIN
     UPDATE wms.picking_list_header
-    SET 
+    SET
         entry_dt = _entry_dt,
         party_id = _party_id,
         so_ids = _so_ids,
         remarks = _remarks,
+        picker_id = _picker_id,
+        pick_dt = _pick_dt,
+        status = CASE
+            WHEN status IN (0, 10) THEN
+                CASE WHEN _picker_id IS NOT NULL AND _pick_dt IS NOT NULL THEN 10 ELSE 0 END
+            ELSE status
+        END,
         lub = _current_user_id,
         lua = NOW()
     WHERE id = _id;
-    
+
     RETURN _id;
 END;
 $$ LANGUAGE plpgsql;
@@ -3351,17 +3365,17 @@ CREATE OR REPLACE FUNCTION wms.confirm_picking_list(
     _current_user_id INTEGER
 ) RETURNS INTEGER AS $$
 DECLARE
-    _status VARCHAR(50);
+    _status INTEGER;
 BEGIN
     SELECT status INTO _status FROM wms.picking_list_header WHERE id = _id;
-    
-    IF _status != 'Draft' THEN
-        RAISE EXCEPTION 'Only Draft picking lists can be confirmed.';
+
+    IF _status NOT IN (0, 10) THEN
+        RAISE EXCEPTION 'Only Draft or Assigned picking lists can be confirmed.';
     END IF;
 
     -- Update details status
     UPDATE wms.picking_list_details
-    SET 
+    SET
         status = 'Picked',
         picked_qty = qty,
         lub = _current_user_id,
@@ -3370,8 +3384,8 @@ BEGIN
 
     -- Update header status
     UPDATE wms.picking_list_header
-    SET 
-        status = 'Picked',
+    SET
+        status = 20,
         lub = _current_user_id,
         lua = NOW()
     WHERE id = _id;
