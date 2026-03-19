@@ -66,7 +66,7 @@ export default class AuthService extends BaseService {
         await this._cache.saveData(`user_access_level-${userId}`, `${row.resource_id}:${row.access_level_id}`);
         await this._cache.saveSet(
           `user_access_type-${userId}`,
-          _map(accessTypeIds, (accessTypeId) => `${row.resource_id}:${accessTypeId}`)
+          _map(accessTypeIds, (accessTypeId) => `${row.resource_id}-${accessTypeId}`)
         );
       });
     }

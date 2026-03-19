@@ -1,13 +1,13 @@
 INSERT INTO administration.user (username, email, first_name, last_name, password, reports_to, lub) VALUES
-('admin',       'admin@example.com',       'Admin',   'User',   'admin',   0, 1),
-('picker1',     'picker1@example.com',     'Ravi',    'Kumar',  'picker1', 0, 1),
-('picker2',     'picker2@example.com',     'Suresh',  'Mehta',  'picker2', 0, 1),
-('picker3',     'picker3@example.com',     'Arjun',   'Singh',  'picker3', 0, 1),
-('picker4',     'picker4@example.com',     'Deepak',  'Verma',  'picker4', 0, 1),
-('delivery1',   'delivery1@example.com',   'Ramesh',  'Yadav',  'delivery1', 0, 1),
-('delivery2',   'delivery2@example.com',   'Mohan',   'Gupta',  'delivery2', 0, 1),
-('delivery3',   'delivery3@example.com',   'Vikram',  'Sharma', 'delivery3', 0, 1),
-('delivery4',   'delivery4@example.com',   'Sanjay',  'Patil',  'delivery4', 0, 1);
+('admin',     'admin@example.com',     'Admin',  'User',   'admin',     0, 1),
+('picker1',   'picker1@example.com',   'Ravi',   'Kumar',  '$2b$10$paRg2t.YSff9..ms/5HAGu2jOQyPvyffISK1APoqlkarMoUhPD1xy', 0, 1),
+('picker2',   'picker2@example.com',   'Suresh', 'Mehta',  '$2b$10$5KBiawWtflm7OwiYtZH8tO0Qm3ckX5Wmo.mZA/y4ZeCo2OcUfJVWe', 0, 1),
+('picker3',   'picker3@example.com',   'Arjun',  'Singh',  '$2b$10$u3Vcxns7kEt651leDZCaBeGYSVQINZ6Zv30JUJhWaIC0WQNTi407y', 0, 1),
+('picker4',   'picker4@example.com',   'Deepak', 'Verma',  '$2b$10$NnRyPYa9Jt50URAjh.HXoeGGrKlyPN0PO7WlfspErlKsiG27RPzj2', 0, 1),
+('delivery1', 'delivery1@example.com', 'Ramesh', 'Yadav',  '$2b$10$e6RwEaAvNQunv8KQj2n2T.WmzXr4nUlqzcI8ZCNc7a4fKn7/lq7/C', 0, 1),
+('delivery2', 'delivery2@example.com', 'Mohan',  'Gupta',  '$2b$10$n4DhOHXpzWebJiLGkJwqg.f7WIMTI4V8I5.zCXhSQ2GWJQoQRqNZe', 0, 1),
+('delivery3', 'delivery3@example.com', 'Vikram', 'Sharma', '$2b$10$85bWrER4dWkkaJtR1HfZz.8jaUb.40lLsSw.RT05wtiraA7xwdQt6', 0, 1),
+('delivery4', 'delivery4@example.com', 'Sanjay', 'Patil',  '$2b$10$iK9TfiMjJmC8siWRWI8L..TbeuD0DvyCFzJivPDJCW3zFd6oH1YWm', 0, 1);
 
 INSERT INTO administration.role (name, descr, lub) VALUES
 ('super_admin',         'Full system access',                   1),
