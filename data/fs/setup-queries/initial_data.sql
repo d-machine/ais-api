@@ -84,6 +84,9 @@ INSERT INTO administration.resource (id, name, list_config_file, parent_id, lub)
 (121, 'Mobile Delivery', 'mobile-dispatch-delivery-list', 7, 1)
 ;
 
+-- Mark mobile resources
+UPDATE administration.resource SET is_mobile = true WHERE id IN (120, 121);
+
 -- Claims: picker role → mobile_picker resource; delivery_personnel → mobile_delivery resource
 INSERT INTO administration.claim (role_id, resource_id, access_type_ids, access_level_id, lub) VALUES
 (2, 120, 'ADD,EDIT,READ', 'GLOBAL', 1),  -- picker → mobile-dispatch-list

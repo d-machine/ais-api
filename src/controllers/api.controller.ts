@@ -5,7 +5,15 @@ export default class ApiController {
   async getMenu(c: Context) {
     try {
       const menuService = new ApiService();
-      const menu = await menuService.getMenu(c.get("userId"));
+      const userId = c.get("userId");
+      const body = await c.req.json().catch(() => ({})) as Record<string, unknown>;
+
+      if (body.isMobile === true) {
+        const result = await menuService.getMobilePages(userId);
+        return c.json(result);
+      }
+
+      const menu = await menuService.getMenu(userId);
       return c.json(menu);
     } catch (error) {
       console.error("Menu error:", error);

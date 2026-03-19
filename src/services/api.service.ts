@@ -197,6 +197,25 @@ export default class ApiService extends BaseService {
     }
   }
 
+  public async getMobilePages(userId: number): Promise<{ pages: any[]; message?: string }> {
+    const mobileResources = await this.executeMultipleRowsQuery(
+      "SELECT * FROM administration.resource WHERE is_mobile = true AND is_active = true ORDER BY id ASC",
+      [],
+    );
+
+    const accessible: any[] = [];
+    for (const resource of mobileResources) {
+      const hasAccess = await this.checkIfUserHasAccessToAction(userId, `${resource.id}-READ`);
+      if (hasAccess) accessible.push(resource);
+    }
+
+    if (accessible.length === 0) {
+      return { pages: [], message: "Please ask your admin to provide access." };
+    }
+
+    return { pages: accessible };
+  }
+
   public async getMenu(userId: number) {
     const fullMenu = await this.executeMultipleRowsQuery(
       "SELECT * FROM administration.resource",

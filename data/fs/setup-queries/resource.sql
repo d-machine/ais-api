@@ -13,9 +13,13 @@ CREATE TABLE IF NOT EXISTS administration.resource (
     list_config_file VARCHAR(255),
     parent_id int NOT NULL,
     is_active boolean not null default true,
+    is_mobile boolean not null default false,
     lub int REFERENCES administration.user(id),
     lua TIMESTAMP NOT NULL DEFAULT NOW()
 );
+
+-- Migration for existing databases
+ALTER TABLE administration.resource ADD COLUMN IF NOT EXISTS is_mobile BOOLEAN NOT NULL DEFAULT false;
 
 -- Create history table
 CREATE TABLE IF NOT EXISTS administration.resource_history (
