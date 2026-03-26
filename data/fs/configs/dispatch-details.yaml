@@ -3,9 +3,6 @@ configName: dispatch-details
 title: Dispatch Details
 
 applicableActions:
-  ADD:
-    - FINISH
-    - CANCEL
   EDIT:
     - FINISH
     - CANCEL
@@ -42,9 +39,11 @@ sections:
       query: |
         SELECT
           h.id, h.entry_no, h.entry_dt, h.party_id, p.name as party_name,
-          h.pl_ids, h.vehicle_no, h.driver_name, h.status, h.remarks
+          h.pl_ids, plh.entry_no as pl_entry_no,
+          h.vehicle_no, h.driver_name, h.status, h.remarks
         FROM wms.dispatch_header h
         JOIN wms.party p ON h.party_id = p.id
+        LEFT JOIN wms.picking_list_header plh ON plh.id = h.pl_ids::integer
         WHERE h.id = $1
       payload:
         - _context.id
@@ -57,12 +56,8 @@ sections:
         - 0
 
     applicableActions:
-      ADD:
-        - SAVE
-        - CANCEL
       EDIT:
         - SAVE
-        - PROCESS
         - CANCEL
       VIEW:
         - EDIT
@@ -105,12 +100,7 @@ sections:
             - actionConfig
             - SAVE
         onSuccess:
-          ADD:
-            callback: SAVE_AND_GO_TO_NEXT
-          EDIT:
-            callback: HANDLE_FORM_ACTION
-            params:
-              action: FINISH
+          callback: SAVE_AND_GO_TO_NEXT
         onFailure: showErrorSnackbar
       PROCESS:
         label: Process Dispatch
@@ -121,7 +111,7 @@ sections:
         confirmationRequired: true
         confirmationMessage: "Are you sure you want to process this dispatch? This will deduct stock and update Sales Orders."
         queryInfo:
-          query: SELECT wms.process_dispatch($1, $2) as id
+          query: SELECT wms.process_picked_dispatch($1, $2) as id
           payload:
             - id
           contextParams:
@@ -160,7 +150,7 @@ sections:
       - columns:
           - field: party_id
             span: 6
-          - field: pl_ids
+          - field: pl_entry_no
             span: 6
       - columns:
           - field: vehicle_no
@@ -209,27 +199,13 @@ sections:
             - key: party_name
               as: party_name
       - name: pl_ids
-        label: Picking Lists
-        type: SELECT
-        required: true
-        multi: true
-        readonly:
-          - VIEW
-          - EDIT
-        selectConfig:
-          resource: list-picked-lists-by-party
-          displayField: entry_no
-          filtersData:
-            - field: party_id
-              value: "${party_id}"
-          selectHandler: concatinator
-          currentSelection:
-            - key: pl_ids
-              as: id
-          selectParser: splitter
-          fields_to_extract:
-            - key: id
-              as: pl_ids
+        label: Picking List ID
+        type: NUMBER
+        visible: false
+      - name: pl_entry_no
+        label: Picking List
+        type: TEXT
+        readonly: true
       - name: vehicle_no
         label: Vehicle No
         type: TEXT
@@ -251,74 +227,134 @@ sections:
         visible: false
 
   - sectionType: TABLE
-    sectionName: Dispatch Items
-    label: Picked Items
+    sectionName: dispatch_items
+    label: Line Items
     disabled:
-      condition: isEmpty
-      field: id
+      targets:
+        - - dispatch_header
+          - id
+      conditions:
+        - operator: IS_NIL
+          indices:
+            - 0
     queryInfo:
       returnType: MULTIPLE_ROWS
       query: |
         SELECT
-          d.id as picking_detail_id,
+          $1::integer as dispatch_id,
+          sod.id as so_detail_id,
+          sod.item_id as material_id,
           m.name as material_name,
-          h.hsn_code,
-          r.code as rack_code,
-          d.expiry_dt,
-          d.qty as picked_qty,
-          COALESCE(dd.qty, 0) as dispatched_qty,
-          CASE
-            WHEN cp_s.code = client_s.code THEN
-              CASE WHEN client_s.state_type = 'UT' THEN COALESCE(dd.cgst, 0) + COALESCE(dd.utgst, 0)
-                   ELSE COALESCE(dd.cgst, 0) + COALESCE(dd.sgst, 0) END
-            ELSE COALESCE(dd.igst, 0)
-          END AS total_gst_pct
-        FROM wms.picking_list_details d
-        JOIN wms.material m ON d.material_id = m.id
-        LEFT JOIN wms.hsn h ON m.hsn_id = h.id
-        LEFT JOIN wms.rack r ON d.rack_id = r.id
-        LEFT JOIN wms.dispatch_details dd ON dd.header_id = $1 AND dd.picking_detail_id = d.id AND dd.is_active = true
-        JOIN wms.dispatch_header dh ON dh.id = $1
-        JOIN wms.party p ON dh.party_id = p.id
-        JOIN wms.state cp_s ON p.state_id = cp_s.id
-        CROSS JOIN (
-          SELECT s.code, s.state_type
-          FROM wms.client_config cc
-          JOIN wms.state s ON s.id = cc.state_id
-          LIMIT 1
-        ) client_s
-        WHERE d.header_id = ANY(string_to_array((SELECT pl_ids FROM wms.dispatch_header WHERE id = $1), ',')::int[])
-        AND d.status = 'Picked'
-        AND d.is_active = true
+          soh.entry_no as so_entry_no,
+          sod.eqty as ordered_qty,
+          COALESCE(psa.allocated_qty, 0) as allocated_qty,
+          COALESCE(dd_agg.dispatched_qty, 0) as dispatched_qty,
+          CASE WHEN COALESCE(dd_agg.dispatched_qty, 0) > 0 THEN 'DISPATCHED' ELSE 'PENDING' END as row_type
+        FROM wms.sales_order_details sod
+        JOIN wms.sales_order_header soh ON sod.header_id = soh.id
+        JOIN wms.material m ON sod.item_id = m.id
+        LEFT JOIN (
+          SELECT psa.so_detail_id, COALESCE(SUM(psa.qty), 0) as allocated_qty
+          FROM wms.picking_list_so_allocation psa
+          WHERE psa.header_id = (SELECT pl_ids::integer FROM wms.dispatch_header WHERE id = $1)
+            AND psa.is_active = true
+          GROUP BY psa.so_detail_id
+        ) psa ON psa.so_detail_id = sod.id
+        LEFT JOIN (
+          SELECT dd.material_id, COALESCE(SUM(dd.qty), 0) as dispatched_qty
+          FROM wms.dispatch_details dd
+          WHERE dd.header_id = $1 AND dd.is_active = true
+          GROUP BY dd.material_id
+        ) dd_agg ON dd_agg.material_id = sod.item_id
+        WHERE soh.id = ANY(
+          string_to_array(
+            (SELECT so_ids FROM wms.picking_list_header
+             WHERE id = (SELECT pl_ids::integer FROM wms.dispatch_header WHERE id = $1)),
+            ','
+          )::int[]
+        )
+        AND sod.is_active = true
+        ORDER BY soh.entry_no, m.name
       payload:
         - id
       path:
         - sections
         - 1
 
+    applicableActions:
+      EDIT:
+        - pick
+        - edit_pick
+        - view_allocation
+      VIEW:
+        - view_allocation
+
+    actionConfig:
+      pick:
+        label: Pick
+        icon: Plus
+        variant: primary
+        level: ROW
+        condition: row.row_type === 'PENDING'
+        actionType: DISPLAY_FORM
+        formConfig: dispatch-pick
+        mode: ADD
+        payload:
+          - dispatch_id
+          - material_id
+        onSuccess: refresh
+      edit_pick:
+        label: Edit Pick
+        icon: Edit
+        variant: primary
+        level: ROW
+        condition: row.row_type === 'DISPATCHED'
+        actionType: DISPLAY_FORM
+        formConfig: dispatch-pick
+        mode: EDIT
+        payload:
+          - dispatch_id
+          - material_id
+        onSuccess: refresh
+      view_allocation:
+        label: View
+        icon: Eye
+        variant: secondary
+        level: ROW
+        condition: row.row_type === 'DISPATCHED' || row.allocated_qty > 0
+        actionType: DISPLAY_FORM
+        formConfig: process-picking-allocation
+        mode: VIEW
+        payload:
+          - key: dispatch_id
+            as: header_id
+          - material_id
+          - key: allocated_qty
+            as: total_pending_qty
+          - key: so_detail_id
+            as: so_detail_ids
+
     columns:
+      - name: so_entry_no
+        label: SO No
+        visible: true
+        width: 120
       - name: material_name
         label: Material
+        visible: true
         width: 250
-      - name: hsn_code
-        label: HSN Code
-        width: 120
-      - name: rack_code
-        label: Rack
-        width: 120
-      - name: expiry_dt
-        label: Expiry
-        width: 120
-        dataType: date
-      - name: picked_qty
-        label: Picked
+      - name: ordered_qty
+        label: Ordered
+        visible: true
+        width: 100
+        align: right
+      - name: allocated_qty
+        label: Allocated
+        visible: true
         width: 100
         align: right
       - name: dispatched_qty
         label: Dispatched
+        visible: true
         width: 100
-        align: right
-      - name: total_gst_pct
-        label: GST %
-        width: 80
         align: right

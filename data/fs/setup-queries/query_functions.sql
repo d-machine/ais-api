@@ -3177,8 +3177,10 @@ DECLARE
     v_new_id INTEGER;
     v_entry_no VARCHAR(50);
     v_status INTEGER;
+    v_dispatch_max INTEGER;
+    v_dispatch_entry_no VARCHAR(50);
 BEGIN
-    PERFORM pg_advisory_xact_lock('wms.picking_list_header');
+    PERFORM pg_advisory_xact_lock(hashtext('wms.picking_list_header'));
 
     v_status := CASE WHEN _picker_id IS NOT NULL AND _pick_dt IS NOT NULL THEN 10 ELSE 0 END;
 
@@ -3201,6 +3203,24 @@ BEGIN
         v_entry_no, _entry_dt, _party_id, _so_ids, _remarks, _picker_id, _pick_dt, v_status, _current_user_id
     )
     RETURNING wms.picking_list_header.id, wms.picking_list_header.entry_no INTO v_new_id, v_entry_no;
+
+    -- Auto-create linked dispatch header
+    SELECT COALESCE(
+        MAX((REGEXP_REPLACE(d.entry_no, '[^0-9]', '', 'g'))::INT),
+        0
+    )
+    INTO v_dispatch_max
+    FROM wms.dispatch_header d
+    WHERE d.entry_no ~ '^DSP[0-9]+';
+
+    v_dispatch_entry_no := 'DSP' || LPAD((v_dispatch_max + 1)::TEXT, 6, '0');
+
+    INSERT INTO wms.dispatch_header (
+        entry_no, entry_dt, party_id, pl_ids, status, lub
+    )
+    VALUES (
+        v_dispatch_entry_no, _entry_dt, _party_id, v_new_id::TEXT, 'Draft', _current_user_id
+    );
 
     RETURN QUERY SELECT v_new_id, v_entry_no;
 END;
@@ -3254,10 +3274,10 @@ DECLARE
     _new_id INTEGER;
 BEGIN
     INSERT INTO wms.picking_list_details (
-        header_id, material_id, rack_id, expiry_dt, qty, picked_qty, status, lub
+        header_id, material_id, rack_id, expiry_dt, qty, picked_qty, lub
     )
     VALUES (
-        _header_id, _material_id, _rack_id, _expiry_dt, _qty, 0, 'Pending', _current_user_id
+        _header_id, _material_id, _rack_id, _expiry_dt, _qty, 0, _current_user_id
     )
     RETURNING id INTO _new_id;
     
@@ -3373,10 +3393,8 @@ BEGIN
         RAISE EXCEPTION 'Only Draft or Assigned picking lists can be confirmed.';
     END IF;
 
-    -- Update details status
     UPDATE wms.picking_list_details
     SET
-        status = 'Picked',
         picked_qty = qty,
         lub = _current_user_id,
         lua = NOW()
@@ -3538,7 +3556,6 @@ BEGIN
         FROM wms.picking_list_details pld
         JOIN wms.material m ON pld.material_id = m.id
         WHERE pld.header_id = ANY(string_to_array(_pl_ids, ',')::int[])
-          AND pld.status = 'Picked'
           AND pld.is_active = true;
     END IF;
 
@@ -3681,22 +3698,23 @@ CREATE OR REPLACE FUNCTION wms.save_manual_pick(
     _material_id INTEGER,
     _rack_id INTEGER,
     _expiry_dt DATE,
+    _batch_no VARCHAR(100),
     _qty DECIMAL(15,3)
 ) RETURNS VOID AS $$
 BEGIN
     -- 1. Delete existing records for this specific combination
-    DELETE FROM wms.picking_list_details 
-    WHERE header_id = _header_id 
-      AND material_id = _material_id 
-      AND rack_id = _rack_id 
+    DELETE FROM wms.picking_list_details
+    WHERE header_id = _header_id
+      AND material_id = _material_id
+      AND rack_id = _rack_id
       AND (expiry_dt = _expiry_dt OR (expiry_dt IS NULL AND _expiry_dt IS NULL))
       AND is_active = true;
 
     -- 2. Insert the new row
     INSERT INTO wms.picking_list_details (
-      header_id, material_id, rack_id, expiry_dt, qty, is_active, status, so_detail_ids
+      header_id, material_id, rack_id, expiry_dt, batch_no, qty, is_active, so_detail_ids
     ) VALUES (
-      _header_id, _material_id, _rack_id, _expiry_dt, _qty, true, 'Draft', ''
+      _header_id, _material_id, _rack_id, _expiry_dt, _batch_no, _qty, true, ''
     );
 
     -- 3. Trigger allocation
@@ -3767,5 +3785,182 @@ BEGIN
     SET is_active = false, lub = _current_user_id, lua = NOW()
     WHERE id = _id;
     RETURN _id;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Save a manual pick to dispatch_details (upsert by slot: dispatch+material+rack+expiry)
+CREATE OR REPLACE FUNCTION wms.save_dispatch_pick(
+    _dispatch_id     INTEGER,
+    _material_id     INTEGER,
+    _rack_id         INTEGER,
+    _expiry_dt       DATE,
+    _batch_no        VARCHAR(100),
+    _qty             DECIMAL(15,3),
+    _current_user_id INTEGER
+) RETURNS INTEGER AS $$
+DECLARE
+    _uom_id  INTEGER;
+    _hsn_id  INTEGER;
+    _cgst    DECIMAL(5,2);
+    _sgst    DECIMAL(5,2);
+    _igst    DECIMAL(5,2);
+    _utgst   DECIMAL(5,2);
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM wms.dispatch_header WHERE id = _dispatch_id AND status = 'Draft') THEN
+        RAISE EXCEPTION 'Only Draft dispatches can be updated.';
+    END IF;
+
+    -- Remove existing pick for the same slot
+    DELETE FROM wms.dispatch_details
+    WHERE header_id  = _dispatch_id
+      AND material_id = _material_id
+      AND rack_id     = _rack_id
+      AND (expiry_dt = _expiry_dt OR (expiry_dt IS NULL AND _expiry_dt IS NULL))
+      AND is_active   = true;
+
+    IF _qty > 0 THEN
+        SELECT uom_pc_id INTO _uom_id
+        FROM wms.material_ean
+        WHERE material_id = _material_id AND is_active = true
+        LIMIT 1;
+
+        SELECT m.hsn_id INTO _hsn_id FROM wms.material m WHERE m.id = _material_id;
+
+        SELECT h.cgst, h.sgst, h.igst, h.utgst
+        INTO _cgst, _sgst, _igst, _utgst
+        FROM wms.hsn h WHERE h.id = _hsn_id;
+
+        INSERT INTO wms.dispatch_details (
+            header_id, material_id, rack_id, expiry_dt, batch_no,
+            qty, uom_id, hsn_id, cgst, sgst, igst, utgst, lub
+        ) VALUES (
+            _dispatch_id, _material_id, _rack_id, _expiry_dt, _batch_no,
+            _qty, _uom_id, _hsn_id,
+            COALESCE(_cgst, 0), COALESCE(_sgst, 0), COALESCE(_igst, 0), COALESCE(_utgst, 0),
+            _current_user_id
+        );
+    END IF;
+
+    RETURN _dispatch_id;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Remove a manual pick from dispatch_details
+CREATE OR REPLACE FUNCTION wms.remove_dispatch_pick(
+    _dispatch_id INTEGER,
+    _material_id INTEGER,
+    _rack_id     INTEGER,
+    _expiry_dt   DATE
+) RETURNS INTEGER AS $$
+BEGIN
+    DELETE FROM wms.dispatch_details
+    WHERE header_id  = _dispatch_id
+      AND material_id = _material_id
+      AND rack_id     = _rack_id
+      AND (expiry_dt = _expiry_dt OR (expiry_dt IS NULL AND _expiry_dt IS NULL))
+      AND is_active   = true;
+
+    RETURN _dispatch_id;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Process a dispatch from its recorded picks (dispatch_details rows)
+-- Reduces stock, updates SO dqty, marks PL as Picked (20), marks dispatch as Dispatched
+CREATE OR REPLACE FUNCTION wms.process_picked_dispatch(
+    _dispatch_id     INTEGER,
+    _current_user_id INTEGER
+) RETURNS INTEGER AS $$
+DECLARE
+    _status   VARCHAR(50);
+    _pl_id    INTEGER;
+    _detail   RECORD;
+    _so_alloc RECORD;
+    _ean_id   INTEGER;
+BEGIN
+    SELECT status, pl_ids::integer INTO _status, _pl_id
+    FROM wms.dispatch_header WHERE id = _dispatch_id;
+
+    IF _status != 'Draft' THEN
+        RAISE EXCEPTION 'Only Draft dispatches can be processed.';
+    END IF;
+
+    IF NOT EXISTS (
+        SELECT 1 FROM wms.dispatch_details
+        WHERE header_id = _dispatch_id AND is_active = true
+    ) THEN
+        RAISE EXCEPTION 'No items picked. Cannot process an empty dispatch.';
+    END IF;
+
+    FOR _detail IN
+        SELECT material_id, rack_id, expiry_dt, batch_no, qty
+        FROM wms.dispatch_details
+        WHERE header_id = _dispatch_id AND is_active = true
+    LOOP
+        -- Look up ean_id for this material
+        SELECT id INTO _ean_id
+        FROM wms.material_ean
+        WHERE material_id = _detail.material_id AND is_active = true
+        LIMIT 1;
+
+        IF _ean_id IS NULL THEN
+            RAISE EXCEPTION 'No EAN found for material ID %', _detail.material_id;
+        END IF;
+
+        -- Reduce stock
+        PERFORM wms.reduce_stock(
+            _ean_id, _detail.rack_id,
+            _detail.qty, _detail.batch_no,
+            _current_user_id
+        );
+
+        -- Update SO dqty via picking_list_so_allocation
+        SELECT so_detail_id INTO _so_alloc
+        FROM wms.picking_list_so_allocation
+        WHERE header_id  = _pl_id
+          AND material_id = _detail.material_id
+          AND is_active   = true
+        LIMIT 1;
+
+        IF FOUND THEN
+            UPDATE wms.sales_order_details
+            SET dqty = COALESCE(dqty, 0) + _detail.qty
+            WHERE id = _so_alloc.so_detail_id;
+        END IF;
+    END LOOP;
+
+    -- Update SO status for each SO header affected by this dispatch
+    FOR _so_alloc IN
+        SELECT DISTINCT sod.header_id as so_header_id
+        FROM wms.picking_list_so_allocation psa
+        JOIN wms.sales_order_details sod ON sod.id = psa.so_detail_id
+        WHERE psa.header_id = _pl_id AND psa.is_active = true
+    LOOP
+        UPDATE wms.sales_order_header
+        SET status = CASE
+            WHEN (
+                SELECT SUM(eqty) FROM wms.sales_order_details
+                WHERE header_id = _so_alloc.so_header_id AND is_active = true
+            ) <= (
+                SELECT COALESCE(SUM(dqty), 0) FROM wms.sales_order_details
+                WHERE header_id = _so_alloc.so_header_id AND is_active = true
+            ) THEN 20
+            ELSE 10
+        END,
+        lub = _current_user_id,
+        lua = NOW()
+        WHERE id = _so_alloc.so_header_id;
+    END LOOP;
+
+    -- Mark picking list as Picked
+    UPDATE wms.picking_list_header
+    SET status = 20, lub = _current_user_id, lua = NOW()
+    WHERE id = _pl_id;
+
+    -- Mark dispatch as Dispatched
+    UPDATE wms.dispatch_header
+    SET status = 'Dispatched', lub = _current_user_id, lua = NOW()
+    WHERE id = _dispatch_id;
+
+    RETURN _dispatch_id;
 END;
 $$ LANGUAGE plpgsql;

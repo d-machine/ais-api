@@ -3,7 +3,10 @@ CREATE TABLE IF NOT EXISTS wms.dispatch_details (
     id SERIAL PRIMARY KEY,
     header_id INTEGER NOT NULL REFERENCES wms.dispatch_header(id),
     material_id INTEGER NOT NULL REFERENCES wms.material(id),
-    picking_detail_id INTEGER NOT NULL REFERENCES wms.picking_list_so_allocation(id),
+    picking_detail_id INTEGER REFERENCES wms.picking_list_so_allocation(id),
+    rack_id INTEGER REFERENCES wms.rack(id),
+    expiry_dt DATE,
+    batch_no VARCHAR(100),
     qty DECIMAL(15,3) NOT NULL,
     uom_id INTEGER REFERENCES wms.uom(id),
     hsn_id INTEGER REFERENCES wms.hsn(id),
@@ -23,6 +26,9 @@ CREATE TABLE IF NOT EXISTS wms.dispatch_details_history (
     header_id INTEGER,
     material_id INTEGER,
     picking_detail_id INTEGER,
+    rack_id INTEGER,
+    expiry_dt DATE,
+    batch_no VARCHAR(100),
     qty DECIMAL(15,3),
     uom_id INTEGER,
     hsn_id INTEGER,
@@ -42,22 +48,28 @@ RETURNS TRIGGER AS $$
 BEGIN
     IF (TG_OP = 'INSERT') THEN
         INSERT INTO wms.dispatch_details_history(
-            detail_id, header_id, material_id, picking_detail_id, qty, uom_id, hsn_id, cgst, sgst, igst, utgst, is_active, operation, operation_at, operation_by
+            detail_id, header_id, material_id, picking_detail_id, rack_id, expiry_dt, batch_no,
+            qty, uom_id, hsn_id, cgst, sgst, igst, utgst, is_active, operation, operation_at, operation_by
         ) VALUES (
-            NEW.id, NEW.header_id, NEW.material_id, NEW.picking_detail_id, NEW.qty, NEW.uom_id, NEW.hsn_id, NEW.cgst, NEW.sgst, NEW.igst, NEW.utgst, NEW.is_active, 'INSERT', NEW.lua, NEW.lub
+            NEW.id, NEW.header_id, NEW.material_id, NEW.picking_detail_id, NEW.rack_id, NEW.expiry_dt, NEW.batch_no,
+            NEW.qty, NEW.uom_id, NEW.hsn_id, NEW.cgst, NEW.sgst, NEW.igst, NEW.utgst, NEW.is_active, 'INSERT', NEW.lua, NEW.lub
         );
     ELSIF (TG_OP = 'UPDATE') THEN
         IF (OLD.is_active = true AND NEW.is_active = false) THEN
             INSERT INTO wms.dispatch_details_history(
-                detail_id, header_id, material_id, picking_detail_id, qty, uom_id, is_active, operation, operation_at, operation_by
+                detail_id, header_id, material_id, picking_detail_id, rack_id, expiry_dt, batch_no,
+                qty, uom_id, is_active, operation, operation_at, operation_by
             ) VALUES (
-                NEW.id, NEW.header_id, NEW.material_id, NEW.picking_detail_id, NEW.qty, NEW.uom_id, NEW.is_active, 'DELETE', NEW.lua, NEW.lub
+                NEW.id, NEW.header_id, NEW.material_id, NEW.picking_detail_id, NEW.rack_id, NEW.expiry_dt, NEW.batch_no,
+                NEW.qty, NEW.uom_id, NEW.is_active, 'DELETE', NEW.lua, NEW.lub
             );
         ELSIF (OLD.is_active = false AND NEW.is_active = true) THEN
             INSERT INTO wms.dispatch_details_history(
-                detail_id, header_id, material_id, picking_detail_id, qty, uom_id, is_active, operation, operation_at, operation_by
+                detail_id, header_id, material_id, picking_detail_id, rack_id, expiry_dt, batch_no,
+                qty, uom_id, is_active, operation, operation_at, operation_by
             ) VALUES (
-                NEW.id, NEW.header_id, NEW.material_id, NEW.picking_detail_id, NEW.qty, NEW.uom_id, NEW.is_active, 'INSERT', NEW.lua, NEW.lub
+                NEW.id, NEW.header_id, NEW.material_id, NEW.picking_detail_id, NEW.rack_id, NEW.expiry_dt, NEW.batch_no,
+                NEW.qty, NEW.uom_id, NEW.is_active, 'INSERT', NEW.lua, NEW.lub
             );
         END IF;
     END IF;

@@ -17,7 +17,7 @@ sections:
             h.delivery_dt,
             h.status
           FROM wms.sales_order_header h
-          WHERE h.status = 'Draft'
+          WHERE h.status = 0
             AND h.is_active = true
           ORDER BY h.entry_dt, h.entry_no
         ) as pending_sales_orders

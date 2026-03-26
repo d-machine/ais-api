@@ -1,0 +1,163 @@
+version: 1.0
+configName: dispatch-pick-list
+title: Pick Items
+
+applicableActions:
+  EDIT:
+    - CLOSE
+  VIEW:
+    - CLOSE
+
+actionConfig:
+  CLOSE:
+    visible: true
+    variant: secondary
+    label: Close
+    icon: X
+    closeAction: REFRESH
+
+sections:
+  - sectionType: TABLE
+    sectionName: pick_items
+    label: Items to Pick
+    queryInfo:
+      returnType: MULTIPLE_ROWS
+      query: |
+        SELECT
+          $1::integer as dispatch_id,
+          pld.material_id,
+          m.name as material_name,
+          pld.rack_id,
+          r.code as rack_code,
+          pld.expiry_dt,
+          pld.batch_no,
+          pld.qty as planned_qty,
+          COALESCE(dd.qty, 0) as picked_qty,
+          CASE WHEN dd.id IS NOT NULL THEN 'PICKED' ELSE 'PENDING' END as pick_status
+        FROM wms.picking_list_details pld
+        JOIN wms.material m ON pld.material_id = m.id
+        LEFT JOIN wms.rack r ON pld.rack_id = r.id
+        LEFT JOIN wms.dispatch_details dd
+          ON dd.header_id = $1
+             AND dd.material_id = pld.material_id
+             AND dd.rack_id = pld.rack_id
+             AND (dd.expiry_dt = pld.expiry_dt OR (dd.expiry_dt IS NULL AND pld.expiry_dt IS NULL))
+             AND dd.is_active = true
+        WHERE pld.header_id = (SELECT pl_ids::int FROM wms.dispatch_header WHERE id = $1)
+          AND pld.is_active = true
+        ORDER BY m.name, pld.expiry_dt
+      payload:
+        - _context.id
+      path:
+        - sections
+        - 0
+
+    applicableActions:
+      EDIT:
+        - PROCESS
+        - pick
+        - unpick
+
+    actionConfig:
+      PROCESS:
+        label: Process Dispatch
+        icon: Truck
+        variant: primary
+        level: HEADER
+        actionType: EXECUTE_QUERY
+        confirmationRequired: true
+        confirmationMessage: "This will reduce stock and update Sales Orders. Continue?"
+        queryInfo:
+          returnType: SCALAR
+          query: SELECT wms.process_picked_dispatch($1, $2) as id
+          payload:
+            - _context.id
+          contextParams:
+            - current_user_id
+          path:
+            - sections
+            - 0
+            - actionConfig
+            - PROCESS
+        onSuccess:
+          callback: HANDLE_FORM_ACTION
+          params:
+            action: CLOSE
+        onFailure: showErrorSnackbar
+      pick:
+        label: Pick
+        icon: Plus
+        variant: primary
+        level: ROW
+        condition: row.pick_status === 'PENDING'
+        actionType: DISPLAY_FORM
+        formConfig: dispatch-confirm-pick
+        mode: ADD
+        payload:
+          - dispatch_id
+          - material_id
+          - rack_id
+          - expiry_dt
+          - batch_no
+        onSuccess: refresh
+      unpick:
+        label: Remove
+        icon: X
+        variant: danger
+        level: ROW
+        condition: row.pick_status === 'PICKED'
+        confirmationRequired: true
+        confirmationMessage: "Remove this pick?"
+        actionType: EXECUTE_QUERY
+        queryInfo:
+          query: SELECT wms.remove_dispatch_pick($1, $2, $3, $4) as id
+          payload:
+            - dispatch_id
+            - material_id
+            - rack_id
+            - expiry_dt
+          path:
+            - sections
+            - 0
+            - actionConfig
+            - unpick
+        onSuccess: refresh
+
+    columns:
+      - name: dispatch_id
+        visible: false
+      - name: material_id
+        visible: false
+      - name: rack_id
+        visible: false
+      - name: material_name
+        label: Material
+        visible: true
+        width: 200
+      - name: rack_code
+        label: Rack
+        visible: true
+        width: 100
+      - name: expiry_dt
+        label: Expiry
+        visible: true
+        dataType: date
+        width: 120
+      - name: batch_no
+        label: Batch
+        visible: true
+        width: 120
+      - name: planned_qty
+        label: Planned
+        visible: true
+        width: 100
+        align: right
+      - name: picked_qty
+        label: Picked
+        visible: true
+        width: 100
+        align: right
+      - name: pick_status
+        label: Status
+        visible: true
+        width: 100

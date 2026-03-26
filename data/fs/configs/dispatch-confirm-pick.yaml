@@ -1,61 +1,25 @@
-configName: process-manual-pick
 version: 1.0
+configName: dispatch-confirm-pick
 title: Confirm Pick
 
 applicableActions:
-  ADD:
-    - FINISH
-    - CANCEL
-  VIEW:
-    - CLOSE
+  ADD: []
 
 actionConfig:
   FINISH:
     visible: false
     closeAction: REFRESH
-  CANCEL:
-    visible: false
-    label: Cancel
-    icon: X
   CLOSE:
-    visible: true
-    variant: secondary
-    label: Close
-    icon: X
+    visible: false
+    closeAction: CLOSE
 
 sections:
   - sectionType: FIELDS
-    sectionName: manual_pick
+    sectionName: confirm_pick
     label: Pick Details
-    queryInfo:
-      returnType: SINGLE_ROW
-      query: |
-        SELECT
-          $1::numeric as header_id,
-          $2::numeric as material_id,
-          m.name as material_name,
-          $3::numeric as rack_id,
-          $4 as expiry_dt,
-          $5 as batch_no,
-          $6::numeric as qty
-        FROM wms.material m
-        WHERE m.id = $2
-      payload:
-        - header_id
-        - material_id
-        - rack_id
-        - expiry_dt
-        - batch_no
-        - qty
-      path:
-        - sections
-        - 0
-
     applicableActions:
       ADD:
         - SAVE
-        - CANCEL
-      VIEW:
         - CANCEL
 
     actionConfig:
@@ -65,21 +29,26 @@ sections:
         variant: primary
         actionType: EXECUTE_QUERY
         queryInfo:
-          returnType: SCALAR
-          query: SELECT wms.save_manual_pick($1, $2, $3, $4, $5, $6);
+          returnType: SINGLE_ROW
+          query: SELECT wms.save_dispatch_pick($1, $2, $3, $4, $5, $6, $7) as id
           payload:
-            - header_id
-            - material_id
-            - rack_id
-            - expiry_dt
-            - batch_no
-            - qty
+            - _context.dispatch_id
+            - _context.material_id
+            - _context.rack_id
+            - _context.expiry_dt
+            - _context.batch_no
+            - confirm_pick.qty
+          contextParams:
+            - current_user_id
           path:
             - sections
             - 0
             - actionConfig
             - SAVE
-        onSuccess: exitAndComplete
+        onSuccess:
+          callback: HANDLE_FORM_ACTION
+          params:
+            action: FINISH
         onFailure: showErrorSnackbar
       CANCEL:
         label: Cancel
@@ -91,18 +60,22 @@ sections:
     rows:
       - columns:
           - field: material_name
-            span: 12
+            span: 6
+          - field: rack_code
+            span: 6
       - columns:
           - field: expiry_dt
             span: 6
           - field: batch_no
             span: 6
       - columns:
+          - field: planned_qty
+            span: 6
           - field: qty
             span: 6
 
     fields:
-      - name: header_id
+      - name: dispatch_id
         type: NUMBER
         visible: false
       - name: material_id
@@ -115,6 +88,10 @@ sections:
         label: Material
         type: TEXT
         readonly: true
+      - name: rack_code
+        label: Rack
+        type: TEXT
+        readonly: true
       - name: expiry_dt
         label: Expiry Date
         type: DATE
@@ -123,7 +100,11 @@ sections:
         label: Batch No
         type: TEXT
         readonly: true
+      - name: planned_qty
+        label: Planned Qty
+        type: NUMBER
+        readonly: true
       - name: qty
-        label: Pick Quantity
+        label: Qty to Pick
         type: NUMBER
         required: true

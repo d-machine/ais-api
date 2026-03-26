@@ -31,6 +31,7 @@ sections:
       VIEW:
         - add
         - edit
+        - view
 
     actionConfig:
       add:
@@ -50,6 +51,18 @@ sections:
         actionType: DISPLAY_FORM
         formConfig: picking-list-details
         mode: EDIT
+        payload:
+          - id
+        onSuccess: refresh
+
+      view:
+        label: View
+        icon: Eye
+        variant: secondary
+        level: ROW
+        actionType: DISPLAY_FORM
+        formConfig: picking-list-details
+        mode: VIEW
         payload:
           - id
         onSuccess: refresh

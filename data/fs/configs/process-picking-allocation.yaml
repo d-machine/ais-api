@@ -5,6 +5,8 @@ title: Material Allocation
 applicableActions:
   ADD:
     - CLOSE
+  EDIT:
+    - CLOSE
   VIEW:
     - CLOSE
 
@@ -26,20 +28,20 @@ sections:
           $1::numeric as header_id,
           $2::numeric as material_id,
           m.name as material_name,
-          u.name as uom_name,
           $3::numeric as total_pending_qty,
           $4 as so_detail_ids,
           (
-            SELECT COALESCE(SUM(qty), 0)
-            FROM wms.stock
-            WHERE material_id = $2 AND is_active = true
+            SELECT COALESCE(SUM(s.qty), 0)
+            FROM wms.stock s
+            JOIN wms.material_ean me ON s.ean_id = me.id
+            WHERE me.material_id = $2 AND s.is_active = true
           ) - (
             SELECT COALESCE(SUM(d.qty), 0)
             FROM wms.picking_list_details d
             JOIN wms.picking_list_header h ON d.header_id = h.id
             WHERE d.material_id = $2
               AND d.is_active = true
-              AND h.status IN ('Draft', 'Picked')
+              AND h.status IN (0, 10)
           ) as quantity_in_stock,
           COALESCE(
             (SELECT SUM(qty) FROM wms.picking_list_details
@@ -52,7 +54,6 @@ sections:
             0
           )) as qty_to_pick
         FROM wms.material m
-        LEFT JOIN wms.uom u ON m.uom_pc_id = u.id
         WHERE m.id = $2
       payload:
         - header_id
@@ -65,6 +66,8 @@ sections:
 
     applicableActions:
       ADD:
+        - CANCEL
+      EDIT:
         - CANCEL
       VIEW:
         - CANCEL
@@ -127,6 +130,9 @@ sections:
       ADD:
         - pick
         - unpick
+      EDIT:
+        - pick
+        - unpick
       VIEW:
         - view_pick
     queryInfo:
@@ -148,12 +154,13 @@ sections:
                     AND d.rack_id = s.rack_id
                     AND (d.expiry_dt = s.expiry_dt OR (d.expiry_dt IS NULL AND s.expiry_dt IS NULL))
                     AND d.header_id != $1
-                    AND h.status IN ('Draft', 'Picked')
+                    AND h.status IN (0, 10)
                     AND d.is_active = true
               ), 0)) as available_qty
             FROM wms.stock s
+            JOIN wms.material_ean me ON s.ean_id = me.id
             JOIN wms.rack r ON s.rack_id = r.id
-            WHERE s.material_id = $2
+            WHERE me.material_id = $2
               AND s.is_active = true
             GROUP BY
               s.rack_id,
@@ -170,11 +177,13 @@ sections:
             WHERE available_qty > 0
         )
         SELECT
+          $1::integer as header_id,
+          $2::integer as material_id,
           f.*,
           COALESCE(pld.qty,
             CASE
-              WHEN $3 > 0 THEN
-                LEAST(f.available_qty, GREATEST(0, $3 - (f.running_total - f.available_qty)))
+              WHEN $3::numeric > 0 THEN
+                LEAST(f.available_qty, GREATEST(0, $3::numeric - (f.running_total - f.available_qty)))
               ELSE 0
             END
           ) as allocated_qty,

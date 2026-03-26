@@ -35,9 +35,9 @@ export default class QueryService extends BaseService {
         case EFilterOperator.NOT_EQUAL:
           return `${filter.field} != ${filterValue}`;
         case EFilterOperator.LESS_THAN_OR_EQUAL:
-          return `${filter.field} <= ${filterValue}`;
+          return `${filter.field}::DATE <= ${filterValue}`;
         case EFilterOperator.GREATER_THAN_OR_EQUAL:
-          return `${filter.field} >= ${filterValue}`;
+          return `${filter.field}::DATE >= ${filterValue}`;
         case EFilterOperator.IN:
           return `${filter.field} IN (${filterValue})`;
         case EFilterOperator.NOT_IN:

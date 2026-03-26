@@ -27,9 +27,9 @@ sections:
 
     applicableActions:
       VIEW:
-        - add
         - view
         - edit
+        - process
         - delete
 
     actionConfig:
@@ -66,6 +66,28 @@ sections:
         mode: EDIT
         payload:
           - id
+        onSuccess: refresh
+      process:
+        label: Process
+        icon: Truck
+        variant: primary
+        actionType: EXECUTE_QUERY
+        level: ROW
+        shortcut: "F5"
+        condition: row.status === 'Draft'
+        confirmationRequired: true
+        confirmationMessage: "Process this dispatch? This will deduct stock and update Sales Orders."
+        queryInfo:
+          query: SELECT wms.process_picked_dispatch($1, $2) as id
+          payload:
+            - id
+          contextParams:
+            - current_user_id
+          path:
+            - sections
+            - 0
+            - actionConfig
+            - process
         onSuccess: refresh
       delete:
         label: Delete

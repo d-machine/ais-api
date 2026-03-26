@@ -47,11 +47,10 @@ sections:
            FROM wms.sales_order_header soh
            WHERE soh.id = ANY(string_to_array(h.so_ids, ',')::int[])) as so_entries,
           h.picker_id, TRIM(CONCAT(u.first_name, ' ', u.last_name)) as picker_name,
-          h.pick_dt, h.status, sc.label as status_label, h.remarks
+          h.pick_dt, h.remarks
         FROM wms.picking_list_header h
         LEFT JOIN wms.party p ON h.party_id = p.id
         LEFT JOIN administration.user u ON h.picker_id = u.id
-        LEFT JOIN wms.status_code sc ON sc.entity = 'PL' AND sc.code = h.status
         WHERE h.id = $1
       payload:
         - _context.id
@@ -69,7 +68,6 @@ sections:
         - CANCEL
       EDIT:
         - SAVE
-        - PROCESS
         - CANCEL
       VIEW:
         - EDIT
@@ -114,34 +112,10 @@ sections:
           ADD:
             callback: SAVE_AND_GO_TO_NEXT
           EDIT:
-            callback: HANDLE_FORM_ACTION
+            callback: CHANGE_MODE
             params:
-              action: FINISH
+              mode: VIEW
         onFailure: showErrorSnackbar
-      PROCESS:
-        label: Confirm Pick
-        icon: CheckCircle
-        variant: primary
-        actionType: EXECUTE_QUERY
-        condition: status === 0 || status === 10
-        confirmationRequired: true
-        confirmationMessage: "This will confirm the picking list. Continue?"
-        queryInfo:
-          returnType: SINGLE_ROW
-          query: SELECT wms.confirm_picking_list($1, $2) as id
-          payload:
-            - id
-          contextParams:
-            - current_user_id
-          path:
-            - sections
-            - 0
-            - actionConfig
-            - PROCESS
-        onSuccess:
-          callback: HANDLE_FORM_ACTION
-          params:
-            action: FINISH
       CANCEL:
         label: Discard
         icon: X
@@ -161,27 +135,23 @@ sections:
     rows:
       - columns:
           - field: entry_no
-            span: 6
+            span: 4
           - field: entry_dt
-            span: 6
-      - columns:
+            span: 4
           - field: party_id
-            span: 6
-          - field: status_label
-            span: 6
-      - columns:
-          - field: picker_id
-            span: 6
-          - field: pick_dt
-            span: 6
-      - columns:
-          - field: so_ids
-            span: 12
+            span: 4
       - columns:
           - field: from_dt
-            span: 6
+            span: 4
           - field: to_dt
-            span: 6
+            span: 4
+      - columns:
+          - field: so_ids
+            span: 4
+          - field: picker_id
+            span: 4
+          - field: pick_dt
+            span: 4
       - columns:
           - field: remarks
             span: 12
@@ -269,7 +239,7 @@ sections:
               - - from_dt
             handler: filterByDependency
             filters:
-              - targetParam: from_dt
+              - targetParam: entry_dt
                 targetIndex: 0
                 operator: GREATER_THAN_OR_EQUAL
             conditions:
@@ -280,7 +250,7 @@ sections:
               - - to_dt
             handler: filterByDependency
             filters:
-              - targetParam: to_dt
+              - targetParam: entry_dt
                 targetIndex: 0
                 operator: LESS_THAN_OR_EQUAL
             conditions:
@@ -315,14 +285,7 @@ sections:
         type: TEXTAREA
         readonly:
           - VIEW
-      - name: status
-        label: Status
-        type: NUMBER
-        visible: false
-      - name: status_label
-        label: Status
-        type: TEXT
-        readonly: true
+
 
   - sectionType: TABLE
     sectionName: picking_list_items
@@ -370,9 +333,11 @@ sections:
     applicableActions:
       ADD:
         - allocate
+        - edit_allocation
         - view_allocation
       EDIT:
         - allocate
+        - edit_allocation
         - view_allocation
       VIEW:
         - view_allocation
@@ -394,6 +359,23 @@ sections:
             as: total_pending_qty
           - key: so_detail_id
             as: so_detail_ids
+      edit_allocation:
+        label: Edit
+        icon: Edit
+        variant: primary
+        actionType: DISPLAY_FORM
+        level: ROW
+        condition: row.row_type === 'ALLOCATED'
+        formConfig: process-picking-allocation
+        mode: EDIT
+        payload:
+          - header_id
+          - material_id
+          - key: pending_qty
+            as: total_pending_qty
+          - key: so_detail_id
+            as: so_detail_ids
+        onSuccess: refresh
       allocate:
         label: Allocate
         icon: Plus

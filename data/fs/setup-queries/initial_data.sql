@@ -384,6 +384,222 @@ END $$;
 INSERT INTO wms.transport (name, descr, lub) VALUES
 ('TRN-001', 'Default Transport', 1);
 
+-- Sales Orders: SO1..SO3 across P1 and P2
+DO $$
+DECLARE
+    v_uom_pcs_id  INTEGER;
+    v_uom_box_id  INTEGER;
+    v_p1_id       INTEGER;
+    v_p2_id       INTEGER;
+    v_add1_id     INTEGER;
+    v_add2_id     INTEGER;
+    v_trsp_id     INTEGER;
+    v_mat001_id   INTEGER; v_mat002_id INTEGER; v_mat003_id INTEGER;
+    v_mat004_id   INTEGER; v_mat005_id INTEGER;
+    v_mat006_id   INTEGER; v_mat007_id INTEGER; v_mat008_id INTEGER;
+    v_mat009_id   INTEGER; v_mat010_id INTEGER;
+    v_so1_id      INTEGER;
+    v_so2_id      INTEGER;
+    v_so3_id      INTEGER;
+BEGIN
+    SELECT id INTO v_uom_pcs_id FROM wms.uom WHERE name = 'PCS';
+    SELECT id INTO v_uom_box_id FROM wms.uom WHERE name = 'BOX24';
+    SELECT id INTO v_p1_id      FROM wms.party WHERE name = 'P1';
+    SELECT id INTO v_p2_id      FROM wms.party WHERE name = 'P2';
+    SELECT id INTO v_trsp_id    FROM wms.transport WHERE name = 'TRN-001' LIMIT 1;
+    SELECT id INTO v_add1_id    FROM wms.address WHERE adr1 = 'Plot 1, Sector 18' LIMIT 1;
+    SELECT id INTO v_add2_id    FROM wms.address WHERE adr1 = 'Plot 2, Sector 29' LIMIT 1;
+
+    SELECT id INTO v_mat001_id FROM wms.material WHERE name = 'MAT-001';
+    SELECT id INTO v_mat002_id FROM wms.material WHERE name = 'MAT-002';
+    SELECT id INTO v_mat003_id FROM wms.material WHERE name = 'MAT-003';
+    SELECT id INTO v_mat004_id FROM wms.material WHERE name = 'MAT-004';
+    SELECT id INTO v_mat005_id FROM wms.material WHERE name = 'MAT-005';
+    SELECT id INTO v_mat006_id FROM wms.material WHERE name = 'MAT-006';
+    SELECT id INTO v_mat007_id FROM wms.material WHERE name = 'MAT-007';
+    SELECT id INTO v_mat008_id FROM wms.material WHERE name = 'MAT-008';
+    SELECT id INTO v_mat009_id FROM wms.material WHERE name = 'MAT-009';
+    SELECT id INTO v_mat010_id FROM wms.material WHERE name = 'MAT-010';
+
+    -- SO1: P1 — MAT-001, MAT-002, MAT-003 (300 pcs each)
+    -- args: entry_dt, party_id, broker_id, delivery_at_id, trsp_id, delivery_dt, status, remarks, current_user_id
+    SELECT id INTO v_so1_id FROM wms.insert_sales_order_header(
+        NOW()::TIMESTAMP, v_p1_id, NULL::INTEGER, v_add1_id, v_trsp_id,
+        (NOW() + INTERVAL '7 days')::TIMESTAMP, 0, 'SO1 - P1 batch 1', 1
+    );
+    -- args: header_id, item_id, euom, puom, quom, rate_per_pc, eqty, pqty, amount, dqty, remarks, current_user_id
+    PERFORM wms.insert_sales_order_details(v_so1_id, v_mat001_id, v_uom_pcs_id, v_uom_box_id, v_uom_pcs_id, 180.00, 300, 0, 54000.00,  0, NULL::VARCHAR, 1);
+    PERFORM wms.insert_sales_order_details(v_so1_id, v_mat002_id, v_uom_pcs_id, v_uom_box_id, v_uom_pcs_id, 310.00, 300, 0, 93000.00,  0, NULL::VARCHAR, 1);
+    PERFORM wms.insert_sales_order_details(v_so1_id, v_mat003_id, v_uom_pcs_id, v_uom_box_id, v_uom_pcs_id, 450.00, 300, 0, 135000.00, 0, NULL::VARCHAR, 1);
+
+    -- SO2: P1 — MAT-004, MAT-005, MAT-006, MAT-007 (200 pcs each)
+    SELECT id INTO v_so2_id FROM wms.insert_sales_order_header(
+        NOW()::TIMESTAMP, v_p1_id, NULL::INTEGER, v_add1_id, v_trsp_id,
+        (NOW() + INTERVAL '10 days')::TIMESTAMP, 0, 'SO2 - P1 batch 2', 1
+    );
+    PERFORM wms.insert_sales_order_details(v_so2_id, v_mat004_id, v_uom_pcs_id, v_uom_box_id, v_uom_pcs_id, 130.00, 200, 0, 26000.00,  0, NULL::VARCHAR, 1);
+    PERFORM wms.insert_sales_order_details(v_so2_id, v_mat005_id, v_uom_pcs_id, v_uom_box_id, v_uom_pcs_id, 545.00, 200, 0, 109000.00, 0, NULL::VARCHAR, 1);
+    PERFORM wms.insert_sales_order_details(v_so2_id, v_mat006_id, v_uom_pcs_id, v_uom_box_id, v_uom_pcs_id, 250.00, 200, 0, 50000.00,  0, NULL::VARCHAR, 1);
+    PERFORM wms.insert_sales_order_details(v_so2_id, v_mat007_id, v_uom_pcs_id, v_uom_box_id, v_uom_pcs_id, 380.00, 200, 0, 76000.00,  0, NULL::VARCHAR, 1);
+
+    -- SO3: P2 — MAT-008, MAT-009, MAT-010 (150 pcs each)
+    SELECT id INTO v_so3_id FROM wms.insert_sales_order_header(
+        NOW()::TIMESTAMP, v_p2_id, NULL::INTEGER, v_add2_id, v_trsp_id,
+        (NOW() + INTERVAL '14 days')::TIMESTAMP, 0, 'SO3 - P2 batch 1', 1
+    );
+    PERFORM wms.insert_sales_order_details(v_so3_id, v_mat008_id, v_uom_pcs_id, v_uom_box_id, v_uom_pcs_id, 680.00, 150, 0, 102000.00, 0, NULL::VARCHAR, 1);
+    PERFORM wms.insert_sales_order_details(v_so3_id, v_mat009_id, v_uom_pcs_id, v_uom_box_id, v_uom_pcs_id, 105.00, 150, 0, 15750.00,  0, NULL::VARCHAR, 1);
+    PERFORM wms.insert_sales_order_details(v_so3_id, v_mat010_id, v_uom_pcs_id, v_uom_box_id, v_uom_pcs_id, 820.00, 150, 0, 123000.00, 0, NULL::VARCHAR, 1);
+END $$;
+
+-- Sales Orders SO4..SO13 — varied material mixes across P1 and P2
+DO $$
+DECLARE
+    v_uom_pcs_id  INTEGER;
+    v_uom_box_id  INTEGER;
+    v_p1_id       INTEGER;
+    v_p2_id       INTEGER;
+    v_add1_id     INTEGER;
+    v_add2_id     INTEGER;
+    v_trsp_id     INTEGER;
+    v_mat001_id   INTEGER; v_mat002_id INTEGER; v_mat003_id INTEGER;
+    v_mat004_id   INTEGER; v_mat005_id INTEGER;
+    v_mat006_id   INTEGER; v_mat007_id INTEGER; v_mat008_id INTEGER;
+    v_mat009_id   INTEGER; v_mat010_id INTEGER;
+    v_so_id       INTEGER;
+BEGIN
+    SELECT id INTO v_uom_pcs_id FROM wms.uom WHERE name = 'PCS';
+    SELECT id INTO v_uom_box_id FROM wms.uom WHERE name = 'BOX24';
+    SELECT id INTO v_p1_id      FROM wms.party WHERE name = 'P1';
+    SELECT id INTO v_p2_id      FROM wms.party WHERE name = 'P2';
+    SELECT id INTO v_trsp_id    FROM wms.transport WHERE name = 'TRN-001' LIMIT 1;
+    SELECT id INTO v_add1_id    FROM wms.address WHERE adr1 = 'Plot 1, Sector 18' LIMIT 1;
+    SELECT id INTO v_add2_id    FROM wms.address WHERE adr1 = 'Plot 2, Sector 29' LIMIT 1;
+
+    SELECT id INTO v_mat001_id FROM wms.material WHERE name = 'MAT-001';
+    SELECT id INTO v_mat002_id FROM wms.material WHERE name = 'MAT-002';
+    SELECT id INTO v_mat003_id FROM wms.material WHERE name = 'MAT-003';
+    SELECT id INTO v_mat004_id FROM wms.material WHERE name = 'MAT-004';
+    SELECT id INTO v_mat005_id FROM wms.material WHERE name = 'MAT-005';
+    SELECT id INTO v_mat006_id FROM wms.material WHERE name = 'MAT-006';
+    SELECT id INTO v_mat007_id FROM wms.material WHERE name = 'MAT-007';
+    SELECT id INTO v_mat008_id FROM wms.material WHERE name = 'MAT-008';
+    SELECT id INTO v_mat009_id FROM wms.material WHERE name = 'MAT-009';
+    SELECT id INTO v_mat010_id FROM wms.material WHERE name = 'MAT-010';
+
+    -- SO4: P1 — MAT-001,002,005,007,009 (100 pcs each)
+    SELECT id INTO v_so_id FROM wms.insert_sales_order_header(
+        NOW()::TIMESTAMP, v_p1_id, NULL::INTEGER, v_add1_id, v_trsp_id,
+        (NOW() + INTERVAL '5 days')::TIMESTAMP, 0, 'SO4 - P1 mixed batch 1', 1
+    );
+    PERFORM wms.insert_sales_order_details(v_so_id, v_mat001_id, v_uom_pcs_id, v_uom_box_id, v_uom_pcs_id, 180.00, 100, 0, 18000.00,  0, NULL::VARCHAR, 1);
+    PERFORM wms.insert_sales_order_details(v_so_id, v_mat002_id, v_uom_pcs_id, v_uom_box_id, v_uom_pcs_id, 310.00, 100, 0, 31000.00,  0, NULL::VARCHAR, 1);
+    PERFORM wms.insert_sales_order_details(v_so_id, v_mat005_id, v_uom_pcs_id, v_uom_box_id, v_uom_pcs_id, 545.00, 100, 0, 54500.00,  0, NULL::VARCHAR, 1);
+    PERFORM wms.insert_sales_order_details(v_so_id, v_mat007_id, v_uom_pcs_id, v_uom_box_id, v_uom_pcs_id, 380.00, 100, 0, 38000.00,  0, NULL::VARCHAR, 1);
+    PERFORM wms.insert_sales_order_details(v_so_id, v_mat009_id, v_uom_pcs_id, v_uom_box_id, v_uom_pcs_id, 105.00, 100, 0, 10500.00,  0, NULL::VARCHAR, 1);
+
+    -- SO5: P2 — MAT-002,003,004,006,008 (150 pcs each)
+    SELECT id INTO v_so_id FROM wms.insert_sales_order_header(
+        NOW()::TIMESTAMP, v_p2_id, NULL::INTEGER, v_add2_id, v_trsp_id,
+        (NOW() + INTERVAL '6 days')::TIMESTAMP, 0, 'SO5 - P2 mixed batch 1', 1
+    );
+    PERFORM wms.insert_sales_order_details(v_so_id, v_mat002_id, v_uom_pcs_id, v_uom_box_id, v_uom_pcs_id, 310.00, 150, 0, 46500.00,  0, NULL::VARCHAR, 1);
+    PERFORM wms.insert_sales_order_details(v_so_id, v_mat003_id, v_uom_pcs_id, v_uom_box_id, v_uom_pcs_id, 450.00, 150, 0, 67500.00,  0, NULL::VARCHAR, 1);
+    PERFORM wms.insert_sales_order_details(v_so_id, v_mat004_id, v_uom_pcs_id, v_uom_box_id, v_uom_pcs_id, 130.00, 150, 0, 19500.00,  0, NULL::VARCHAR, 1);
+    PERFORM wms.insert_sales_order_details(v_so_id, v_mat006_id, v_uom_pcs_id, v_uom_box_id, v_uom_pcs_id, 250.00, 150, 0, 37500.00,  0, NULL::VARCHAR, 1);
+    PERFORM wms.insert_sales_order_details(v_so_id, v_mat008_id, v_uom_pcs_id, v_uom_box_id, v_uom_pcs_id, 680.00, 150, 0, 102000.00, 0, NULL::VARCHAR, 1);
+
+    -- SO6: P1 — MAT-001,003,005,007,009 (80 pcs each)
+    SELECT id INTO v_so_id FROM wms.insert_sales_order_header(
+        NOW()::TIMESTAMP, v_p1_id, NULL::INTEGER, v_add1_id, v_trsp_id,
+        (NOW() + INTERVAL '8 days')::TIMESTAMP, 0, 'SO6 - P1 odd batch 1', 1
+    );
+    PERFORM wms.insert_sales_order_details(v_so_id, v_mat001_id, v_uom_pcs_id, v_uom_box_id, v_uom_pcs_id, 180.00,  80, 0, 14400.00,  0, NULL::VARCHAR, 1);
+    PERFORM wms.insert_sales_order_details(v_so_id, v_mat003_id, v_uom_pcs_id, v_uom_box_id, v_uom_pcs_id, 450.00,  80, 0, 36000.00,  0, NULL::VARCHAR, 1);
+    PERFORM wms.insert_sales_order_details(v_so_id, v_mat005_id, v_uom_pcs_id, v_uom_box_id, v_uom_pcs_id, 545.00,  80, 0, 43600.00,  0, NULL::VARCHAR, 1);
+    PERFORM wms.insert_sales_order_details(v_so_id, v_mat007_id, v_uom_pcs_id, v_uom_box_id, v_uom_pcs_id, 380.00,  80, 0, 30400.00,  0, NULL::VARCHAR, 1);
+    PERFORM wms.insert_sales_order_details(v_so_id, v_mat009_id, v_uom_pcs_id, v_uom_box_id, v_uom_pcs_id, 105.00,  80, 0,  8400.00,  0, NULL::VARCHAR, 1);
+
+    -- SO7: P2 — MAT-002,004,006,008,010 (200 pcs each)
+    SELECT id INTO v_so_id FROM wms.insert_sales_order_header(
+        NOW()::TIMESTAMP, v_p2_id, NULL::INTEGER, v_add2_id, v_trsp_id,
+        (NOW() + INTERVAL '9 days')::TIMESTAMP, 0, 'SO7 - P2 even batch 1', 1
+    );
+    PERFORM wms.insert_sales_order_details(v_so_id, v_mat002_id, v_uom_pcs_id, v_uom_box_id, v_uom_pcs_id, 310.00, 200, 0, 62000.00,  0, NULL::VARCHAR, 1);
+    PERFORM wms.insert_sales_order_details(v_so_id, v_mat004_id, v_uom_pcs_id, v_uom_box_id, v_uom_pcs_id, 130.00, 200, 0, 26000.00,  0, NULL::VARCHAR, 1);
+    PERFORM wms.insert_sales_order_details(v_so_id, v_mat006_id, v_uom_pcs_id, v_uom_box_id, v_uom_pcs_id, 250.00, 200, 0, 50000.00,  0, NULL::VARCHAR, 1);
+    PERFORM wms.insert_sales_order_details(v_so_id, v_mat008_id, v_uom_pcs_id, v_uom_box_id, v_uom_pcs_id, 680.00, 200, 0, 136000.00, 0, NULL::VARCHAR, 1);
+    PERFORM wms.insert_sales_order_details(v_so_id, v_mat010_id, v_uom_pcs_id, v_uom_box_id, v_uom_pcs_id, 820.00, 200, 0, 164000.00, 0, NULL::VARCHAR, 1);
+
+    -- SO8: P1 — MAT-003,004,005,006,007,008 (120 pcs each)
+    SELECT id INTO v_so_id FROM wms.insert_sales_order_header(
+        NOW()::TIMESTAMP, v_p1_id, NULL::INTEGER, v_add1_id, v_trsp_id,
+        (NOW() + INTERVAL '11 days')::TIMESTAMP, 0, 'SO8 - P1 mid batch 1', 1
+    );
+    PERFORM wms.insert_sales_order_details(v_so_id, v_mat003_id, v_uom_pcs_id, v_uom_box_id, v_uom_pcs_id, 450.00, 120, 0, 54000.00,  0, NULL::VARCHAR, 1);
+    PERFORM wms.insert_sales_order_details(v_so_id, v_mat004_id, v_uom_pcs_id, v_uom_box_id, v_uom_pcs_id, 130.00, 120, 0, 15600.00,  0, NULL::VARCHAR, 1);
+    PERFORM wms.insert_sales_order_details(v_so_id, v_mat005_id, v_uom_pcs_id, v_uom_box_id, v_uom_pcs_id, 545.00, 120, 0, 65400.00,  0, NULL::VARCHAR, 1);
+    PERFORM wms.insert_sales_order_details(v_so_id, v_mat006_id, v_uom_pcs_id, v_uom_box_id, v_uom_pcs_id, 250.00, 120, 0, 30000.00,  0, NULL::VARCHAR, 1);
+    PERFORM wms.insert_sales_order_details(v_so_id, v_mat007_id, v_uom_pcs_id, v_uom_box_id, v_uom_pcs_id, 380.00, 120, 0, 45600.00,  0, NULL::VARCHAR, 1);
+    PERFORM wms.insert_sales_order_details(v_so_id, v_mat008_id, v_uom_pcs_id, v_uom_box_id, v_uom_pcs_id, 680.00, 120, 0, 81600.00,  0, NULL::VARCHAR, 1);
+
+    -- SO9: P2 — MAT-001,002,003,007,010 (90 pcs each)
+    SELECT id INTO v_so_id FROM wms.insert_sales_order_header(
+        NOW()::TIMESTAMP, v_p2_id, NULL::INTEGER, v_add2_id, v_trsp_id,
+        (NOW() + INTERVAL '12 days')::TIMESTAMP, 0, 'SO9 - P2 mixed batch 2', 1
+    );
+    PERFORM wms.insert_sales_order_details(v_so_id, v_mat001_id, v_uom_pcs_id, v_uom_box_id, v_uom_pcs_id, 180.00,  90, 0, 16200.00,  0, NULL::VARCHAR, 1);
+    PERFORM wms.insert_sales_order_details(v_so_id, v_mat002_id, v_uom_pcs_id, v_uom_box_id, v_uom_pcs_id, 310.00,  90, 0, 27900.00,  0, NULL::VARCHAR, 1);
+    PERFORM wms.insert_sales_order_details(v_so_id, v_mat003_id, v_uom_pcs_id, v_uom_box_id, v_uom_pcs_id, 450.00,  90, 0, 40500.00,  0, NULL::VARCHAR, 1);
+    PERFORM wms.insert_sales_order_details(v_so_id, v_mat007_id, v_uom_pcs_id, v_uom_box_id, v_uom_pcs_id, 380.00,  90, 0, 34200.00,  0, NULL::VARCHAR, 1);
+    PERFORM wms.insert_sales_order_details(v_so_id, v_mat010_id, v_uom_pcs_id, v_uom_box_id, v_uom_pcs_id, 820.00,  90, 0, 73800.00,  0, NULL::VARCHAR, 1);
+
+    -- SO10: P1 — MAT-004,005,006,009,010 (250 pcs each)
+    SELECT id INTO v_so_id FROM wms.insert_sales_order_header(
+        NOW()::TIMESTAMP, v_p1_id, NULL::INTEGER, v_add1_id, v_trsp_id,
+        (NOW() + INTERVAL '13 days')::TIMESTAMP, 0, 'SO10 - P1 high-vol batch 1', 1
+    );
+    PERFORM wms.insert_sales_order_details(v_so_id, v_mat004_id, v_uom_pcs_id, v_uom_box_id, v_uom_pcs_id, 130.00, 250, 0, 32500.00,  0, NULL::VARCHAR, 1);
+    PERFORM wms.insert_sales_order_details(v_so_id, v_mat005_id, v_uom_pcs_id, v_uom_box_id, v_uom_pcs_id, 545.00, 250, 0, 136250.00, 0, NULL::VARCHAR, 1);
+    PERFORM wms.insert_sales_order_details(v_so_id, v_mat006_id, v_uom_pcs_id, v_uom_box_id, v_uom_pcs_id, 250.00, 250, 0, 62500.00,  0, NULL::VARCHAR, 1);
+    PERFORM wms.insert_sales_order_details(v_so_id, v_mat009_id, v_uom_pcs_id, v_uom_box_id, v_uom_pcs_id, 105.00, 250, 0, 26250.00,  0, NULL::VARCHAR, 1);
+    PERFORM wms.insert_sales_order_details(v_so_id, v_mat010_id, v_uom_pcs_id, v_uom_box_id, v_uom_pcs_id, 820.00, 250, 0, 205000.00, 0, NULL::VARCHAR, 1);
+
+    -- SO11: P2 — MAT-001,003,005,007,009 (180 pcs each)
+    SELECT id INTO v_so_id FROM wms.insert_sales_order_header(
+        NOW()::TIMESTAMP, v_p2_id, NULL::INTEGER, v_add2_id, v_trsp_id,
+        (NOW() + INTERVAL '15 days')::TIMESTAMP, 0, 'SO11 - P2 odd batch 2', 1
+    );
+    PERFORM wms.insert_sales_order_details(v_so_id, v_mat001_id, v_uom_pcs_id, v_uom_box_id, v_uom_pcs_id, 180.00, 180, 0, 32400.00,  0, NULL::VARCHAR, 1);
+    PERFORM wms.insert_sales_order_details(v_so_id, v_mat003_id, v_uom_pcs_id, v_uom_box_id, v_uom_pcs_id, 450.00, 180, 0, 81000.00,  0, NULL::VARCHAR, 1);
+    PERFORM wms.insert_sales_order_details(v_so_id, v_mat005_id, v_uom_pcs_id, v_uom_box_id, v_uom_pcs_id, 545.00, 180, 0, 98100.00,  0, NULL::VARCHAR, 1);
+    PERFORM wms.insert_sales_order_details(v_so_id, v_mat007_id, v_uom_pcs_id, v_uom_box_id, v_uom_pcs_id, 380.00, 180, 0, 68400.00,  0, NULL::VARCHAR, 1);
+    PERFORM wms.insert_sales_order_details(v_so_id, v_mat009_id, v_uom_pcs_id, v_uom_box_id, v_uom_pcs_id, 105.00, 180, 0, 18900.00,  0, NULL::VARCHAR, 1);
+
+    -- SO12: P1 — MAT-002,004,006,008,010 (75 pcs each)
+    SELECT id INTO v_so_id FROM wms.insert_sales_order_header(
+        NOW()::TIMESTAMP, v_p1_id, NULL::INTEGER, v_add1_id, v_trsp_id,
+        (NOW() + INTERVAL '17 days')::TIMESTAMP, 0, 'SO12 - P1 even batch 2', 1
+    );
+    PERFORM wms.insert_sales_order_details(v_so_id, v_mat002_id, v_uom_pcs_id, v_uom_box_id, v_uom_pcs_id, 310.00,  75, 0, 23250.00,  0, NULL::VARCHAR, 1);
+    PERFORM wms.insert_sales_order_details(v_so_id, v_mat004_id, v_uom_pcs_id, v_uom_box_id, v_uom_pcs_id, 130.00,  75, 0,  9750.00,  0, NULL::VARCHAR, 1);
+    PERFORM wms.insert_sales_order_details(v_so_id, v_mat006_id, v_uom_pcs_id, v_uom_box_id, v_uom_pcs_id, 250.00,  75, 0, 18750.00,  0, NULL::VARCHAR, 1);
+    PERFORM wms.insert_sales_order_details(v_so_id, v_mat008_id, v_uom_pcs_id, v_uom_box_id, v_uom_pcs_id, 680.00,  75, 0, 51000.00,  0, NULL::VARCHAR, 1);
+    PERFORM wms.insert_sales_order_details(v_so_id, v_mat010_id, v_uom_pcs_id, v_uom_box_id, v_uom_pcs_id, 820.00,  75, 0, 61500.00,  0, NULL::VARCHAR, 1);
+
+    -- SO13: P2 — MAT-001,002,004,006,008,010 (100 pcs each)
+    SELECT id INTO v_so_id FROM wms.insert_sales_order_header(
+        NOW()::TIMESTAMP, v_p2_id, NULL::INTEGER, v_add2_id, v_trsp_id,
+        (NOW() + INTERVAL '20 days')::TIMESTAMP, 0, 'SO13 - P2 mixed batch 3', 1
+    );
+    PERFORM wms.insert_sales_order_details(v_so_id, v_mat001_id, v_uom_pcs_id, v_uom_box_id, v_uom_pcs_id, 180.00, 100, 0, 18000.00,  0, NULL::VARCHAR, 1);
+    PERFORM wms.insert_sales_order_details(v_so_id, v_mat002_id, v_uom_pcs_id, v_uom_box_id, v_uom_pcs_id, 310.00, 100, 0, 31000.00,  0, NULL::VARCHAR, 1);
+    PERFORM wms.insert_sales_order_details(v_so_id, v_mat004_id, v_uom_pcs_id, v_uom_box_id, v_uom_pcs_id, 130.00, 100, 0, 13000.00,  0, NULL::VARCHAR, 1);
+    PERFORM wms.insert_sales_order_details(v_so_id, v_mat006_id, v_uom_pcs_id, v_uom_box_id, v_uom_pcs_id, 250.00, 100, 0, 25000.00,  0, NULL::VARCHAR, 1);
+    PERFORM wms.insert_sales_order_details(v_so_id, v_mat008_id, v_uom_pcs_id, v_uom_box_id, v_uom_pcs_id, 680.00, 100, 0, 68000.00,  0, NULL::VARCHAR, 1);
+    PERFORM wms.insert_sales_order_details(v_so_id, v_mat010_id, v_uom_pcs_id, v_uom_box_id, v_uom_pcs_id, 820.00, 100, 0, 82000.00,  0, NULL::VARCHAR, 1);
+END $$;
+
 -- Draft inward for PO1 (V1, MAT-001..005) — process manually from the dashboard to stock up
 DO $$
 DECLARE
@@ -437,10 +653,145 @@ BEGIN
         1
     );
 
-    -- Inward details: full ordered qty for each item
-    PERFORM wms.insert_inward_details(v_inward_id, v_ean_m01, v_pod1_id, v_uom_box_id, v_uom_pcs_id, v_uom_box_id, 1200, 50, 180.00, 216000.00, NULL, NULL, NULL, 1);
-    PERFORM wms.insert_inward_details(v_inward_id, v_ean_m02, v_pod2_id, v_uom_box_id, v_uom_pcs_id, v_uom_box_id, 1200, 50, 310.00, 372000.00, NULL, NULL, NULL, 1);
-    PERFORM wms.insert_inward_details(v_inward_id, v_ean_m03, v_pod3_id, v_uom_box_id, v_uom_pcs_id, v_uom_box_id, 1200, 50, 450.00, 540000.00, NULL, NULL, NULL, 1);
-    PERFORM wms.insert_inward_details(v_inward_id, v_ean_m04, v_pod4_id, v_uom_box_id, v_uom_pcs_id, v_uom_box_id, 1200, 50, 130.00, 156000.00, NULL, NULL, NULL, 1);
-    PERFORM wms.insert_inward_details(v_inward_id, v_ean_m05, v_pod5_id, v_uom_box_id, v_uom_pcs_id, v_uom_box_id, 1200, 50, 545.00, 654000.00, NULL, NULL, NULL, 1);
+    -- Inward details: full ordered qty for each item (expiry 6 months out)
+    PERFORM wms.insert_inward_details(v_inward_id, v_ean_m01, v_pod1_id, v_uom_box_id, v_uom_pcs_id, v_uom_box_id, 1200, 50, 180.00, 216000.00, (CURRENT_DATE + INTERVAL '6 months')::DATE, UPPER(LEFT(MD5(RANDOM()::TEXT), 10)), NULL, 1);
+    PERFORM wms.insert_inward_details(v_inward_id, v_ean_m02, v_pod2_id, v_uom_box_id, v_uom_pcs_id, v_uom_box_id, 1200, 50, 310.00, 372000.00, (CURRENT_DATE + INTERVAL '6 months')::DATE, UPPER(LEFT(MD5(RANDOM()::TEXT), 10)), NULL, 1);
+    PERFORM wms.insert_inward_details(v_inward_id, v_ean_m03, v_pod3_id, v_uom_box_id, v_uom_pcs_id, v_uom_box_id, 1200, 50, 450.00, 540000.00, (CURRENT_DATE + INTERVAL '6 months')::DATE, UPPER(LEFT(MD5(RANDOM()::TEXT), 10)), NULL, 1);
+    PERFORM wms.insert_inward_details(v_inward_id, v_ean_m04, v_pod4_id, v_uom_box_id, v_uom_pcs_id, v_uom_box_id, 1200, 50, 130.00, 156000.00, (CURRENT_DATE + INTERVAL '6 months')::DATE, UPPER(LEFT(MD5(RANDOM()::TEXT), 10)), NULL, 1);
+    PERFORM wms.insert_inward_details(v_inward_id, v_ean_m05, v_pod5_id, v_uom_box_id, v_uom_pcs_id, v_uom_box_id, 1200, 50, 545.00, 654000.00, (CURRENT_DATE + INTERVAL '6 months')::DATE, UPPER(LEFT(MD5(RANDOM()::TEXT), 10)), NULL, 1);
+END $$;
+
+-- Draft inward for PO2 (V1, MAT-006..010)
+DO $$
+DECLARE
+    v_v1_id       INTEGER;
+    v_po2_id      INTEGER;
+    v_inward_id   INTEGER;
+    v_uom_pcs_id  INTEGER;
+    v_uom_box_id  INTEGER;
+    v_ean_m06     INTEGER; v_ean_m07 INTEGER; v_ean_m08 INTEGER;
+    v_ean_m09     INTEGER; v_ean_m10 INTEGER;
+    v_pod1_id     INTEGER; v_pod2_id INTEGER; v_pod3_id INTEGER;
+    v_pod4_id     INTEGER; v_pod5_id INTEGER;
+BEGIN
+    SELECT id INTO v_v1_id      FROM wms.vendor WHERE name = 'V1';
+    SELECT id INTO v_uom_pcs_id FROM wms.uom    WHERE name = 'PCS';
+    SELECT id INTO v_uom_box_id FROM wms.uom    WHERE name = 'BOX24';
+
+    -- Second PO for V1
+    SELECT id INTO v_po2_id FROM wms.purchase_order_header
+    WHERE vendor_id = v_v1_id ORDER BY id LIMIT 1 OFFSET 1;
+
+    SELECT me.id INTO v_ean_m06 FROM wms.material_ean me JOIN wms.material m ON m.id = me.material_id WHERE m.name = 'MAT-006' ORDER BY me.id LIMIT 1;
+    SELECT me.id INTO v_ean_m07 FROM wms.material_ean me JOIN wms.material m ON m.id = me.material_id WHERE m.name = 'MAT-007' ORDER BY me.id LIMIT 1;
+    SELECT me.id INTO v_ean_m08 FROM wms.material_ean me JOIN wms.material m ON m.id = me.material_id WHERE m.name = 'MAT-008' ORDER BY me.id LIMIT 1;
+    SELECT me.id INTO v_ean_m09 FROM wms.material_ean me JOIN wms.material m ON m.id = me.material_id WHERE m.name = 'MAT-009' ORDER BY me.id LIMIT 1;
+    SELECT me.id INTO v_ean_m10 FROM wms.material_ean me JOIN wms.material m ON m.id = me.material_id WHERE m.name = 'MAT-010' ORDER BY me.id LIMIT 1;
+
+    SELECT id INTO v_pod1_id FROM wms.purchase_order_details WHERE header_id = v_po2_id ORDER BY id LIMIT 1 OFFSET 0;
+    SELECT id INTO v_pod2_id FROM wms.purchase_order_details WHERE header_id = v_po2_id ORDER BY id LIMIT 1 OFFSET 1;
+    SELECT id INTO v_pod3_id FROM wms.purchase_order_details WHERE header_id = v_po2_id ORDER BY id LIMIT 1 OFFSET 2;
+    SELECT id INTO v_pod4_id FROM wms.purchase_order_details WHERE header_id = v_po2_id ORDER BY id LIMIT 1 OFFSET 3;
+    SELECT id INTO v_pod5_id FROM wms.purchase_order_details WHERE header_id = v_po2_id ORDER BY id LIMIT 1 OFFSET 4;
+
+    SELECT id INTO v_inward_id FROM wms.insert_inward_header(
+        CURRENT_DATE, v_v1_id, v_po2_id::TEXT, NULL, NULL, 0,
+        'Inward for PO2 — V1 MAT-006..010', 1
+    );
+    -- expiry 9 months out
+    PERFORM wms.insert_inward_details(v_inward_id, v_ean_m06, v_pod1_id, v_uom_box_id, v_uom_pcs_id, v_uom_box_id, 1200, 50, 250.00, 300000.00, (CURRENT_DATE + INTERVAL '9 months')::DATE, UPPER(LEFT(MD5(RANDOM()::TEXT), 10)), NULL, 1);
+    PERFORM wms.insert_inward_details(v_inward_id, v_ean_m07, v_pod2_id, v_uom_box_id, v_uom_pcs_id, v_uom_box_id, 1200, 50, 380.00, 456000.00, (CURRENT_DATE + INTERVAL '9 months')::DATE, UPPER(LEFT(MD5(RANDOM()::TEXT), 10)), NULL, 1);
+    PERFORM wms.insert_inward_details(v_inward_id, v_ean_m08, v_pod3_id, v_uom_box_id, v_uom_pcs_id, v_uom_box_id, 1200, 50, 680.00, 816000.00, (CURRENT_DATE + INTERVAL '9 months')::DATE, UPPER(LEFT(MD5(RANDOM()::TEXT), 10)), NULL, 1);
+    PERFORM wms.insert_inward_details(v_inward_id, v_ean_m09, v_pod4_id, v_uom_box_id, v_uom_pcs_id, v_uom_box_id, 1200, 50, 105.00, 126000.00, (CURRENT_DATE + INTERVAL '9 months')::DATE, UPPER(LEFT(MD5(RANDOM()::TEXT), 10)), NULL, 1);
+    PERFORM wms.insert_inward_details(v_inward_id, v_ean_m10, v_pod5_id, v_uom_box_id, v_uom_pcs_id, v_uom_box_id, 1200, 50, 820.00, 984000.00, (CURRENT_DATE + INTERVAL '9 months')::DATE, UPPER(LEFT(MD5(RANDOM()::TEXT), 10)), NULL, 1);
+END $$;
+
+-- Draft inward for PO3 (V2, MAT-001..005)
+DO $$
+DECLARE
+    v_v2_id       INTEGER;
+    v_po3_id      INTEGER;
+    v_inward_id   INTEGER;
+    v_uom_pcs_id  INTEGER;
+    v_uom_box_id  INTEGER;
+    v_ean_m01     INTEGER; v_ean_m02 INTEGER; v_ean_m03 INTEGER;
+    v_ean_m04     INTEGER; v_ean_m05 INTEGER;
+    v_pod1_id     INTEGER; v_pod2_id INTEGER; v_pod3_id INTEGER;
+    v_pod4_id     INTEGER; v_pod5_id INTEGER;
+BEGIN
+    SELECT id INTO v_v2_id      FROM wms.vendor WHERE name = 'V2';
+    SELECT id INTO v_uom_pcs_id FROM wms.uom    WHERE name = 'PCS';
+    SELECT id INTO v_uom_box_id FROM wms.uom    WHERE name = 'BOX24';
+
+    -- First PO for V2
+    SELECT id INTO v_po3_id FROM wms.purchase_order_header
+    WHERE vendor_id = v_v2_id ORDER BY id LIMIT 1 OFFSET 0;
+
+    SELECT me.id INTO v_ean_m01 FROM wms.material_ean me JOIN wms.material m ON m.id = me.material_id WHERE m.name = 'MAT-001' ORDER BY me.id LIMIT 1;
+    SELECT me.id INTO v_ean_m02 FROM wms.material_ean me JOIN wms.material m ON m.id = me.material_id WHERE m.name = 'MAT-002' ORDER BY me.id LIMIT 1;
+    SELECT me.id INTO v_ean_m03 FROM wms.material_ean me JOIN wms.material m ON m.id = me.material_id WHERE m.name = 'MAT-003' ORDER BY me.id LIMIT 1;
+    SELECT me.id INTO v_ean_m04 FROM wms.material_ean me JOIN wms.material m ON m.id = me.material_id WHERE m.name = 'MAT-004' ORDER BY me.id LIMIT 1;
+    SELECT me.id INTO v_ean_m05 FROM wms.material_ean me JOIN wms.material m ON m.id = me.material_id WHERE m.name = 'MAT-005' ORDER BY me.id LIMIT 1;
+
+    SELECT id INTO v_pod1_id FROM wms.purchase_order_details WHERE header_id = v_po3_id ORDER BY id LIMIT 1 OFFSET 0;
+    SELECT id INTO v_pod2_id FROM wms.purchase_order_details WHERE header_id = v_po3_id ORDER BY id LIMIT 1 OFFSET 1;
+    SELECT id INTO v_pod3_id FROM wms.purchase_order_details WHERE header_id = v_po3_id ORDER BY id LIMIT 1 OFFSET 2;
+    SELECT id INTO v_pod4_id FROM wms.purchase_order_details WHERE header_id = v_po3_id ORDER BY id LIMIT 1 OFFSET 3;
+    SELECT id INTO v_pod5_id FROM wms.purchase_order_details WHERE header_id = v_po3_id ORDER BY id LIMIT 1 OFFSET 4;
+
+    SELECT id INTO v_inward_id FROM wms.insert_inward_header(
+        CURRENT_DATE, v_v2_id, v_po3_id::TEXT, NULL, NULL, 0,
+        'Inward for PO3 — V2 MAT-001..005', 1
+    );
+    -- expiry 12 months out
+    PERFORM wms.insert_inward_details(v_inward_id, v_ean_m01, v_pod1_id, v_uom_box_id, v_uom_pcs_id, v_uom_box_id, 1200, 50, 180.00, 216000.00, (CURRENT_DATE + INTERVAL '12 months')::DATE, UPPER(LEFT(MD5(RANDOM()::TEXT), 10)), NULL, 1);
+    PERFORM wms.insert_inward_details(v_inward_id, v_ean_m02, v_pod2_id, v_uom_box_id, v_uom_pcs_id, v_uom_box_id, 1200, 50, 310.00, 372000.00, (CURRENT_DATE + INTERVAL '12 months')::DATE, UPPER(LEFT(MD5(RANDOM()::TEXT), 10)), NULL, 1);
+    PERFORM wms.insert_inward_details(v_inward_id, v_ean_m03, v_pod3_id, v_uom_box_id, v_uom_pcs_id, v_uom_box_id, 1200, 50, 450.00, 540000.00, (CURRENT_DATE + INTERVAL '12 months')::DATE, UPPER(LEFT(MD5(RANDOM()::TEXT), 10)), NULL, 1);
+    PERFORM wms.insert_inward_details(v_inward_id, v_ean_m04, v_pod4_id, v_uom_box_id, v_uom_pcs_id, v_uom_box_id, 1200, 50, 130.00, 156000.00, (CURRENT_DATE + INTERVAL '12 months')::DATE, UPPER(LEFT(MD5(RANDOM()::TEXT), 10)), NULL, 1);
+    PERFORM wms.insert_inward_details(v_inward_id, v_ean_m05, v_pod5_id, v_uom_box_id, v_uom_pcs_id, v_uom_box_id, 1200, 50, 545.00, 654000.00, (CURRENT_DATE + INTERVAL '12 months')::DATE, UPPER(LEFT(MD5(RANDOM()::TEXT), 10)), NULL, 1);
+END $$;
+
+-- Draft inward for PO4 (V2, MAT-006..010)
+DO $$
+DECLARE
+    v_v2_id       INTEGER;
+    v_po4_id      INTEGER;
+    v_inward_id   INTEGER;
+    v_uom_pcs_id  INTEGER;
+    v_uom_box_id  INTEGER;
+    v_ean_m06     INTEGER; v_ean_m07 INTEGER; v_ean_m08 INTEGER;
+    v_ean_m09     INTEGER; v_ean_m10 INTEGER;
+    v_pod1_id     INTEGER; v_pod2_id INTEGER; v_pod3_id INTEGER;
+    v_pod4_id     INTEGER; v_pod5_id INTEGER;
+BEGIN
+    SELECT id INTO v_v2_id      FROM wms.vendor WHERE name = 'V2';
+    SELECT id INTO v_uom_pcs_id FROM wms.uom    WHERE name = 'PCS';
+    SELECT id INTO v_uom_box_id FROM wms.uom    WHERE name = 'BOX24';
+
+    -- Second PO for V2
+    SELECT id INTO v_po4_id FROM wms.purchase_order_header
+    WHERE vendor_id = v_v2_id ORDER BY id LIMIT 1 OFFSET 1;
+
+    SELECT me.id INTO v_ean_m06 FROM wms.material_ean me JOIN wms.material m ON m.id = me.material_id WHERE m.name = 'MAT-006' ORDER BY me.id LIMIT 1;
+    SELECT me.id INTO v_ean_m07 FROM wms.material_ean me JOIN wms.material m ON m.id = me.material_id WHERE m.name = 'MAT-007' ORDER BY me.id LIMIT 1;
+    SELECT me.id INTO v_ean_m08 FROM wms.material_ean me JOIN wms.material m ON m.id = me.material_id WHERE m.name = 'MAT-008' ORDER BY me.id LIMIT 1;
+    SELECT me.id INTO v_ean_m09 FROM wms.material_ean me JOIN wms.material m ON m.id = me.material_id WHERE m.name = 'MAT-009' ORDER BY me.id LIMIT 1;
+    SELECT me.id INTO v_ean_m10 FROM wms.material_ean me JOIN wms.material m ON m.id = me.material_id WHERE m.name = 'MAT-010' ORDER BY me.id LIMIT 1;
+
+    SELECT id INTO v_pod1_id FROM wms.purchase_order_details WHERE header_id = v_po4_id ORDER BY id LIMIT 1 OFFSET 0;
+    SELECT id INTO v_pod2_id FROM wms.purchase_order_details WHERE header_id = v_po4_id ORDER BY id LIMIT 1 OFFSET 1;
+    SELECT id INTO v_pod3_id FROM wms.purchase_order_details WHERE header_id = v_po4_id ORDER BY id LIMIT 1 OFFSET 2;
+    SELECT id INTO v_pod4_id FROM wms.purchase_order_details WHERE header_id = v_po4_id ORDER BY id LIMIT 1 OFFSET 3;
+    SELECT id INTO v_pod5_id FROM wms.purchase_order_details WHERE header_id = v_po4_id ORDER BY id LIMIT 1 OFFSET 4;
+
+    SELECT id INTO v_inward_id FROM wms.insert_inward_header(
+        CURRENT_DATE, v_v2_id, v_po4_id::TEXT, NULL, NULL, 0,
+        'Inward for PO4 — V2 MAT-006..010', 1
+    );
+    -- expiry 18 months out
+    PERFORM wms.insert_inward_details(v_inward_id, v_ean_m06, v_pod1_id, v_uom_box_id, v_uom_pcs_id, v_uom_box_id, 1200, 50, 250.00, 300000.00, (CURRENT_DATE + INTERVAL '18 months')::DATE, UPPER(LEFT(MD5(RANDOM()::TEXT), 10)), NULL, 1);
+    PERFORM wms.insert_inward_details(v_inward_id, v_ean_m07, v_pod2_id, v_uom_box_id, v_uom_pcs_id, v_uom_box_id, 1200, 50, 380.00, 456000.00, (CURRENT_DATE + INTERVAL '18 months')::DATE, UPPER(LEFT(MD5(RANDOM()::TEXT), 10)), NULL, 1);
+    PERFORM wms.insert_inward_details(v_inward_id, v_ean_m08, v_pod3_id, v_uom_box_id, v_uom_pcs_id, v_uom_box_id, 1200, 50, 680.00, 816000.00, (CURRENT_DATE + INTERVAL '18 months')::DATE, UPPER(LEFT(MD5(RANDOM()::TEXT), 10)), NULL, 1);
+    PERFORM wms.insert_inward_details(v_inward_id, v_ean_m09, v_pod4_id, v_uom_box_id, v_uom_pcs_id, v_uom_box_id, 1200, 50, 105.00, 126000.00, (CURRENT_DATE + INTERVAL '18 months')::DATE, UPPER(LEFT(MD5(RANDOM()::TEXT), 10)), NULL, 1);
+    PERFORM wms.insert_inward_details(v_inward_id, v_ean_m10, v_pod5_id, v_uom_box_id, v_uom_pcs_id, v_uom_box_id, 1200, 50, 820.00, 984000.00, (CURRENT_DATE + INTERVAL '18 months')::DATE, UPPER(LEFT(MD5(RANDOM()::TEXT), 10)), NULL, 1);
 END $$;

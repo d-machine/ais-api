@@ -61,7 +61,7 @@ export default class AuthService extends BaseService {
     );
 
     if (userClaims) {
-      _forEach(userClaims.rows, async (row) => {
+      _forEach(userClaims, async (row) => {
         const accessTypeIds = _split(row.access_type_ids, ",");
         await this._cache.saveData(`user_access_level-${userId}`, `${row.resource_id}:${row.access_level_id}`);
         await this._cache.saveSet(

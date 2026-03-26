@@ -6,13 +6,13 @@ CREATE TABLE IF NOT EXISTS wms.picking_list_details (
     rack_id INTEGER REFERENCES wms.rack(id), -- Suggested Rack
     expiry_dt DATE, -- Suggested Batch
     so_detail_ids TEXT NOT NULL DEFAULT '', -- Comma-separated list of SO detail IDs
+    batch_no VARCHAR(100),
     qty DECIMAL(15,3) NOT NULL, -- Allocated Qty
     picked_qty DECIMAL(15,3) DEFAULT 0,
     is_active BOOLEAN NOT NULL DEFAULT true,
     lub INTEGER REFERENCES administration.user(id),
     lua TIMESTAMP NOT NULL DEFAULT NOW(),
-    remarks VARCHAR(255),
-    status VARCHAR(50) DEFAULT 'Pending' -- Pending, Picked
+    remarks VARCHAR(255)
 );
 
 -- Create temporal table for picking_list_details
@@ -24,10 +24,10 @@ CREATE TABLE IF NOT EXISTS wms.picking_list_details_history (
     rack_id INTEGER,
     expiry_dt DATE,
     so_detail_ids TEXT,
+    batch_no VARCHAR(100),
     qty DECIMAL(15,3),
     picked_qty DECIMAL(15,3),
     remarks VARCHAR(255),
-    status VARCHAR(50),
     is_active BOOLEAN,
     operation VARCHAR(10),
     operation_at TIMESTAMP,
@@ -42,30 +42,30 @@ BEGIN
     IF (TG_OP = 'INSERT') THEN
         INSERT INTO wms.picking_list_details_history(
             detail_id, header_id, material_id, rack_id, expiry_dt, so_detail_ids,
-            qty, picked_qty, remarks, status, is_active, operation, operation_at, operation_by
+            batch_no, qty, picked_qty, remarks, is_active, operation, operation_at, operation_by
         )
         VALUES(
             NEW.id, NEW.header_id, NEW.material_id, NEW.rack_id, NEW.expiry_dt, NEW.so_detail_ids,
-            NEW.qty, NEW.picked_qty, NEW.remarks, NEW.status, NEW.is_active, 'INSERT', NEW.lua, NEW.lub
+            NEW.batch_no, NEW.qty, NEW.picked_qty, NEW.remarks, NEW.is_active, 'INSERT', NEW.lua, NEW.lub
         );
     ELSIF (TG_OP = 'UPDATE') THEN
         IF (OLD.is_active = true AND NEW.is_active = false) THEN
             INSERT INTO wms.picking_list_details_history(
                 detail_id, header_id, material_id, rack_id, expiry_dt, so_detail_ids,
-                qty, picked_qty, remarks, status, is_active, operation, operation_at, operation_by
+                batch_no, qty, picked_qty, remarks, is_active, operation, operation_at, operation_by
             )
             VALUES (
                 NEW.id, NEW.header_id, NEW.material_id, NEW.rack_id, NEW.expiry_dt, NEW.so_detail_ids,
-                NEW.qty, NEW.picked_qty, NEW.remarks, NEW.status, NEW.is_active, 'DELETE', NEW.lua, NEW.lub
+                NEW.batch_no, NEW.qty, NEW.picked_qty, NEW.remarks, NEW.is_active, 'DELETE', NEW.lua, NEW.lub
             );
         ELSE
             INSERT INTO wms.picking_list_details_history(
                 detail_id, header_id, material_id, rack_id, expiry_dt, so_detail_ids,
-                qty, picked_qty, remarks, status, is_active, operation, operation_at, operation_by
+                batch_no, qty, picked_qty, remarks, is_active, operation, operation_at, operation_by
             )
             VALUES (
                 NEW.id, NEW.header_id, NEW.material_id, NEW.rack_id, NEW.expiry_dt, NEW.so_detail_ids,
-                NEW.qty, NEW.picked_qty, NEW.remarks, NEW.status, NEW.is_active, 'UPDATE', NEW.lua, NEW.lub
+                NEW.batch_no, NEW.qty, NEW.picked_qty, NEW.remarks, NEW.is_active, 'UPDATE', NEW.lua, NEW.lub
             );
         END IF;
     END IF;
