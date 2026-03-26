@@ -22,7 +22,7 @@ sections:
         FROM wms.dispatch_header dh
         JOIN wms.party p ON dh.party_id = p.id
         JOIN wms.picking_list_header plh ON plh.id = dh.pl_ids::int
-        WHERE dh.status = 'Draft'
+        WHERE dh.status = 0
           AND dh.is_active = true
           AND plh.picker_id = $1
         ORDER BY plh.pick_dt ASC, dh.entry_dt DESC

@@ -108,10 +108,16 @@ INSERT INTO wms.status_code (entity, code, label) VALUES
 ('SO',     20, 'Dispatched Fully'),
 ('SO',     50, 'Issue Raised'),
 -- Picking List
-('PL',     0,  'Draft'),
-('PL',     10, 'Assigned'),
-('PL',     20, 'Picked'),
-('PL',     50, 'Issue Raised');
+('PL',       0,  'Draft'),
+('PL',       10, 'Assigned'),
+('PL',       20, 'Picked'),
+('PL',       50, 'Issue Raised'),
+-- Dispatch
+('DISPATCH', 0,  'Draft'),
+('DISPATCH', 10, 'Partially Picked'),
+('DISPATCH', 20, 'Ready for Delivery'),
+('DISPATCH', 30, 'Delivered'),
+('DISPATCH', 50, 'Issue Raised');
 
 INSERT INTO wms.country (name, code, lub) VALUES
 ('India', 'IN', 1);

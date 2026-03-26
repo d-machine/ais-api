@@ -15,9 +15,11 @@ sections:
             h.entry_dt,
             p.name as party_name,
             h.status,
+            sc.label as status_label,
             (SELECT COUNT(*) FROM wms.picking_list_details d WHERE d.header_id = h.id) as total_items
           FROM wms.picking_list_header h
           JOIN wms.party p ON h.party_id = p.id
+          LEFT JOIN wms.status_code sc ON sc.entity = 'PL' AND sc.code = h.status
         ) sub
       path:
         - sections
@@ -101,7 +103,7 @@ sections:
         width: 100
         align: right
 
-      - name: status
+      - name: status_label
         label: Status
         visible: true
         width: 120

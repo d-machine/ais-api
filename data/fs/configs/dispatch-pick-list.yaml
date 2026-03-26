@@ -25,6 +25,7 @@ sections:
       query: |
         SELECT
           $1::integer as dispatch_id,
+          (SELECT status FROM wms.dispatch_header WHERE id = $1) as dispatch_status,
           pld.material_id,
           m.name as material_name,
           pld.rack_id,
@@ -33,7 +34,7 @@ sections:
           pld.batch_no,
           pld.qty as planned_qty,
           COALESCE(dd.qty, 0) as picked_qty,
-          CASE WHEN dd.id IS NOT NULL THEN 'PICKED' ELSE 'PENDING' END as pick_status
+          CASE WHEN dd.id IS NOT NULL THEN 'Picked' ELSE 'Pending' END as pick_status
         FROM wms.picking_list_details pld
         JOIN wms.material m ON pld.material_id = m.id
         LEFT JOIN wms.rack r ON pld.rack_id = r.id
@@ -89,7 +90,7 @@ sections:
         icon: Plus
         variant: primary
         level: ROW
-        condition: row.pick_status === 'PENDING'
+        condition: row.pick_status === 'Pending' && row.dispatch_status === 0
         actionType: DISPLAY_FORM
         formConfig: dispatch-confirm-pick
         mode: ADD
@@ -105,7 +106,7 @@ sections:
         icon: X
         variant: danger
         level: ROW
-        condition: row.pick_status === 'PICKED'
+        condition: row.pick_status === 'Picked' && row.dispatch_status === 0
         confirmationRequired: true
         confirmationMessage: "Remove this pick?"
         actionType: EXECUTE_QUERY

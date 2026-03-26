@@ -8,7 +8,7 @@ CREATE TABLE IF NOT EXISTS wms.dispatch_header (
     vehicle_no VARCHAR(50),
     driver_name VARCHAR(255),
     remarks VARCHAR(255),
-    status VARCHAR(50) DEFAULT 'Draft', -- Draft, Dispatched
+    status INTEGER NOT NULL DEFAULT 0, -- see wms.status_code entity='DISPATCH'
     is_active BOOLEAN NOT NULL DEFAULT true,
     lub INTEGER REFERENCES administration.user(id),
     lua TIMESTAMP NOT NULL DEFAULT NOW()
@@ -24,7 +24,7 @@ CREATE TABLE IF NOT EXISTS wms.dispatch_header_history (
     pl_ids TEXT,
     vehicle_no VARCHAR(50),
     driver_name VARCHAR(255),
-    status VARCHAR(50),
+    status INTEGER,
     is_active BOOLEAN,
     operation VARCHAR(10),
     operation_at TIMESTAMP,

@@ -40,10 +40,11 @@ sections:
         SELECT
           h.id, h.entry_no, h.entry_dt, h.party_id, p.name as party_name,
           h.pl_ids, plh.entry_no as pl_entry_no,
-          h.vehicle_no, h.driver_name, h.status, h.remarks
+          h.vehicle_no, h.driver_name, h.status, sc.label as status_label, h.remarks
         FROM wms.dispatch_header h
         JOIN wms.party p ON h.party_id = p.id
         LEFT JOIN wms.picking_list_header plh ON plh.id = h.pl_ids::integer
+        LEFT JOIN wms.status_code sc ON sc.entity = 'DISPATCH' AND sc.code = h.status
         WHERE h.id = $1
       payload:
         - _context.id
@@ -107,7 +108,7 @@ sections:
         icon: Truck
         variant: primary
         actionType: EXECUTE_QUERY
-        condition: status === 'Draft'
+        condition: status === 0
         confirmationRequired: true
         confirmationMessage: "Are you sure you want to process this dispatch? This will deduct stock and update Sales Orders."
         queryInfo:

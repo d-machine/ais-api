@@ -3436,7 +3436,7 @@ BEGIN
         entry_no, entry_dt, party_id, pl_ids, vehicle_no, driver_name, remarks, status, lub
     )
     VALUES (
-        _entry_no, _entry_dt, _party_id, _pl_ids, _vehicle_no, _driver_name, _remarks, 'Draft', _current_user_id
+        _entry_no, _entry_dt, _party_id, _pl_ids, _vehicle_no, _driver_name, _remarks, 0, _current_user_id
     )
     RETURNING id INTO _new_id;
     
@@ -3531,14 +3531,14 @@ CREATE OR REPLACE FUNCTION wms.process_dispatch(
     _current_user_id INTEGER
 ) RETURNS INTEGER AS $$
 DECLARE
-    _status VARCHAR(50);
+    _status INTEGER;
     _detail RECORD;
     _pick_detail RECORD;
     _pl_ids TEXT;
 BEGIN
     SELECT status, pl_ids INTO _status, _pl_ids FROM wms.dispatch_header WHERE id = _dispatch_id;
-    
-    IF _status = 'Dispatched' THEN
+
+    IF _status != 0 THEN
         RAISE EXCEPTION 'Dispatch entry is already processed.';
     END IF;
 
@@ -3559,9 +3559,9 @@ BEGIN
           AND pld.is_active = true;
     END IF;
 
-    -- Update Dispatch Status
+    -- Update Dispatch Status to Ready for Delivery
     UPDATE wms.dispatch_header
-    SET status = 'Dispatched', lub = _current_user_id, lua = NOW()
+    SET status = 20, lub = _current_user_id, lua = NOW()
     WHERE id = _dispatch_id;
 
     FOR _detail IN SELECT * FROM wms.dispatch_details WHERE header_id = _dispatch_id AND is_active = true LOOP
@@ -3806,7 +3806,7 @@ DECLARE
     _igst    DECIMAL(5,2);
     _utgst   DECIMAL(5,2);
 BEGIN
-    IF NOT EXISTS (SELECT 1 FROM wms.dispatch_header WHERE id = _dispatch_id AND status = 'Draft') THEN
+    IF NOT EXISTS (SELECT 1 FROM wms.dispatch_header WHERE id = _dispatch_id AND status = 0) THEN
         RAISE EXCEPTION 'Only Draft dispatches can be updated.';
     END IF;
 
@@ -3871,7 +3871,7 @@ CREATE OR REPLACE FUNCTION wms.process_picked_dispatch(
     _current_user_id INTEGER
 ) RETURNS INTEGER AS $$
 DECLARE
-    _status   VARCHAR(50);
+    _status   INTEGER;
     _pl_id    INTEGER;
     _detail   RECORD;
     _so_alloc RECORD;
@@ -3880,7 +3880,7 @@ BEGIN
     SELECT status, pl_ids::integer INTO _status, _pl_id
     FROM wms.dispatch_header WHERE id = _dispatch_id;
 
-    IF _status != 'Draft' THEN
+    IF _status != 0 THEN
         RAISE EXCEPTION 'Only Draft dispatches can be processed.';
     END IF;
 
@@ -3956,9 +3956,9 @@ BEGIN
     SET status = 20, lub = _current_user_id, lua = NOW()
     WHERE id = _pl_id;
 
-    -- Mark dispatch as Dispatched
+    -- Mark dispatch as Ready for Delivery
     UPDATE wms.dispatch_header
-    SET status = 'Dispatched', lub = _current_user_id, lua = NOW()
+    SET status = 20, lub = _current_user_id, lua = NOW()
     WHERE id = _dispatch_id;
 
     RETURN _dispatch_id;
