@@ -16,9 +16,6 @@ COPY . .
 # Build the application
 RUN npm run build
 
-# Copy data to dist directory
-RUN cp -r ./data /
-
 # Copy public files to dist directory
 RUN cp -r src/static dist/
 
@@ -29,9 +26,10 @@ WORKDIR /app
 
 # Copy built files and package files
 COPY --from=builder /app/dist ./dist
-COPY --from=builder /app/data ./data
 COPY --from=builder /app/package*.json ./
-COPY --from=builder /app/.env.development ./
+# Note: data/ (SQL + YAML configs) is NOT bundled into the image.
+# In production (ais-deploy), these are bind-mounted from the deploy repo.
+# In local dev, run: docker compose -f docker-compose.yml up (uses local ./data)
 
 # Install production dependencies only
 RUN npm ci --only=production && \
