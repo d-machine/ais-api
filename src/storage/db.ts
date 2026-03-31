@@ -4,6 +4,7 @@ import path from "path";
 
 import { EQueryReturnType } from "../types/general.js";
 import { _isNil } from "../utils/aisLodash.js";
+import { logError, logInfo } from "../utils/logger.js";
 
 export default class DBClient {
   private pool?: pg.Pool;
@@ -32,7 +33,12 @@ export default class DBClient {
 
     // Handle pool errors
     this.pool.on("error", (err) => {
-      console.error("Unexpected error on idle PostgreSQL client", err);
+      logError({
+        context: "DB:Pool",
+        message: "Unexpected error on idle PostgreSQL client",
+        errorMessage: err.message,
+        stack: err.stack,
+      });
     });
 
     await this.pool.connect();
@@ -96,6 +102,12 @@ export default class DBClient {
         //dispatch
         "dispatch_header.sql",
         "dispatch_details.sql",
+        // purchase return
+        "purchase_return_header.sql",
+        "purchase_return_details.sql",
+        // sales return
+        "sales_return_header.sql",
+        "sales_return_details.sql",
         // stock
         "stock.sql",
         // query functions
@@ -111,18 +123,28 @@ export default class DBClient {
         const filePath = path.join(baseDir, file);
 
         try {
-          console.log(`Executing SQL file: ${file}`);
+          logInfo({ context: "DB:Client", message: `Executing SQL file: ${file}` });
           const query = fs.readFileSync(filePath, "utf-8").replace(/^\uFEFF/, "");
           await this.pool?.query(query);
-          console.log(`Successfully executed SQL file: ${file}`);
+          logInfo({ context: "DB:Client", message: `Successfully executed SQL file: ${file}` });
         } catch (error) {
-          console.error(`Error executing ${file}:`, error);
+          logError({
+            context: "DB:Client",
+            message: `Error executing SQL file: ${file}`,
+            errorMessage: error instanceof Error ? error.message : String(error),
+            stack: error instanceof Error ? error.stack : undefined,
+          });
           throw error;
         }
       }
 
     } catch (error) {
-      console.error("Database initialization failed:", error);
+      logError({
+        context: "DB:Client",
+        message: "Database initialization failed",
+        errorMessage: error instanceof Error ? error.message : String(error),
+        stack: error instanceof Error ? error.stack : undefined,
+      });
       throw error;
     }
   }
@@ -133,15 +155,15 @@ export default class DBClient {
     params: any[] = []
   ) {
     try {
-      console.log("DB Client executing query:", { queryType, query, params });
-      
+      logInfo({ context: "DB:Client", message: "Executing query", queryType, query });
+
       if (!this.pool) {
-        console.error("Database pool not initialized");
+        logError({ context: "DB:Client", message: "Database pool not initialized" });
         throw new Error("Database pool not initialized");
       }
-      
+
       const result = await this.pool.query(query, params);
-      console.log("Query result:", { rowCount: result.rowCount });
+      logInfo({ context: "DB:Client", message: "Query result", rowCount: result.rowCount });
 
       if (_isNil(result)) {
         return null;
@@ -168,8 +190,13 @@ export default class DBClient {
           return null;
       }
     } catch (error) {
-      console.error("Database error executing query:", error);
-      console.error("Query details:", { queryType, query, params });
+      logError({
+        context: "DB:Client",
+        message: "Database error executing query",
+        errorMessage: error instanceof Error ? error.message : String(error),
+        stack: error instanceof Error ? error.stack : undefined,
+        query,
+      });
       throw error;
     }
   }
@@ -179,7 +206,12 @@ export default class DBClient {
       await this.pool?.end();
       this.pool = undefined;
     } catch (error) {
-      console.error("Error disconnecting from database:", error);
+      logError({
+        context: "DB:Client",
+        message: "Error disconnecting from database",
+        errorMessage: error instanceof Error ? error.message : String(error),
+        stack: error instanceof Error ? error.stack : undefined,
+      });
       throw error;
     }
   }

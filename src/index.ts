@@ -11,6 +11,7 @@ import { serveStatic } from "@hono/node-server/serve-static";
 import DBClient from "./storage/db.js";
 import CacheClient from "./storage/cache.js";
 import { EQueryReturnType } from "./types/general.js";
+import { logError, logInfo, logWarn } from "./utils/logger.js";
 
 const app = new Hono();
 
@@ -32,7 +33,15 @@ app.use(
 
 // Error handling
 app.onError((err, c) => {
-  console.error(`${err}`);
+  logError({
+    context: "GlobalError",
+    message: "Unhandled error",
+    method: c.req.method,
+    path: c.req.path,
+    status: 500,
+    errorMessage: err.message,
+    stack: err.stack,
+  });
   return c.json(
     {
       error: {
@@ -46,6 +55,13 @@ app.onError((err, c) => {
 
 // Not Found handling
 app.notFound((c) => {
+  logWarn({
+    context: "NotFound",
+    message: "Route not found",
+    method: c.req.method,
+    path: c.req.path,
+    status: 404,
+  });
   return c.json(
     {
       error: {
@@ -120,6 +136,7 @@ async function startServer() {
     // Start server only after successful database connections
     serve({ fetch: app.fetch, port });
 
+    logInfo({ context: "Startup", message: `Server started on port ${port}` });
 
     // Handle shutdown
     process.on("SIGTERM", async () => {
@@ -128,7 +145,12 @@ async function startServer() {
       process.exit(0);
     });
   } catch (error) {
-    console.error("Failed to start server:", error);
+    logError({
+      context: "Startup",
+      message: "Failed to start server",
+      errorMessage: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : undefined,
+    });
     process.exit(1);
   }
 }

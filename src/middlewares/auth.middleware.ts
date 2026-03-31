@@ -1,6 +1,7 @@
 import { Context, Next } from 'hono';
 import jwt from 'jsonwebtoken';
 import { _has, _isNil } from '../utils/aisLodash.js';
+import { logError, logWarn } from '../utils/logger.js';
 
 declare module 'hono' {
   interface ContextVariableMap {
@@ -32,12 +33,36 @@ async function authMiddleware(c: Context, next: Next) {
     await next();
   } catch (error) {
     if (error instanceof jwt.TokenExpiredError) {
+      logWarn({
+        context: "Auth",
+        message: "Access token expired",
+        method: c.req.method,
+        path: c.req.path,
+        status: 401,
+        errorMessage: error.message,
+      });
       return c.json({ error: 'Access token has expired' }, 401);
     }
     if (error instanceof jwt.JsonWebTokenError) {
+      logWarn({
+        context: "Auth",
+        message: "Invalid access token",
+        method: c.req.method,
+        path: c.req.path,
+        status: 401,
+        errorMessage: error.message,
+      });
       return c.json({ error: 'Invalid access token' }, 401);
     }
-    console.error('Error verifying access token:', error);
+    logError({
+      context: "Auth",
+      message: "Error verifying access token",
+      method: c.req.method,
+      path: c.req.path,
+      status: 500,
+      errorMessage: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : undefined,
+    });
     return c.json({ error: 'Failed to verify access token' }, 500);
   }
 };

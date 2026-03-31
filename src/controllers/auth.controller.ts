@@ -1,5 +1,6 @@
 import { Context } from "hono";
 import AuthService from "../services/auth.service.js";
+import { logError } from "../utils/logger.js";
 
 export default class AuthController {
   protected authService: AuthService;
@@ -23,6 +24,15 @@ export default class AuthController {
 
       return c.json(result, 200);
     } catch (error) {
+      logError({
+        context: "Controller:Auth",
+        message: "Login error",
+        method: c.req.method,
+        path: c.req.path,
+        status: 500,
+        errorMessage: error instanceof Error ? error.message : String(error),
+        stack: error instanceof Error ? error.stack : undefined,
+      });
       return c.json({ error: "An error occurred while logging in" }, 500);
     }
   }
@@ -39,6 +49,15 @@ export default class AuthController {
 
       return c.json(result, 200);
     } catch (error) {
+      logError({
+        context: "Controller:Auth",
+        message: "Refresh token error",
+        method: c.req.method,
+        path: c.req.path,
+        status: 500,
+        errorMessage: error instanceof Error ? error.message : String(error),
+        stack: error instanceof Error ? error.stack : undefined,
+      });
       return c.json({ error: "An error occurred while refreshing token" }, 500);
     }
   }
@@ -51,6 +70,15 @@ export default class AuthController {
 
       return c.json({ success: true }, 200);
     } catch (error) {
+      logError({
+        context: "Controller:Auth",
+        message: "Logout error",
+        method: c.req.method,
+        path: c.req.path,
+        status: 500,
+        errorMessage: error instanceof Error ? error.message : String(error),
+        stack: error instanceof Error ? error.stack : undefined,
+      });
       return c.json({ error: "An error occurred while logging out" }, 500);
     }
   }

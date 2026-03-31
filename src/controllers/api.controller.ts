@@ -1,5 +1,6 @@
 import { Context } from "hono";
 import ApiService from "../services/api.service.js";
+import { logError, logInfo } from "../utils/logger.js";
 
 export default class ApiController {
   async getMenu(c: Context) {
@@ -16,7 +17,15 @@ export default class ApiController {
       const menu = await menuService.getMenu(userId);
       return c.json(menu);
     } catch (error) {
-      console.error("Menu error:", error);
+      logError({
+        context: "Controller:Api",
+        message: "Menu error",
+        method: c.req.method,
+        path: c.req.path,
+        status: 500,
+        errorMessage: error instanceof Error ? error.message : String(error),
+        stack: error instanceof Error ? error.stack : undefined,
+      });
       return c.json({ error: "Failed to get menu" }, 500);
     }
   }
@@ -32,7 +41,15 @@ export default class ApiController {
 
       return c.json(config);
     } catch (error) {
-      console.error("Config error:", error);
+      logError({
+        context: "Controller:Api",
+        message: "Config error",
+        method: c.req.method,
+        path: c.req.path,
+        status: 500,
+        errorMessage: error instanceof Error ? error.message : String(error),
+        stack: error instanceof Error ? error.stack : undefined,
+      });
       return c.json({ error: "Failed to get config" }, 500);
     }
   }
@@ -43,11 +60,13 @@ export default class ApiController {
       const body = await c.req.json();
       const userId = c.get("userId");
 
-      console.log("Execute query request:", {
+      logInfo({
+        context: "Controller:Api",
+        message: "Execute query request",
+        method: c.req.method,
+        path: c.req.path,
         fetchQuery: body.fetchQuery,
         configFile: body.configFile,
-        path: body.path,
-        payload: body.payload
       });
 
       // Regular config-based query execution
@@ -62,14 +81,30 @@ export default class ApiController {
         );
         return c.json(result);
       } catch (error: any) {
-        console.error("Config query execution error:", error);
+        logError({
+          context: "Controller:Api",
+          message: "Config query execution error",
+          method: c.req.method,
+          path: c.req.path,
+          status: 500,
+          errorMessage: error?.message,
+          stack: error?.stack,
+        });
         return c.json({
           error: "Config-based query execution failed",
           details: error?.message || "Unknown error"
         }, 500);
       }
     } catch (error: any) {
-      console.error("General query execution error:", error);
+      logError({
+        context: "Controller:Api",
+        message: "General query execution error",
+        method: c.req.method,
+        path: c.req.path,
+        status: 500,
+        errorMessage: error?.message,
+        stack: error?.stack,
+      });
       return c.json({
         error: "Failed to execute query",
         details: error?.message || "Unknown error"

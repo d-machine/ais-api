@@ -15,7 +15,9 @@
     "lodash": "^4.17.21",
     "pg": "^8.11.3",
     "pg-promise": "^11.10.2",
-    "redis": "^4.7.0"
+    "redis": "^4.7.0",
+    "winston": "^3.19.0",
+    "winston-daily-rotate-file": "^5.0.0"
   },
   "devDependencies": {
     "@types/bcrypt": "^5.0.2",

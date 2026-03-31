@@ -1,4 +1,5 @@
 import redis, { RedisClientType } from "redis";
+import { logError } from "../utils/logger.js";
 
 export default class CacheClient {
   private client?: RedisClientType;
@@ -26,7 +27,12 @@ export default class CacheClient {
     });
 
     this.client.on("error", (err) => {
-      console.error("Redis Client Error:", err);
+      logError({
+        context: "Cache:Redis",
+        message: "Redis client error",
+        errorMessage: err.message,
+        stack: err.stack,
+      });
     });
 
     await this.client.connect();
