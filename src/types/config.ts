@@ -92,7 +92,7 @@ export interface IQueryInfo {
   contextParams?: Array<string>;
   options?: {
     applyAccessLevelRestrictions?: boolean;
-    applyPagenation?: boolean;
+    applyPagination?: boolean;
     applySorting?: boolean;
     applyFiltering?: boolean;
     defaultFilter?: IFilterInfo;

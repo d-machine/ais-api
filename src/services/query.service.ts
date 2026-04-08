@@ -47,20 +47,19 @@ export default class QueryService extends BaseService {
         case EFilterOperator.NOT_BETWEEN:
           return `${filter.field} NOT BETWEEN ${filterValue}`;
         case EFilterOperator.CONTAINS:
-          return `${filter.field} LIKE '%${filterValue}%'`;
+          return `${filter.field} ILIKE '%${filter.value}%'`;
         case EFilterOperator.NOT_CONTAINS:
-          return `${filter.field} NOT LIKE %${filterValue}%`;
+          return `${filter.field} NOT ILIKE '%${filter.value}%'`;
         case EFilterOperator.STARTS_WITH:
-          return `${filter.field} LIKE ${filterValue}%`;
+          return `${filter.field} ILIKE '${filter.value}%'`;
         case EFilterOperator.NOT_STARTS_WITH:
-          return `${filter.field} NOT LIKE ${filterValue}%`;
+          return `${filter.field} NOT ILIKE '${filter.value}%'`;
         case EFilterOperator.ENDS_WITH:
-          return `${filter.field} LIKE %${filterValue}`;
+          return `${filter.field} ILIKE '%${filter.value}'`;
         case EFilterOperator.NOT_ENDS_WITH:
-          return `${filter.field} NOT LIKE %${filterValue}`;
+          return `${filter.field} NOT ILIKE '%${filter.value}'`;
         default:
-          return `${filter.field} ${filter.operator || "LIKE"} %${filterValue
-            }%`;
+          return `${filter.field} ILIKE '%${filter.value}%'`;
       }
     }).join(" AND ");
 
@@ -106,12 +105,12 @@ export default class QueryService extends BaseService {
     const { filtersData, sortData, paginationData } = fetchQuery || {};
     const queryOptions = queryInfo.options || {};
 
-    const { applyFiltering, applySorting, applyPagenation } = queryOptions;
+    const { applyFiltering, applySorting, applyPagination } = queryOptions;
 
     const filters = applyFiltering ? filtersData : [];
     const sorts = applySorting ? sortData : [];
-    const offset = applyPagenation ? paginationData?.offset || 0 : undefined;
-    const limit = applyPagenation
+    const offset = applyPagination ? paginationData?.offset || 0 : undefined;
+    const limit = applyPagination
       ? paginationData?.limit || DEFAULT_PAGE_SIZE
       : undefined;
 
