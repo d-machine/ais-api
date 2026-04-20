@@ -7,6 +7,7 @@ import { timing } from "hono/timing";
 import createAuthRouter from "./routes/auth.routes.js";
 import createGenericRoutes from "./routes/generic.routes.js";
 import createStorageRouter from "./routes/storage.routes.js";
+import createSavedReportRoutes from "./routes/saved-report.routes.js";
 import { serveStatic } from "@hono/node-server/serve-static";
 import DBClient from "./storage/db.js";
 import CacheClient from "./storage/cache.js";
@@ -121,6 +122,9 @@ app.route("/api/auth", createAuthRouter());
 
 // Generic API routes
 app.route("/api/generic", createGenericRoutes());
+
+// Saved reports routes
+app.route("/api/reports", createSavedReportRoutes());
 
 const port = Number(process.env.PORT) || 3000;
 

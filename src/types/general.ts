@@ -44,6 +44,7 @@ export interface IFetchQuery {
   sortData?: ISortInfo[];
   paginationData?: IPaginationInfo;
   filtersData?: IFilterInfo[];
+  groupByData?: string[];
 }
 
 export const enum EQueryReturnType {

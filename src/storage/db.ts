@@ -110,6 +110,10 @@ export default class DBClient {
         "sales_return_details.sql",
         // stock
         "stock.sql",
+        // stock snapshot (monthly point-in-time)
+        "stock_snapshot.sql",
+        // saved reports
+        "saved_report.sql",
         // query functions
         "query_functions.sql",
         "initial_data.sql",

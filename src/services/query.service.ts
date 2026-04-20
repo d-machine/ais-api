@@ -14,6 +14,7 @@ export default class QueryService extends BaseService {
   constructor() {
     super();
     this.buildWhereClause = this.buildWhereClause.bind(this);
+    this.buildGroupByClause = this.buildGroupByClause.bind(this);
     this.buildOrderByClause = this.buildOrderByClause.bind(this);
     this.buildPaginationClause = this.buildPaginationClause.bind(this);
     this.buildQuery = this.buildQuery.bind(this);
@@ -70,6 +71,13 @@ export default class QueryService extends BaseService {
     return `WHERE ${filterClauses}`;
   }
 
+  private buildGroupByClause(fields: string[]): string {
+    if (_isNil(fields) || fields.length === 0) {
+      return "";
+    }
+    return `GROUP BY ${fields.join(", ")}`;
+  }
+
   private buildOrderByClause(sorts: ISortInfo[]) {
     if (_isNil(sorts) || sorts.length === 0) {
       return "";
@@ -102,13 +110,16 @@ export default class QueryService extends BaseService {
       throw new Error("Query is empty");
     }
 
-    const { filtersData, sortData, paginationData } = fetchQuery || {};
+    const { filtersData, sortData, paginationData, groupByData } = fetchQuery || {};
     const queryOptions = queryInfo.options || {};
 
-    const { applyFiltering, applySorting, applyPagination } = queryOptions;
+    const { applyFiltering, applySorting, applyPagination, applyGroupBy } = queryOptions;
 
     const filters = applyFiltering ? filtersData : [];
     const sorts = applySorting ? sortData : [];
+    const groupBy = applyGroupBy
+      ? (groupByData && groupByData.length > 0 ? groupByData : queryOptions.defaultGroupBy)
+      : [];
     const offset = applyPagination ? paginationData?.offset || 0 : undefined;
     const limit = applyPagination
       ? paginationData?.limit || DEFAULT_PAGE_SIZE
@@ -116,6 +127,10 @@ export default class QueryService extends BaseService {
 
     if (filters && filters.length > 0) {
       query += ` ${this.buildWhereClause(filters)}`;
+    }
+
+    if (groupBy && groupBy.length > 0) {
+      query += ` ${this.buildGroupByClause(groupBy)}`;
     }
 
     if (sorts && sorts.length > 0) {

@@ -25,6 +25,8 @@ export enum EInputType {
 export enum ESectionType {
   FIELDS = "FIELDS",
   TABLE = "TABLE",
+  REPORT = "REPORT",
+  CHART = "CHART",
 }
 
 export const FORM_MODES = {
@@ -95,8 +97,10 @@ export interface IQueryInfo {
     applyPagination?: boolean;
     applySorting?: boolean;
     applyFiltering?: boolean;
+    applyGroupBy?: boolean;
     defaultFilter?: IFilterInfo;
     defaultSort?: Array<ISortInfo>;
+    defaultGroupBy?: Array<string>;
     pageSize?: number;
   };
 }
@@ -178,7 +182,43 @@ export interface ITableSection extends IBaseSectionConfig {
   listConfig: IListConfig;
 }
 
+export interface IReportColumn {
+  name: string;
+  label: string;
+  width?: number;
+  sortable?: boolean;
+  filterType?: EFilterType;
+  aggregate?: "SUM" | "COUNT" | "AVG" | "MIN" | "MAX";
+}
+
+export interface IReportSection extends IBaseSectionConfig {
+  sectionType: ESectionType.REPORT;
+  listConfig: IListConfig;
+  reportColumns: Array<IReportColumn>;
+  groupByOptions?: Array<{ field: string; label: string }>;
+}
+
+export enum EChartType {
+  LINE = "LINE",
+  BAR = "BAR",
+  PIE = "PIE",
+}
+
+export interface IChartSeries {
+  field: string;
+  label: string;
+  color?: string;
+}
+
+export interface IChartSection extends IBaseSectionConfig {
+  sectionType: ESectionType.CHART;
+  queryInfo: IQueryInfo;
+  chartType: EChartType;
+  xAxis: string;
+  series: Array<IChartSeries>;
+}
+
 export interface IFormConfig {
   formTitle?: string;
-  sections: Array<IFieldsSection | ITableSection>;
+  sections: Array<IFieldsSection | ITableSection | IReportSection | IChartSection>;
 }
