@@ -1,0 +1,73 @@
+import AuthService from "../services/auth.service.js";
+import { logError } from "../utils/logger.js";
+export default class AuthController {
+    constructor() {
+        this.authService = new AuthService();
+        this.login = this.login.bind(this);
+        this.refresh = this.refresh.bind(this);
+        this.logout = this.logout.bind(this);
+    }
+    async login(c) {
+        const body = await c.req.json();
+        if (!body.username || !body.password) {
+            return c.json({ error: "Username and password are required" }, 400);
+        }
+        try {
+            const result = await this.authService.login(body.username, body.password);
+            return c.json(result, 200);
+        }
+        catch (error) {
+            logError({
+                context: "Controller:Auth",
+                message: "Login error",
+                method: c.req.method,
+                path: c.req.path,
+                status: 500,
+                errorMessage: error instanceof Error ? error.message : String(error),
+                stack: error instanceof Error ? error.stack : undefined,
+            });
+            return c.json({ error: "An error occurred while logging in" }, 500);
+        }
+    }
+    async refresh(c) {
+        const body = await c.req.json();
+        if (!body.refreshToken) {
+            return c.json({ error: "Refresh token is required" }, 400);
+        }
+        try {
+            const result = await this.authService.refresh(body.refreshToken);
+            return c.json(result, 200);
+        }
+        catch (error) {
+            logError({
+                context: "Controller:Auth",
+                message: "Refresh token error",
+                method: c.req.method,
+                path: c.req.path,
+                status: 500,
+                errorMessage: error instanceof Error ? error.message : String(error),
+                stack: error instanceof Error ? error.stack : undefined,
+            });
+            return c.json({ error: "An error occurred while refreshing token" }, 500);
+        }
+    }
+    async logout(c) {
+        const userId = c.get("userId");
+        try {
+            await this.authService.logout(userId);
+            return c.json({ success: true }, 200);
+        }
+        catch (error) {
+            logError({
+                context: "Controller:Auth",
+                message: "Logout error",
+                method: c.req.method,
+                path: c.req.path,
+                status: 500,
+                errorMessage: error instanceof Error ? error.message : String(error),
+                stack: error instanceof Error ? error.stack : undefined,
+            });
+            return c.json({ error: "An error occurred while logging out" }, 500);
+        }
+    }
+}
